@@ -1,0 +1,9 @@
+<?php
+namespace App\Controllers;
+use App\Core\App;
+final class AdminController {
+ private function auth():void {if(!isset($_SERVER['PHP_AUTH_PW'])||!password_verify($_SERVER['PHP_AUTH_PW'],App::env('ADMIN_PASSWORD_HASH'))){header('WWW-Authenticate: Basic realm="Thiebapower"');http_response_code(401);exit('Authentification requise');}}
+ public function index():void {$this->auth();$prices=App::db()->query('SELECT * FROM pricing WHERE id=1')->fetch();$batteries=App::db()->query('SELECT * FROM batteries ORDER BY id')->fetchAll();App::view('admin',compact('prices','batteries'));}
+ public function prices():void {$this->auth();$fee=filter_input(INPUT_POST,'rental_fee',FILTER_VALIDATE_INT);$deposit=filter_input(INPUT_POST,'default_deposit',FILTER_VALIDATE_INT);$minutes=filter_input(INPUT_POST,'duration_minutes',FILTER_VALIDATE_INT);$percent=filter_input(INPUT_POST,'late_percent',FILTER_VALIDATE_INT);if($fee===false||$fee<0||$deposit===false||$deposit<0||$minutes===false||$minutes<1||$percent===false||$percent<0||$percent>100){http_response_code(422);exit('Tarifs invalides');}App::db()->prepare('UPDATE pricing SET rental_fee=?,default_deposit=?,duration_minutes=?,late_percent=? WHERE id=1')->execute([$fee,$deposit,$minutes,$percent]);App::redirect('/admin');}
+ public function battery():void {$this->auth();$serial=trim($_POST['serial']??'');$deposit=filter_input(INPUT_POST,'deposit_override',FILTER_VALIDATE_INT,['options'=>['default'=>null]]);if($serial===''||strlen($serial)>100||($deposit!==null&&($deposit===false||$deposit<0))){http_response_code(422);exit('Batterie invalide');}App::db()->prepare('INSERT INTO batteries(serial,deposit_override,status) VALUES(?,?,'available') ON DUPLICATE KEY UPDATE deposit_override=VALUES(deposit_override)')->execute([$serial,$deposit]);App::redirect('/admin');}
+}
