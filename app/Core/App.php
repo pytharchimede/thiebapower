@@ -9,7 +9,7 @@ final class App {
  public static function run(): void { try { $path=parse_url($_SERVER['REQUEST_URI']??'/',PHP_URL_PATH);$method=$_SERVER['REQUEST_METHOD']??'GET';$routes=[
  'GET /'=>[RentalController::class,'index'], 'POST /rentals'=>[RentalController::class,'create'], 'GET /rentals/status'=>[RentalController::class,'status'],
  'POST /api/heycharge/callback'=>[PaymentController::class,'callback'], 'GET /payment/return'=>[PaymentController::class,'returnPage'],
- 'GET /admin'=>[AdminController::class,'index'], 'POST /admin/prices'=>[AdminController::class,'prices'], 'POST /admin/batteries'=>[AdminController::class,'battery']
+ 'GET /admin'=>[AdminController::class,'index'], 'POST /admin/prices'=>[AdminController::class,'prices'], 'POST /admin/batteries'=>[AdminController::class,'battery'], 'POST /admin/modes'=>[AdminController::class,'modes']
  ];$handler=$routes[$method.' '.$path]??null;if(!$handler){http_response_code(404);echo 'Page introuvable';return;} (new $handler[0])->{$handler[1]}(); }catch(\Throwable $e){error_log($e);http_response_code(500);echo 'Erreur serveur';} }
  public static function view(string $name,array $data=[]):void {extract($data,EXTR_SKIP);require dirname(__DIR__,2).'/views/'.$name.'.php';}
  public static function redirect(string $path):void {header('Location: '.$path, true,303);}
