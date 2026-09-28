@@ -2,8 +2,8 @@
 namespace App\Services;
 use App\Core\App;
 final class PaiementProPayoutService {
- private function credentials():array {
-  $mode=IntegrationSettings::all()['paiementpro'];
+ private function credentials(?string $mode=null):array {
+  $mode??=IntegrationSettings::all()['paiementpro'];
   if($mode==='sandbox'){
    $merchant=App::env('PAIEMENTPRO_SANDBOX_MERCHANT_ID');$secret=App::env('PAIEMENTPRO_SANDBOX_SECRET_KEY');
    $wsdl=App::env('PAIEMENTPRO_SANDBOX_PAYOUT_WSDL');
@@ -15,14 +15,14 @@ final class PaiementProPayoutService {
   return compact('merchant','secret','wsdl');
  }
  private function token(array $config,int $timestamp):string {return hash_hmac('sha256',$timestamp.$config['merchant'],$config['secret']);}
- public function prepare(string $reference,int $amount,string $channel,string $phone,string $name):array {
+ public function prepare(string $reference,int $amount,string $channel,string $phone,string $name,?string $mode=null):array {
   if($amount<=0||!in_array($channel,['WAVECI','MOMOCI','OMCIV','FLOOZ'],true)||!preg_match('/^\+?[0-9]{10,16}$/',$phone))throw new \InvalidArgumentException('Paramètres de restitution invalides');
-  $config=$this->credentials();$timestamp=time();
+  $config=$this->credentials($mode);$timestamp=time();
   return ['wsdl'=>$config['wsdl'],'params'=>['merchantId'=>$config['merchant'],'currency'=>'XOF','amount'=>$amount,'referenceNo'=>$reference,'channel'=>$channel,'clientName'=>$name,'token'=>$this->token($config,$timestamp),'timestamp'=>$timestamp,'payeeNo'=>$phone,'paymentReason'=>'Restitution caution '.$reference,'returnURL'=>rtrim(App::env('APP_URL'),'/').'/payment/return','callbackURL'=>rtrim(App::env('APP_URL'),'/').'/api/paiementpro/payout-callback']];
  }
- public function status(string $sessionId):object {
+ public function status(string $sessionId,?string $mode=null):object {
   if($sessionId==='')throw new \InvalidArgumentException('Session absente');
-  $config=$this->credentials();$timestamp=time();
+  $config=$this->credentials($mode);$timestamp=time();
   $client=new \SoapClient($config['wsdl'],['connection_timeout'=>10,'cache_wsdl'=>WSDL_CACHE_NONE]);
   return $client->getTransStatus(['merchantId'=>$config['merchant'],'token'=>$this->token($config,$timestamp),'timestamp'=>$timestamp,'sessionid'=>$sessionId]);
  }
