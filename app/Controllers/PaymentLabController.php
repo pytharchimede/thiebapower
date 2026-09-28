@@ -13,7 +13,7 @@ final class PaymentLabController {
  }
  private function enabled(string $kind):void {
   $key=$kind==='payin'?'PAYMENT_LAB_PAYIN_ENABLED':'PAYMENT_LAB_PAYOUT_ENABLED';
-  if(App::env($key)!=='1'){http_response_code(403);exit('Essai financier désactivé');}
+  if(App::env($key)!=='1'&& !($kind==='payout'&&App::env('AUTOMATIC_REFUNDS_ENABLED')==='1')){http_response_code(403);exit('Essai financier désactivé');}
  }
  private function reference(string $kind):string {return 'TBP-TEST-'.$kind.'-'.strtoupper(bin2hex(random_bytes(7)));}
  private function fail(string $message):void {http_response_code(422);echo htmlspecialchars($message,ENT_QUOTES,'UTF-8');}
@@ -31,13 +31,14 @@ final class PaymentLabController {
  public function payout():void {
   $this->guard();$this->enabled('payout');$phone=preg_replace('/\s+/', '',(string)($_POST['phone']??''));$channel=(string)($_POST['channel']??'');
   if(($_POST['confirm_amount']??'')!=='200'||!preg_match('/^\+?[0-9]{10,16}$/',$phone)||!in_array($channel,['WAVECI','MOMOCI','OMCIV','FLOOZ'],true)){$this->fail('Bénéficiaire ou montant invalide');return;}
-  $db=App::db();$active=(int)$db->query("SELECT (SELECT COUNT(*) FROM payment_lab_operations WHERE kind='payout' AND status IN ('created','initiated','processing','unknown'))+(SELECT COUNT(*) FROM deposit_settlements WHERE status IN ('processing','unknown'))")->fetchColumn();
-  if($active>0){$this->fail('Un reversement test est déjà en cours ou non rapproché');return;}
+  $db=App::db();$active=(int)$db->query("SELECT COUNT(*) FROM payment_lab_operations WHERE kind='payout' AND status IN ('created','initiated','processing','unknown')")->fetchColumn();
+  if($active>0){$this->fail('Un essai payout est déjà en cours ou non rapproché');return;}
   $mode=IntegrationSettings::all()['paiementpro'];$ref=$this->reference('PAYOUT');
   // Validate configuration before recording a pending financial operation.
   try {$request=(new PaiementProPayoutService)->prepare($ref,200,$channel,$phone,'Test Thiebapower',$mode);}
   catch(\Throwable $e){$this->fail('Reversement non configuré : '.$e->getMessage());return;}
   $db->prepare("INSERT INTO payment_lab_operations(reference,kind,amount,environment,status,recipient_channel,recipient_phone) VALUES(?,'payout',200,?,'unknown',?,?)")->execute([$ref,$mode,$channel,$phone]);
+  PayoutApiAudit::request($ref,$request);
   try {
    $client=new \SoapClient($request['wsdl'],['connection_timeout'=>10,'cache_wsdl'=>WSDL_CACHE_NONE]);
    $reply=$client->initTransact($request['params']);
@@ -51,7 +52,7 @@ final class PaymentLabController {
     $db->prepare("UPDATE payment_lab_operations SET status='processing',provider_session_id=?,provider_message=? WHERE reference=?")->execute([$session,substr($status,0,250),$ref]);
    }
    App::redirect('/admin/payout');
-  }catch(\Throwable $e){PayoutApiAudit::record($ref,'error',['exception'=>get_class($e),'description'=>$e->getMessage(),'faultcode'=>$e instanceof \SoapFault?$e->faultcode:'']);error_log('Payment lab payout outcome unknown '.$ref.': '.$e->getMessage());http_response_code(503);echo 'Issue du reversement inconnue. Ne relancez pas. Référence : '.htmlspecialchars($ref);}
+  }catch(\Throwable $e){PayoutApiAudit::record($ref,'error',['exception'=>get_class($e),'description'=>$e->getMessage(),'faultcode'=>$e instanceof \SoapFault?$e->faultcode:'']);error_log('Payment lab payout outcome unknown '.$ref.': '.$e->getMessage());App::redirect('/admin/payout');}
  }
  public function reconcile():void {
   $this->guard();$this->enabled('payout');$id=filter_input(INPUT_POST,'id',FILTER_VALIDATE_INT);if(!$id){$this->fail('Opération invalide');return;}
