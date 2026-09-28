@@ -93,13 +93,29 @@ final class PaymentLabController {
   http_response_code(202);echo 'verification pending';
  }
  public function payoutNotification():void {
+  if(($_SERVER['REQUEST_METHOD']??'')==='GET'&&$_GET===[]){header('Content-Type: text/plain; charset=utf-8');echo 'payout callback ready';return;}
   if((int)($_SERVER['CONTENT_LENGTH']??0)>8192){http_response_code(413);return;}
-  $raw=file_get_contents('php://input');$p=$_POST ?: (json_decode(substr($raw,0,8192),true)?:[]);
-  $ref=is_array($p)?(string)($p['referenceNo']??$p['referenceNumber']??''):'';
+  $raw=substr(file_get_contents('php://input'),0,8192);
+  $decoded=json_decode($raw,true);
+  $p=$_POST ?: (is_array($decoded)?$decoded:$_GET);
+  $refValue=is_array($p)?($p['referenceNo']??$p['referenceNumber']??$p['reference']??''):'';
+  $ref=is_scalar($refValue)?(string)$refValue:'';
+  if($ref===''&&isset($p['returnContext'])&&is_scalar($p['returnContext'])&&preg_match('/(?:^|&)reference=([A-Za-z0-9-]{1,120})/',(string)$p['returnContext'],$match))$ref=$match[1];
+  $known=false;
   if($ref!==''&&strlen($ref)<=120){
    $q=App::db()->prepare("SELECT (SELECT COUNT(*) FROM deposit_settlements WHERE provider_reference=?)+(SELECT COUNT(*) FROM payment_lab_operations WHERE reference=? AND kind='payout')");$q->execute([$ref,$ref]);
-   if((int)$q->fetchColumn()>0)PayoutApiAudit::record($ref,'callback',$p);
+   $known=(int)$q->fetchColumn()>0;
   }
+  if(!$known){
+   $ref='UNMATCHED';
+   $q=App::db()->query("SELECT COUNT(*) FROM payout_api_events WHERE reference='UNMATCHED' AND created_at>DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 MINUTE)");
+   if((int)$q->fetchColumn()>0){http_response_code(202);echo 'status verification pending';return;}
+  }
+  $p['method']=$_SERVER['REQUEST_METHOD']??'';
+  $p['contentType']=substr((string)($_SERVER['CONTENT_TYPE']??''),0,120);
+  $p['bodyHash']=hash('sha256',$raw);
+  $p['fieldNames']=implode(',',array_slice(array_keys($p),0,30));
+  PayoutApiAudit::record($ref,'callback',$p);
   // The callback format/signature is not documented; it never marks a payout as successful.
   http_response_code(202);echo 'status verification pending';
  }
