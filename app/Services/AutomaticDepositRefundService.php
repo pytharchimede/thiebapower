@@ -42,8 +42,19 @@ final class AutomaticDepositRefundService {
    $client=new \SoapClient($request['wsdl'],['connection_timeout'=>10,'cache_wsdl'=>WSDL_CACHE_NONE]);
    $reply=$client->initTransact($request['params']);
    // An initiation response alone does not prove the beneficiary received the funds.
-   error_log('Thiebapower payout initiated '.$reference.' status '.(string)($reply->status??'unknown'));
-  }catch(\Throwable $e){error_log('Thiebapower payout outcome unknown '.$reference.': '.$e->getMessage());}
-  $db->prepare("UPDATE deposit_settlements SET status='unknown' WHERE id=? AND status='processing'")->execute([$settlementId]);
+   $session=(string)($reply->sessionid??'');
+   if($session!==''){$db->prepare('UPDATE deposit_settlements SET provider_session_id=? WHERE id=?')->execute([$session,$settlementId]);}
+   else {$db->prepare("UPDATE deposit_settlements SET status='unknown' WHERE id=?")->execute([$settlementId]);}
+  }catch(\Throwable $e){error_log('Thiebapower payout outcome unknown '.$reference.': '.$e->getMessage());$db->prepare("UPDATE deposit_settlements SET status='unknown' WHERE id=? AND status='processing'")->execute([$settlementId]);}
+ }
+ /** Poll the provider for a payout with a known session; verify every amount and reference before closing it. */
+ public function reconcile(int $settlementId):bool {
+  $db=App::db();$s=$db->prepare('SELECT * FROM deposit_settlements WHERE id=?');$s->execute([$settlementId]);$row=$s->fetch();
+  if(!$row||$row['status']!=='processing'||!$row['provider_session_id'])return false;
+  $reply=(new PaiementProPayoutService)->status($row['provider_session_id']);
+  if((string)($reply->status??'')!=='SUCCESS')return false;
+  if(!hash_equals((string)$row['provider_reference'],(string)($reply->referenceNo??''))||(int)($reply->amount??-1)!==(int)$row['refund_amount'])throw new \RuntimeException('Discordance de reversement fournisseur');
+  $db->prepare("UPDATE deposit_settlements SET status='refunded' WHERE id=? AND status='processing'")->execute([$settlementId]);
+  return true;
  }
 }
