@@ -2,6 +2,7 @@
 namespace App\Services;
 use App\Core\App;
 use App\Models\Rental;
+use App\Services\PayoutApiAudit;
 final class AutomaticDepositRefundService {
  /** Only call this method after an authenticated HeyCharge return event has been matched to the active rental. */
  public function recordVerifiedReturn(int $rentalId,\DateTimeImmutable $returnedAt):int {
@@ -41,18 +42,20 @@ final class AutomaticDepositRefundService {
    $request=(new PaiementProPayoutService)->prepare($reference,(int)$row['refund_amount'],$row['payout_channel'],$row['customer_phone'],$row['customer_name'],$row['payment_environment']);
    $client=new \SoapClient($request['wsdl'],['connection_timeout'=>10,'cache_wsdl'=>WSDL_CACHE_NONE]);
    $reply=$client->initTransact($request['params']);
+   PayoutApiAudit::record($reference,'init',$reply);
    // An initiation response alone does not prove the beneficiary received the funds.
    $session=(string)($reply->sessionid??'');
    if(strtoupper((string)($reply->status??''))==='FAILED'){$db->prepare("UPDATE deposit_settlements SET status='failed' WHERE id=? AND status='processing'")->execute([$settlementId]);error_log('Thiebapower payout rejected '.$reference.' code '.(string)($reply->code??''));}
    elseif($session!==''){$db->prepare('UPDATE deposit_settlements SET provider_session_id=? WHERE id=?')->execute([$session,$settlementId]);}
    else {$db->prepare("UPDATE deposit_settlements SET status='unknown' WHERE id=?")->execute([$settlementId]);}
-  }catch(\Throwable $e){error_log('Thiebapower payout outcome unknown '.$reference.': '.$e->getMessage());$db->prepare("UPDATE deposit_settlements SET status='unknown' WHERE id=? AND status='processing'")->execute([$settlementId]);}
+  }catch(\Throwable $e){PayoutApiAudit::record($reference,'error',['exception'=>get_class($e),'description'=>$e->getMessage(),'faultcode'=>$e instanceof \SoapFault?$e->faultcode:'']);error_log('Thiebapower payout outcome unknown '.$reference.': '.$e->getMessage());$db->prepare("UPDATE deposit_settlements SET status='unknown' WHERE id=? AND status='processing'")->execute([$settlementId]);}
  }
  /** Poll the provider for a payout with a known session; verify every amount and reference before closing it. */
  public function reconcile(int $settlementId):bool {
   $db=App::db();$s=$db->prepare('SELECT s.*,r.payment_environment FROM deposit_settlements s JOIN rentals r ON r.id=s.rental_id WHERE s.id=?');$s->execute([$settlementId]);$row=$s->fetch();
   if(!$row||$row['status']!=='processing'||!$row['provider_session_id'])return false;
   $reply=(new PaiementProPayoutService)->status($row['provider_session_id'],$row['payment_environment']);
+  PayoutApiAudit::record($row['provider_reference'],'status',$reply);
   if((string)($reply->status??'')==='FAILED'){
    $db->prepare("UPDATE deposit_settlements SET status='failed' WHERE id=? AND status='processing'")->execute([$settlementId]);return false;
   }
