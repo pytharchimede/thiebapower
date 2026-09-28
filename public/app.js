@@ -44,7 +44,9 @@
   });
   document.querySelectorAll('[data-back]').forEach(button => button.addEventListener('click', () => show(Number(button.dataset.back))));
   document.querySelectorAll('.battery-option').forEach(button => button.addEventListener('click', () => {
-    selected = {serial:button.dataset.serial,deposit:Number(button.dataset.deposit)};
+    selected = {id:button.dataset.id,serial:button.dataset.serial,deposit:Number(button.dataset.deposit)};
+    if ($('checkout-station')) $('checkout-station').value = input.value.trim();
+    if ($('checkout-battery')) $('checkout-battery').value = selected.id;
     $('summary-station').textContent = input.value.trim();
     $('summary-battery').textContent = selected.serial;
     $('summary-deposit').textContent = money(selected.deposit);
