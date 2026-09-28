@@ -27,7 +27,7 @@ final class AutomaticDepositRefundService {
  public function dispatch(int $settlementId):void {
   $db=App::db();$db->beginTransaction();
   try {
-   $s=$db->prepare('SELECT s.*,r.customer_name,r.customer_phone,r.payout_channel,r.reference FROM deposit_settlements s JOIN rentals r ON r.id=s.rental_id WHERE s.id=? FOR UPDATE');
+   $s=$db->prepare('SELECT s.*,r.customer_name,r.customer_phone,r.payout_channel,r.payment_environment,r.reference FROM deposit_settlements s JOIN rentals r ON r.id=s.rental_id WHERE s.id=? FOR UPDATE');
    $s->execute([$settlementId]);$row=$s->fetch();
    if(!$row||$row['status']!=='pending'||(int)$row['refund_amount']<=0){$db->commit();return;}
    if(!$row['payout_channel'])throw new \RuntimeException('Canal de restitution manquant');
@@ -38,7 +38,7 @@ final class AutomaticDepositRefundService {
   // The reference and processing state are committed before the network request.
   // Never retry an unknown response automatically: reconcile it with Paiement Pro first.
   try {
-   $request=(new PaiementProPayoutService)->prepare($reference,(int)$row['refund_amount'],$row['payout_channel'],$row['customer_phone'],$row['customer_name']);
+   $request=(new PaiementProPayoutService)->prepare($reference,(int)$row['refund_amount'],$row['payout_channel'],$row['customer_phone'],$row['customer_name'],$row['payment_environment']);
    $client=new \SoapClient($request['wsdl'],['connection_timeout'=>10,'cache_wsdl'=>WSDL_CACHE_NONE]);
    $reply=$client->initTransact($request['params']);
    // An initiation response alone does not prove the beneficiary received the funds.
@@ -49,9 +49,12 @@ final class AutomaticDepositRefundService {
  }
  /** Poll the provider for a payout with a known session; verify every amount and reference before closing it. */
  public function reconcile(int $settlementId):bool {
-  $db=App::db();$s=$db->prepare('SELECT * FROM deposit_settlements WHERE id=?');$s->execute([$settlementId]);$row=$s->fetch();
+  $db=App::db();$s=$db->prepare('SELECT s.*,r.payment_environment FROM deposit_settlements s JOIN rentals r ON r.id=s.rental_id WHERE s.id=?');$s->execute([$settlementId]);$row=$s->fetch();
   if(!$row||$row['status']!=='processing'||!$row['provider_session_id'])return false;
-  $reply=(new PaiementProPayoutService)->status($row['provider_session_id']);
+  $reply=(new PaiementProPayoutService)->status($row['provider_session_id'],$row['payment_environment']);
+  if((string)($reply->status??'')==='FAILED'){
+   $db->prepare("UPDATE deposit_settlements SET status='failed' WHERE id=? AND status='processing'")->execute([$settlementId]);return false;
+  }
   if((string)($reply->status??'')!=='SUCCESS')return false;
   if(!hash_equals((string)$row['provider_reference'],(string)($reply->referenceNo??''))||(int)($reply->amount??-1)!==(int)$row['refund_amount'])throw new \RuntimeException('Discordance de reversement fournisseur');
   $db->prepare("UPDATE deposit_settlements SET status='refunded' WHERE id=? AND status='processing'")->execute([$settlementId]);
