@@ -5,6 +5,8 @@ use App\Services\PaiementProService;
 use App\Services\PaiementProPayoutService;
 use App\Services\IntegrationSettings;
 use App\Services\PayoutApiAudit;
+use App\Services\PayoutResult;
+use App\Services\PayoutCallbackAssessment;
 final class PaymentLabController {
  private function guard():void {
   if(!hash_equals(App::env('ADMIN_USERNAME','admin'),(string)($_SERVER['PHP_AUTH_USER']??''))||!password_verify((string)($_SERVER['PHP_AUTH_PW']??''),App::env('ADMIN_PASSWORD_HASH'))){header('WWW-Authenticate: Basic realm="Thiebapower"');http_response_code(401);exit('Authentification requise');}
@@ -40,18 +42,18 @@ final class PaymentLabController {
   $db->prepare("INSERT INTO payment_lab_operations(reference,kind,amount,environment,status,recipient_channel,recipient_phone) VALUES(?,'payout',200,?,'unknown',?,?)")->execute([$ref,$mode,$channel,$phone]);
   PayoutApiAudit::request($ref,$request);
   try {
-   $client=new \SoapClient($request['wsdl'],['connection_timeout'=>10,'cache_wsdl'=>WSDL_CACHE_NONE]);
-   $reply=$client->initTransact($request['params']);
+   $reply=(new PaiementProPayoutService)->initiate($request);
    PayoutApiAudit::record($ref,'init',$reply);
-   $status=strtoupper((string)($reply->status??''));
-   $session=(string)($reply->sessionid??'');
-   if($status==='FAILED'){
+   $status=strtoupper((string)($reply->status??''));$outcome=PayoutResult::initiation($reply);
+   if($outcome['state']==='failed'){
     $reason=substr((string)($reply->code??'').': '.(string)($reply->description??'Refus fournisseur'),0,250);
     $db->prepare("UPDATE payment_lab_operations SET status='failed',provider_message=? WHERE reference=?")->execute([$reason,$ref]);
-   }elseif($session!==''){
-    $db->prepare("UPDATE payment_lab_operations SET status='processing',provider_session_id=?,provider_message=? WHERE reference=?")->execute([$session,substr($status,0,250),$ref]);
-   }elseif($status==='INITIATED'&&(string)($reply->code??'')==='0'){
+   }elseif($outcome['state']==='processing'){
+    $db->prepare("UPDATE payment_lab_operations SET status='processing',provider_session_id=?,provider_message=? WHERE reference=?")->execute([$outcome['session'],substr($status,0,250),$ref]);
+   }elseif($outcome['state']==='initiated'){
     $db->prepare("UPDATE payment_lab_operations SET status='initiated',provider_message='Initiation acceptée sans session ; versement à confirmer' WHERE reference=?")->execute([$ref]);
+   }else{
+    $db->prepare("UPDATE payment_lab_operations SET status='unknown',provider_message='Réponse ambiguë ; ne pas réémettre' WHERE reference=?")->execute([$ref]);
    }
    App::redirect('/admin/payout');
   }catch(\Throwable $e){PayoutApiAudit::record($ref,'error',['exception'=>get_class($e),'description'=>$e->getMessage(),'faultcode'=>$e instanceof \SoapFault?$e->faultcode:'']);error_log('Payment lab payout outcome unknown '.$ref.': '.$e->getMessage());App::redirect('/admin/payout');}
@@ -63,10 +65,11 @@ final class PaymentLabController {
   try {
    $reply=(new PaiementProPayoutService)->status($op['provider_session_id'],$op['environment']);
    PayoutApiAudit::record($op['reference'],'status',$reply);
-   if((string)($reply->status??'')==='SUCCESS'){
-    if(!hash_equals($op['reference'],(string)($reply->referenceNo??''))||(int)($reply->amount??-1)!==200)throw new \RuntimeException('Référence ou montant incohérent');
+   $result=PayoutResult::finalStatus($reply,['sessionid'=>$op['provider_session_id'],'referenceNo'=>$op['reference'],'amount'=>$op['amount'],'currency'=>'XOF','channel'=>$op['recipient_channel'],'payeeNo'=>PaiementProPayoutService::normalizePhone($op['recipient_phone'])]);
+   if($result==='succeeded'){
     $db->prepare("UPDATE payment_lab_operations SET status='succeeded' WHERE id=? AND status='processing'")->execute([$id]);
-   }elseif((string)($reply->status??'')==='FAILED'){$db->prepare("UPDATE payment_lab_operations SET status='failed' WHERE id=? AND status='processing'")->execute([$id]);}
+   }elseif($result==='failed'){$db->prepare("UPDATE payment_lab_operations SET status='failed' WHERE id=? AND status='processing'")->execute([$id]);}
+   elseif($result==='mismatch')throw new \RuntimeException('Session, référence, montant, devise, canal ou bénéficiaire incohérent');
    App::redirect('/admin/payout');
   }catch(\Throwable $e){PayoutApiAudit::record($op['reference'],'error',['exception'=>get_class($e),'description'=>$e->getMessage()]);error_log('Payment lab status '.$op['reference'].': '.$e->getMessage());http_response_code(503);echo 'Statut indisponible ; ne relancez pas le reversement.';}
  }
@@ -101,10 +104,11 @@ final class PaymentLabController {
   $refValue=is_array($p)?($p['referenceNo']??$p['referenceNumber']??$p['reference']??''):'';
   $ref=is_scalar($refValue)?(string)$refValue:'';
   if($ref===''&&isset($p['returnContext'])&&is_scalar($p['returnContext'])&&preg_match('/(?:^|&)reference=([A-Za-z0-9-]{1,120})/',(string)$p['returnContext'],$match))$ref=$match[1];
-  $known=false;
+  $known=false;$expected=null;
   if($ref!==''&&strlen($ref)<=120){
-   $q=App::db()->prepare("SELECT (SELECT COUNT(*) FROM deposit_settlements WHERE provider_reference=?)+(SELECT COUNT(*) FROM payment_lab_operations WHERE reference=? AND kind='payout')");$q->execute([$ref,$ref]);
-   $known=(int)$q->fetchColumn()>0;
+   $q=App::db()->prepare("SELECT s.refund_amount amount,r.payment_environment environment,r.payout_channel channel,r.customer_phone phone FROM deposit_settlements s JOIN rentals r ON r.id=s.rental_id WHERE s.provider_reference=?");$q->execute([$ref]);$expected=$q->fetch();
+   if(!$expected){$q=App::db()->prepare("SELECT amount,environment,recipient_channel channel,recipient_phone phone FROM payment_lab_operations WHERE reference=? AND kind='payout'");$q->execute([$ref]);$expected=$q->fetch();}
+   $known=(bool)$expected;
   }
   if(!$known){
    $ref='UNMATCHED';
@@ -115,6 +119,12 @@ final class PaymentLabController {
   $p['contentType']=substr((string)($_SERVER['CONTENT_TYPE']??''),0,120);
   $p['bodyHash']=hash('sha256',$raw);
   $p['fieldNames']=implode(',',array_slice(array_keys($p),0,30));
+  if($known&&!isset($p['referenceNo'])&&!isset($p['referenceNumber'])&&!isset($p['reference']))$p['reference']=$ref;
+  if($known){
+   $merchant=$expected['environment']==='sandbox'?App::env('PAIEMENTPRO_SANDBOX_MERCHANT_ID'):App::env('PAIEMENTPRO_MERCHANT_ID');
+   try {$phone=PaiementProPayoutService::normalizePhone((string)$expected['phone']);}catch(\Throwable){$phone='';}
+   $p+=PayoutCallbackAssessment::assess($p,['reference'=>$ref,'amount'=>$expected['amount'],'merchantId'=>$merchant,'channel'=>$expected['channel'],'payeeNo'=>$phone]);
+  }else{$p['authenticated']='false';}
   PayoutApiAudit::record($ref,'callback',$p);
   // The callback format/signature is not documented; it never marks a payout as successful.
   http_response_code(202);echo 'status verification pending';

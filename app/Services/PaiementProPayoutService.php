@@ -2,6 +2,12 @@
 namespace App\Services;
 use App\Core\App;
 final class PaiementProPayoutService {
+ private $soapFactory;
+ private $clock;
+ public function __construct(?callable $soapFactory=null,?callable $clock=null){
+  $this->soapFactory=$soapFactory??static fn(string $wsdl):object=>new \SoapClient($wsdl,['connection_timeout'=>10,'cache_wsdl'=>WSDL_CACHE_NONE]);
+  $this->clock=$clock??static fn():int=>time();
+ }
  private function credentials(?string $mode=null):array {
   $mode??=IntegrationSettings::all()['paiementpro'];
   if($mode==='sandbox'){
@@ -15,7 +21,7 @@ final class PaiementProPayoutService {
   return compact('merchant','secret','wsdl');
  }
  private function token(array $config,int $timestamp):string {return hash_hmac('sha256',$timestamp.$config['merchant'],$config['secret']);}
- private function normalizePhone(string $phone):string {
+ public static function normalizePhone(string $phone):string {
   $phone=preg_replace('/[\s.()-]+/','',$phone);
   if(preg_match('/^0[0-9]{9}$/D',$phone))$phone='+225'.$phone;
   elseif(preg_match('/^225[0-9]{10}$/D',$phone))$phone='+'.$phone;
@@ -24,14 +30,18 @@ final class PaiementProPayoutService {
  }
  public function prepare(string $reference,int $amount,string $channel,string $phone,string $name,?string $mode=null):array {
   if($amount<=0||!in_array($channel,['WAVECI','MOMOCI','OMCIV','FLOOZ'],true))throw new \InvalidArgumentException('Paramètres de restitution invalides');
-  $phone=$this->normalizePhone($phone);
-  $config=$this->credentials($mode);$timestamp=time();
+  $phone=self::normalizePhone($phone);
+  $config=$this->credentials($mode);$timestamp=($this->clock)();
   return ['wsdl'=>$config['wsdl'],'params'=>['merchantId'=>$config['merchant'],'currency'=>'XOF','amount'=>$amount,'referenceNo'=>$reference,'channel'=>$channel,'clientName'=>$name,'token'=>$this->token($config,$timestamp),'timestamp'=>$timestamp,'payeeNo'=>$phone,'clientId'=>$reference,'returnContext'=>'reference='.$reference,'paymentReason'=>(str_starts_with($reference,'TBP-TEST-')?'Essai API payout ':'Restitution caution ').$reference,'returnURL'=>rtrim(App::env('APP_URL'),'/').'/payment/return','callbackURL'=>rtrim(App::env('APP_URL'),'/').'/api/paiementpro/payout-callback']];
+ }
+ public function initiate(array $request):object {
+  $client=($this->soapFactory)($request['wsdl']);
+  return $client->initTransact($request['params']);
  }
  public function status(string $sessionId,?string $mode=null):object {
   if($sessionId==='')throw new \InvalidArgumentException('Session absente');
-  $config=$this->credentials($mode);$timestamp=time();
-  $client=new \SoapClient($config['wsdl'],['connection_timeout'=>10,'cache_wsdl'=>WSDL_CACHE_NONE]);
+  $config=$this->credentials($mode);$timestamp=($this->clock)();
+  $client=($this->soapFactory)($config['wsdl']);
   return $client->getTransStatus(['merchantId'=>$config['merchant'],'token'=>$this->token($config,$timestamp),'timestamp'=>$timestamp,'sessionid'=>$sessionId]);
  }
 }

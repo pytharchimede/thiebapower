@@ -1,1 +1,1 @@
-{"name":"thiebapower/rental","description":"Location de batteries partagées","require":{"php":"^8.2","ext-pdo":"*","ext-soap":"*","ext-curl":"*"},"autoload":{"psr-4":{"App\\":"app/"}}}
+{"name":"thiebapower/rental","description":"Location de batteries partagées","require":{"php":"^8.2","ext-pdo":"*","ext-soap":"*","ext-curl":"*"},"autoload":{"psr-4":{"App\\":"app/"}},"scripts":{"test":"php tests/run.php"}}

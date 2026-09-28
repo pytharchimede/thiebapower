@@ -4,6 +4,8 @@ use App\Core\App;
 use App\Models\Rental;
 use App\Services\PayoutApiAudit;
 final class AutomaticDepositRefundService {
+ private PaiementProPayoutService $payout;
+ public function __construct(?PaiementProPayoutService $payout=null){$this->payout=$payout??new PaiementProPayoutService;}
  /** Only call this method after an authenticated HeyCharge return event has been matched to the active rental. */
  public function recordVerifiedReturn(int $rentalId,\DateTimeImmutable $returnedAt):int {
   $db=App::db();$db->beginTransaction();
@@ -30,7 +32,7 @@ final class AutomaticDepositRefundService {
   try {
    $s=$db->prepare('SELECT s.*,r.customer_name,r.customer_phone,r.payout_channel,r.payment_environment,r.reference FROM deposit_settlements s JOIN rentals r ON r.id=s.rental_id WHERE s.id=? FOR UPDATE');
    $s->execute([$settlementId]);$row=$s->fetch();
-   if(!$row||$row['status']!=='pending'||(int)$row['refund_amount']<=0){$db->commit();return;}
+   if(!$row||!PayoutResult::dispatchable((string)$row['status'])||(int)$row['refund_amount']<=0){$db->commit();return;}
    if(!$row['payout_channel'])throw new \RuntimeException('Canal de restitution manquant');
    $reference='TBP-REFUND-'.$settlementId;
    $db->prepare("UPDATE deposit_settlements SET status='processing',provider_reference=?,sent_at=UTC_TIMESTAMP() WHERE id=? AND status='pending'")->execute([$reference,$settlementId]);
@@ -39,29 +41,29 @@ final class AutomaticDepositRefundService {
   // The reference and processing state are committed before the network request.
   // Never retry an unknown response automatically: reconcile it with Paiement Pro first.
   try {
-   $request=(new PaiementProPayoutService)->prepare($reference,(int)$row['refund_amount'],$row['payout_channel'],$row['customer_phone'],$row['customer_name'],$row['payment_environment']);
+   $request=$this->payout->prepare($reference,(int)$row['refund_amount'],$row['payout_channel'],$row['customer_phone'],$row['customer_name'],$row['payment_environment']);
    PayoutApiAudit::request($reference,$request);
-   $client=new \SoapClient($request['wsdl'],['connection_timeout'=>10,'cache_wsdl'=>WSDL_CACHE_NONE]);
-   $reply=$client->initTransact($request['params']);
+   $reply=$this->payout->initiate($request);
    PayoutApiAudit::record($reference,'init',$reply);
    // An initiation response alone does not prove the beneficiary received the funds.
-   $session=(string)($reply->sessionid??'');
-   if(strtoupper((string)($reply->status??''))==='FAILED'){$db->prepare("UPDATE deposit_settlements SET status='failed' WHERE id=? AND status='processing'")->execute([$settlementId]);error_log('Thiebapower payout rejected '.$reference.' code '.(string)($reply->code??''));}
-   elseif($session!==''){$db->prepare('UPDATE deposit_settlements SET provider_session_id=? WHERE id=?')->execute([$session,$settlementId]);}
-   else {$db->prepare("UPDATE deposit_settlements SET status='unknown' WHERE id=?")->execute([$settlementId]);}
+   $outcome=PayoutResult::initiation($reply);
+   if($outcome['state']==='failed'){$db->prepare("UPDATE deposit_settlements SET status='failed' WHERE id=? AND status='processing'")->execute([$settlementId]);error_log('Thiebapower payout rejected '.$reference.' code '.(string)($reply->code??''));}
+   elseif($outcome['state']==='processing'){$db->prepare('UPDATE deposit_settlements SET provider_session_id=? WHERE id=?')->execute([$outcome['session'],$settlementId]);}
+   else {$db->prepare("UPDATE deposit_settlements SET status=? WHERE id=? AND status='processing'")->execute([$outcome['state'],$settlementId]);}
   }catch(\Throwable $e){PayoutApiAudit::record($reference,'error',['exception'=>get_class($e),'description'=>$e->getMessage(),'faultcode'=>$e instanceof \SoapFault?$e->faultcode:'']);error_log('Thiebapower payout outcome unknown '.$reference.': '.$e->getMessage());$db->prepare("UPDATE deposit_settlements SET status='unknown' WHERE id=? AND status='processing'")->execute([$settlementId]);}
  }
  /** Poll the provider for a payout with a known session; verify every amount and reference before closing it. */
  public function reconcile(int $settlementId):bool {
-  $db=App::db();$s=$db->prepare('SELECT s.*,r.payment_environment FROM deposit_settlements s JOIN rentals r ON r.id=s.rental_id WHERE s.id=?');$s->execute([$settlementId]);$row=$s->fetch();
+  $db=App::db();$s=$db->prepare('SELECT s.*,r.payment_environment,r.payout_channel,r.customer_phone FROM deposit_settlements s JOIN rentals r ON r.id=s.rental_id WHERE s.id=?');$s->execute([$settlementId]);$row=$s->fetch();
   if(!$row||$row['status']!=='processing'||!$row['provider_session_id'])return false;
-  $reply=(new PaiementProPayoutService)->status($row['provider_session_id'],$row['payment_environment']);
+  $reply=$this->payout->status($row['provider_session_id'],$row['payment_environment']);
   PayoutApiAudit::record($row['provider_reference'],'status',$reply);
-  if((string)($reply->status??'')==='FAILED'){
+  $result=PayoutResult::finalStatus($reply,['sessionid'=>$row['provider_session_id'],'referenceNo'=>$row['provider_reference'],'amount'=>$row['refund_amount'],'currency'=>'XOF','channel'=>$row['payout_channel'],'payeeNo'=>PaiementProPayoutService::normalizePhone($row['customer_phone'])]);
+  if($result==='failed'){
    $db->prepare("UPDATE deposit_settlements SET status='failed' WHERE id=? AND status='processing'")->execute([$settlementId]);return false;
   }
-  if((string)($reply->status??'')!=='SUCCESS')return false;
-  if(!hash_equals((string)$row['provider_reference'],(string)($reply->referenceNo??''))||(int)($reply->amount??-1)!==(int)$row['refund_amount'])throw new \RuntimeException('Discordance de reversement fournisseur');
+  if($result==='mismatch')throw new \RuntimeException('Discordance de reversement fournisseur (session, référence, montant, devise, canal ou bénéficiaire)');
+  if($result!=='succeeded')return false;
   $db->prepare("UPDATE deposit_settlements SET status='refunded' WHERE id=? AND status='processing'")->execute([$settlementId]);
   return true;
  }

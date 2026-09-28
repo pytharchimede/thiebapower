@@ -12,7 +12,7 @@ final class PayoutApiAudit {
  }
  public static function record(string $reference,string $source,mixed $response):void {
   if(!in_array($source,['init','status','callback','error'],true))throw new \InvalidArgumentException('Source invalide');
-  $fields=['status','code','description','sessionid','sessionId','referenceNo','referenceNumber','reference','amount','currency','transactionId','transactionid','responsecode','message','faultcode','faultstring','exception','method','contentType','bodyHash','fieldNames'];
+  $fields=['status','code','description','sessionid','sessionId','referenceNo','referenceNumber','reference','merchantId','amount','currency','channel','payeeNo','tran_id','transactionId','transactionid','responsecode','message','faultcode','faultstring','exception','method','contentType','bodyHash','fieldNames','authenticated','matchedReference','matchedAmount','matchedMerchant','matchedBeneficiary'];
   $data=is_object($response)?get_object_vars($response):(is_array($response)?$response:['description'=>(string)$response]);
   $safe=[];
   foreach($fields as $key)if(array_key_exists($key,$data))$safe[$key]=substr((string)(is_scalar($data[$key])?$data[$key]:'[complexe]'),0,500);
