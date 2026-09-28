@@ -17,7 +17,8 @@ final class PayoutApiAudit {
   $safe=[];
   foreach($fields as $key)if(array_key_exists($key,$data))$safe[$key]=substr((string)(is_scalar($data[$key])?$data[$key]:'[complexe]'),0,500);
   $json=json_encode($safe,JSON_INVALID_UTF8_SUBSTITUTE|JSON_THROW_ON_ERROR);
-  try {App::db()->prepare('INSERT INTO payout_api_events(reference,source,response) VALUES(?,?,?)')->execute([substr($reference,0,120),$source,$json]);}
+  try {App::db()->prepare('INSERT INTO payout_api_events(reference,source,response) VALUES(?,?,?)')->execute([substr($reference,0,120),$source,$json]);
+   Audit::event('payout.api_'.$source,'payment',$reference,['status'=>$safe['status']??'','code'=>$safe['code']??'']);}
   catch(\Throwable $e){error_log('Payout audit unavailable '.$reference.': '.$e->getMessage());}
  }
 }
