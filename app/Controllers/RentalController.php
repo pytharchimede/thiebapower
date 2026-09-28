@@ -6,10 +6,16 @@ final class RentalController {
  public function index():void {
   $prices=App::db()->query('SELECT * FROM pricing WHERE id=1')->fetch();
   $batteries=App::db()->query("SELECT id,serial,deposit_override FROM batteries WHERE status='available' ORDER BY id")->fetchAll();
-  App::view('rent',['prices'=>$prices,'batteries'=>$batteries,'checkoutEnabled'=>App::env('PUBLIC_RENTALS_ENABLED')==='1' && (new \App\Services\PaymentVerification)->ready() && (new \App\Services\HeyChargeOpenApi)->configured()]);
+  App::view('rent',['prices'=>$prices,'batteries'=>$batteries,'checkoutEnabled'=>$this->checkoutEnabled()]);
+ }
+ private function checkoutEnabled():bool {
+  if(App::env('PUBLIC_RENTALS_ENABLED')!=='1')return false;
+  $modes=\App\Services\IntegrationSettings::all();
+  if($modes['heycharge']==='simulation')return App::env('SIMULATED_RENTALS_ENABLED')==='1' && ($modes['paiementpro']==='production'?App::env('PAIEMENTPRO_MERCHANT_ID')!=='' : App::env('PAIEMENTPRO_SANDBOX_MERCHANT_ID')!=='');
+  return (new \App\Services\PaymentVerification)->ready() && (new \App\Services\HeyChargeOpenApi)->configured();
  }
  public function create():void {
-  if(App::env('PUBLIC_RENTALS_ENABLED')!=='1'||!(new \App\Services\PaymentVerification)->ready()||!(new \App\Services\HeyChargeOpenApi)->configured()){
+  if(!$this->checkoutEnabled()){
    http_response_code(503);header('Content-Type: text/plain; charset=utf-8');echo 'Les locations seront disponibles prochainement.';return;
   }
   try {App::redirect((new \App\Services\RentalCheckoutService)->begin($_POST));}
