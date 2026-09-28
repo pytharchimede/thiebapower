@@ -6,3 +6,4 @@ CREATE TABLE payment_notifications (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KE
 CREATE TABLE deposit_settlements (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, rental_id BIGINT UNSIGNED NOT NULL UNIQUE, deduction INT UNSIGNED NOT NULL, refund_amount INT UNSIGNED NOT NULL, status ENUM('pending','processing','refunded','failed') NOT NULL DEFAULT 'pending', provider_reference VARCHAR(120) NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (rental_id) REFERENCES rentals(id));
 CREATE TABLE integration_settings (name VARCHAR(32) NOT NULL PRIMARY KEY, mode VARCHAR(32) NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);
 INSERT INTO integration_settings(name,mode) VALUES ('paiementpro','sandbox'),('heycharge','simulation');
+-- For fresh installations, apply database/migrations/20260928_automatic_deposit_refunds.sql after this schema.
