@@ -70,3 +70,7 @@ Appliquer également `database/migrations/20260928_payout_request_snapshots.sql`
 ## Clôture d'un essai payout sans session
 
 Appliquer `database/migrations/20260928_payout_archive.sql`. Une réponse `INITIATED` avec code `0` mais sans `sessionid` signifie seulement que l'API a reçu la demande : elle n'atteste pas le versement, et `getTransStatus` n'est pas disponible. Dans `/admin/payout`, un administrateur peut, après vérification du résultat auprès de Paiement Pro, recopier la référence, saisir le motif et clore localement cet essai. La clôture est datée, conserve la réponse et ne fait **aucun appel d'annulation** au fournisseur. Elle autorise un nouvel essai avec une nouvelle référence ; jamais la réémission de la référence précédente.
+
+## Diagnostic du callback payout
+
+`GET /api/paiementpro/payout-callback` sans paramètres répond `payout callback ready` pour vérifier le routage. Les notifications GET ou POST consignent méthode, type de contenu, noms des champs, empreinte SHA-256 du corps et champs de statut autorisés dans `payout_api_events`. Une référence inconnue est classée `UNMATCHED` et limitée à une entrée par minute. Aucun callback non authentifié ne marque un versement comme réussi. Les journaux d'accès du serveur restent nécessaires pour savoir si le prestataire a appelé l'URL lors d'un ancien essai.
