@@ -40,8 +40,14 @@ final class PaymentLabController {
   try {
    $client=new \SoapClient($request['wsdl'],['connection_timeout'=>10,'cache_wsdl'=>WSDL_CACHE_NONE]);
    $reply=$client->initTransact($request['params']);
+   $status=strtoupper((string)($reply->status??''));
    $session=(string)($reply->sessionid??'');
-   if($session!=='')$db->prepare("UPDATE payment_lab_operations SET status='processing',provider_session_id=? WHERE reference=?")->execute([$session,$ref]);
+   if($status==='FAILED'){
+    $reason=substr((string)($reply->code??'').': '.(string)($reply->description??'Refus fournisseur'),0,250);
+    $db->prepare("UPDATE payment_lab_operations SET status='failed',provider_message=? WHERE reference=?")->execute([$reason,$ref]);
+   }elseif($session!==''){
+    $db->prepare("UPDATE payment_lab_operations SET status='processing',provider_session_id=?,provider_message=? WHERE reference=?")->execute([$session,substr($status,0,250),$ref]);
+   }
    App::redirect('/admin#payment-lab');
   }catch(\Throwable $e){error_log('Payment lab payout outcome unknown '.$ref.': '.$e->getMessage());http_response_code(503);echo 'Issue du reversement inconnue. Ne relancez pas. Référence : '.htmlspecialchars($ref);}
  }
