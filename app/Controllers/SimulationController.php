@@ -4,11 +4,11 @@ use App\Core\App;
 use App\Services\IntegrationSettings;
 use App\Services\RentalLifecycleService;
 use App\Services\AutomaticDepositRefundService;
+use App\Services\Auth;
+use App\Services\Audit;
 final class SimulationController {
  private function guard():void {
-  if(!hash_equals(App::env('ADMIN_USERNAME','admin'),(string)($_SERVER['PHP_AUTH_USER']??''))||!password_verify((string)($_SERVER['PHP_AUTH_PW']??''),App::env('ADMIN_PASSWORD_HASH'))){header('WWW-Authenticate: Basic realm="Thiebapower"');http_response_code(401);exit('Authentification requise');}
-  if(session_status()!==PHP_SESSION_ACTIVE)session_start();
-  if(!isset($_SESSION['csrf'])||!hash_equals($_SESSION['csrf'],(string)($_POST['csrf']??''))){http_response_code(403);exit('Formulaire expiré');}
+  Auth::requirePermission('rentals.manage',true);
   if(App::env('SIMULATED_RENTALS_ENABLED')!=='1'||IntegrationSettings::all()['heycharge']!=='simulation'){http_response_code(403);exit('Simulation désactivée');}
  }
  private function selection():array {
@@ -34,6 +34,7 @@ final class SimulationController {
    if($battery->rowCount()!==1)throw new \LogicException('Batterie non réservée');
    $db->prepare("INSERT INTO rental_simulation_events(rental_id,event_type,provider_proof,created_at) VALUES(?,'release',?,UTC_TIMESTAMP())")->execute([$r['id'],$proof]);
    $db->commit();
+   Audit::event('rental.simulated_release','rental',$r['reference'],['provider_proof'=>$proof]);
   }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();error_log($e);http_response_code(409);exit('Confirmation impossible');}
   App::redirect('/admin#activity');
  }
@@ -43,6 +44,7 @@ final class SimulationController {
   try {
    $settlement=(new RentalLifecycleService)->confirmedReturn((int)$r['id'],new \DateTimeImmutable('now',new \DateTimeZone('UTC')));
    App::db()->prepare("INSERT IGNORE INTO rental_simulation_events(rental_id,event_type,created_at) VALUES(?,'return',UTC_TIMESTAMP())")->execute([$r['id']]);
+   Audit::event('rental.simulated_return','rental',$r['reference'],['settlement_id'=>$settlement]);
   }catch(\Throwable $e){error_log($e);http_response_code(503);exit('Retour à vérifier avant toute répétition');}
   App::redirect('/admin#activity');
  }
