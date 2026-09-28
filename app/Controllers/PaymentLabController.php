@@ -34,7 +34,7 @@ final class PaymentLabController {
   if($active>0){$this->fail('Un reversement test est déjà en cours ou non rapproché');return;}
   $mode=IntegrationSettings::all()['paiementpro'];$ref=$this->reference('PAYOUT');
   // Validate configuration before recording a pending financial operation.
-  try {$request=(new PaiementProPayoutService)->prepare($ref,200,$channel,$phone,'Test Thiebapower');}
+  try {$request=(new PaiementProPayoutService)->prepare($ref,200,$channel,$phone,'Test Thiebapower',$mode);}
   catch(\Throwable $e){$this->fail('Reversement non configuré : '.$e->getMessage());return;}
   $db->prepare("INSERT INTO payment_lab_operations(reference,kind,amount,environment,status,recipient_channel,recipient_phone) VALUES(?,'payout',200,?,'unknown',?,?)")->execute([$ref,$mode,$channel,$phone]);
   try {
@@ -56,7 +56,7 @@ final class PaymentLabController {
   $db=App::db();$s=$db->prepare("SELECT * FROM payment_lab_operations WHERE id=? AND kind='payout'");$s->execute([$id]);$op=$s->fetch();
   if(!$op||$op['status']!=='processing'||!$op['provider_session_id']){$this->fail('Aucune session à vérifier');return;}
   try {
-   $reply=(new PaiementProPayoutService)->status($op['provider_session_id']);
+   $reply=(new PaiementProPayoutService)->status($op['provider_session_id'],$op['environment']);
    if((string)($reply->status??'')==='SUCCESS'){
     if(!hash_equals($op['reference'],(string)($reply->referenceNo??''))||(int)($reply->amount??-1)!==200)throw new \RuntimeException('Référence ou montant incohérent');
     $db->prepare("UPDATE payment_lab_operations SET status='succeeded' WHERE id=? AND status='processing'")->execute([$id]);
