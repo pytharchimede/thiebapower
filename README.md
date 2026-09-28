@@ -74,3 +74,5 @@ Appliquer `database/migrations/20260928_payout_archive.sql`. Une réponse `INITI
 ## Diagnostic du callback payout
 
 `GET /api/paiementpro/payout-callback` sans paramètres répond `payout callback ready` pour vérifier le routage. Les notifications GET ou POST consignent méthode, type de contenu, noms des champs, empreinte SHA-256 du corps et champs de statut autorisés dans `payout_api_events`. Une référence inconnue est classée `UNMATCHED` et limitée à une entrée par minute. Aucun callback non authentifié ne marque un versement comme réussi. Les journaux d'accès du serveur restent nécessaires pour savoir si le prestataire a appelé l'URL lors d'un ancien essai.
+
+Le service payout normalise les numéros ivoiriens : `0748367710` et `2250748367710` deviennent `+2250748367710` avant l'appel SOAP. Les références déjà initiées conservent leurs paramètres historiques : ne jamais les réémettre sans confirmation de leur issue auprès de Paiement Pro.
