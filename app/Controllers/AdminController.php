@@ -25,10 +25,12 @@ final class AdminController {
   $modes=IntegrationSettings::all();
   $stats=$db->query("SELECT status,COUNT(*) quantity FROM rentals GROUP BY status")->fetchAll();
   $rentals=$db->query('SELECT reference,customer_name,rental_fee,deposit,status,created_at FROM rentals ORDER BY id DESC LIMIT 10')->fetchAll();
+  $testOperations=$db->query('SELECT * FROM payment_lab_operations ORDER BY id DESC LIMIT 10')->fetchAll();
+  $labEnabled=App::env('PAYMENT_LAB_ENABLED')==='1';
   $ready=['paiementpro_sandbox'=>App::env('PAIEMENTPRO_SANDBOX_WSDL')!=='' && App::env('PAIEMENTPRO_SANDBOX_MERCHANT_ID')!=='',
           'paiementpro_production'=>App::env('PAIEMENTPRO_MERCHANT_ID')!=='',
           'heycharge_normal'=>App::env('HEYCHARGE_API_BASE')!=='' && App::env('HEYCHARGE_API_KEY')!==''];
-  App::view('admin',compact('prices','batteries','modes','stats','rentals','csrf','ready'));
+  App::view('admin',compact('prices','batteries','modes','stats','rentals','testOperations','csrf','ready','labEnabled'));
  }
  public function modes():void {
   $this->auth();$this->csrf();
