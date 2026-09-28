@@ -40,6 +40,7 @@ final class AutomaticDepositRefundService {
   // Never retry an unknown response automatically: reconcile it with Paiement Pro first.
   try {
    $request=(new PaiementProPayoutService)->prepare($reference,(int)$row['refund_amount'],$row['payout_channel'],$row['customer_phone'],$row['customer_name'],$row['payment_environment']);
+   PayoutApiAudit::request($reference,$request);
    $client=new \SoapClient($request['wsdl'],['connection_timeout'=>10,'cache_wsdl'=>WSDL_CACHE_NONE]);
    $reply=$client->initTransact($request['params']);
    PayoutApiAudit::record($reference,'init',$reply);
