@@ -7,11 +7,11 @@ use App\Services\IntegrationSettings;
 use App\Services\PayoutApiAudit;
 use App\Services\PayoutResult;
 use App\Services\PayoutCallbackAssessment;
+use App\Services\Auth;
+use App\Services\Audit;
 final class PaymentLabController {
  private function guard():void {
-  if(!hash_equals(App::env('ADMIN_USERNAME','admin'),(string)($_SERVER['PHP_AUTH_USER']??''))||!password_verify((string)($_SERVER['PHP_AUTH_PW']??''),App::env('ADMIN_PASSWORD_HASH'))){header('WWW-Authenticate: Basic realm="Thiebapower"');http_response_code(401);exit('Authentification requise');}
-  if(session_status()!==PHP_SESSION_ACTIVE)session_start();
-  if(!isset($_SESSION['csrf'])||!hash_equals($_SESSION['csrf'],(string)($_POST['csrf']??''))){http_response_code(403);exit('Formulaire expiré');}
+  Auth::requirePermission('payout.send',true);
  }
  private function enabled(string $kind):void {
   $key=$kind==='payin'?'PAYMENT_LAB_PAYIN_ENABLED':'PAYMENT_LAB_PAYOUT_ENABLED';
@@ -24,6 +24,7 @@ final class PaymentLabController {
   if($name===''||strlen($name)>120||!filter_var($email,FILTER_VALIDATE_EMAIL)||!preg_match('/^\+?[0-9]{10,16}$/',$phone)||($_POST['confirm_amount']??'')!=='300'){$this->fail('Coordonnées ou montant d’essai invalides');return;}
   $mode=IntegrationSettings::all()['paiementpro'];$ref=$this->reference('PAYIN');$db=App::db();
   $db->prepare("INSERT INTO payment_lab_operations(reference,kind,amount,environment) VALUES(?,'payin',300,?)")->execute([$ref,$mode]);
+  Audit::event('payment_test.payin_requested','payment_lab',$ref,['amount'=>300,'environment'=>$mode]);
   try {
    $url=(new PaiementProService)->initiateTest(['reference'=>$ref,'customer_name'=>$name,'customer_email'=>$email,'customer_phone'=>$phone,'rental_fee'=>100,'deposit'=>200,'payment_environment'=>$mode]);
    $db->prepare("UPDATE payment_lab_operations SET status='initiated' WHERE reference=?")->execute([$ref]);
@@ -40,6 +41,7 @@ final class PaymentLabController {
   try {$request=(new PaiementProPayoutService)->prepare($ref,200,$channel,$phone,'Test Thiebapower',$mode);}
   catch(\Throwable $e){$this->fail('Reversement non configuré : '.$e->getMessage());return;}
   $db->prepare("INSERT INTO payment_lab_operations(reference,kind,amount,environment,status,recipient_channel,recipient_phone) VALUES(?,'payout',200,?,'unknown',?,?)")->execute([$ref,$mode,$channel,$phone]);
+  Audit::event('payment_test.payout_requested','payment_lab',$ref,['amount'=>200,'environment'=>$mode,'channel'=>$channel]);
   PayoutApiAudit::request($ref,$request);
   try {
    $reply=(new PaiementProPayoutService)->initiate($request);
@@ -84,6 +86,7 @@ final class PaymentLabController {
    if(!$op||!in_array($op['status'],['unknown','initiated'],true)||!hash_equals($op['reference'],$reference))throw new \LogicException('Essai non éligible');
    $db->prepare("UPDATE payment_lab_operations SET status='archived',archived_at=UTC_TIMESTAMP(),archive_note=? WHERE id=?")->execute([$note,$id]);
    $db->commit();
+   Audit::event('payment_test.archived','payment_lab',$op['reference'],['note'=>$note]);
   }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();http_response_code(409);exit('Impossible de clore cet essai');}
   App::redirect('/admin/payout');
  }
