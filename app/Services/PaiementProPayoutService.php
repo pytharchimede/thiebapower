@@ -15,8 +15,16 @@ final class PaiementProPayoutService {
   return compact('merchant','secret','wsdl');
  }
  private function token(array $config,int $timestamp):string {return hash_hmac('sha256',$timestamp.$config['merchant'],$config['secret']);}
+ private function normalizePhone(string $phone):string {
+  $phone=preg_replace('/[\s.()-]+/','',$phone);
+  if(preg_match('/^0[0-9]{9}$/D',$phone))$phone='+225'.$phone;
+  elseif(preg_match('/^225[0-9]{10}$/D',$phone))$phone='+'.$phone;
+  if(!preg_match('/^\+225[0-9]{10}$/D',$phone))throw new \InvalidArgumentException('Numéro ivoirien invalide');
+  return $phone;
+ }
  public function prepare(string $reference,int $amount,string $channel,string $phone,string $name,?string $mode=null):array {
-  if($amount<=0||!in_array($channel,['WAVECI','MOMOCI','OMCIV','FLOOZ'],true)||!preg_match('/^\+?[0-9]{10,16}$/',$phone))throw new \InvalidArgumentException('Paramètres de restitution invalides');
+  if($amount<=0||!in_array($channel,['WAVECI','MOMOCI','OMCIV','FLOOZ'],true))throw new \InvalidArgumentException('Paramètres de restitution invalides');
+  $phone=$this->normalizePhone($phone);
   $config=$this->credentials($mode);$timestamp=time();
   return ['wsdl'=>$config['wsdl'],'params'=>['merchantId'=>$config['merchant'],'currency'=>'XOF','amount'=>$amount,'referenceNo'=>$reference,'channel'=>$channel,'clientName'=>$name,'token'=>$this->token($config,$timestamp),'timestamp'=>$timestamp,'payeeNo'=>$phone,'clientId'=>$reference,'returnContext'=>'reference='.$reference,'paymentReason'=>(str_starts_with($reference,'TBP-TEST-')?'Essai API payout ':'Restitution caution ').$reference,'returnURL'=>rtrim(App::env('APP_URL'),'/').'/payment/return','callbackURL'=>rtrim(App::env('APP_URL'),'/').'/api/paiementpro/payout-callback']];
  }
