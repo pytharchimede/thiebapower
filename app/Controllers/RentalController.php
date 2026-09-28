@@ -6,13 +6,15 @@ final class RentalController {
  public function index():void {
   $prices=App::db()->query('SELECT * FROM pricing WHERE id=1')->fetch();
   $batteries=App::db()->query("SELECT id,serial,deposit_override FROM batteries WHERE status='available' ORDER BY id")->fetchAll();
-  App::view('rent',['prices'=>$prices,'batteries'=>$batteries]);
+  App::view('rent',['prices'=>$prices,'batteries'=>$batteries,'checkoutEnabled'=>App::env('PUBLIC_RENTALS_ENABLED')==='1' && (new \App\Services\PaymentVerification)->ready() && (new \App\Services\HeyChargeOpenApi)->configured()]);
  }
  public function create():void {
-  // Re-enable only after verified payment, station release and deposit settlement are implemented.
-  http_response_code(503);
-  header('Content-Type: text/plain; charset=utf-8');
-  echo 'Les locations seront disponibles prochainement.';
+  if(App::env('PUBLIC_RENTALS_ENABLED')!=='1'||!(new \App\Services\PaymentVerification)->ready()||!(new \App\Services\HeyChargeOpenApi)->configured()){
+   http_response_code(503);header('Content-Type: text/plain; charset=utf-8');echo 'Les locations seront disponibles prochainement.';return;
+  }
+  try {App::redirect((new \App\Services\RentalCheckoutService)->begin($_POST));}
+  catch(\InvalidArgumentException $e){http_response_code(422);echo 'Informations de location invalides';}
+  catch(\Throwable $e){error_log($e);http_response_code(503);echo 'Location momentanément indisponible';}
  }
  public function status():void {
   $reference=$_GET['reference']??'';
