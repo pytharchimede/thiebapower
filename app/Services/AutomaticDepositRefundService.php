@@ -43,7 +43,8 @@ final class AutomaticDepositRefundService {
    $reply=$client->initTransact($request['params']);
    // An initiation response alone does not prove the beneficiary received the funds.
    $session=(string)($reply->sessionid??'');
-   if($session!==''){$db->prepare('UPDATE deposit_settlements SET provider_session_id=? WHERE id=?')->execute([$session,$settlementId]);}
+   if(strtoupper((string)($reply->status??''))==='FAILED'){$db->prepare("UPDATE deposit_settlements SET status='failed' WHERE id=? AND status='processing'")->execute([$settlementId]);error_log('Thiebapower payout rejected '.$reference.' code '.(string)($reply->code??''));}
+   elseif($session!==''){$db->prepare('UPDATE deposit_settlements SET provider_session_id=? WHERE id=?')->execute([$session,$settlementId]);}
    else {$db->prepare("UPDATE deposit_settlements SET status='unknown' WHERE id=?")->execute([$settlementId]);}
   }catch(\Throwable $e){error_log('Thiebapower payout outcome unknown '.$reference.': '.$e->getMessage());$db->prepare("UPDATE deposit_settlements SET status='unknown' WHERE id=? AND status='processing'")->execute([$settlementId]);}
  }
