@@ -18,7 +18,7 @@ final class PaiementProPayoutService {
  public function prepare(string $reference,int $amount,string $channel,string $phone,string $name,?string $mode=null):array {
   if($amount<=0||!in_array($channel,['WAVECI','MOMOCI','OMCIV','FLOOZ'],true)||!preg_match('/^\+?[0-9]{10,16}$/',$phone))throw new \InvalidArgumentException('Paramètres de restitution invalides');
   $config=$this->credentials($mode);$timestamp=time();
-  return ['wsdl'=>$config['wsdl'],'params'=>['merchantId'=>$config['merchant'],'currency'=>'XOF','amount'=>$amount,'referenceNo'=>$reference,'channel'=>$channel,'clientName'=>$name,'token'=>$this->token($config,$timestamp),'timestamp'=>$timestamp,'payeeNo'=>$phone,'paymentReason'=>'Restitution caution '.$reference,'returnURL'=>rtrim(App::env('APP_URL'),'/').'/payment/return','callbackURL'=>rtrim(App::env('APP_URL'),'/').'/api/paiementpro/payout-callback']];
+  return ['wsdl'=>$config['wsdl'],'params'=>['merchantId'=>$config['merchant'],'currency'=>'XOF','amount'=>$amount,'referenceNo'=>$reference,'channel'=>$channel,'clientName'=>$name,'token'=>$this->token($config,$timestamp),'timestamp'=>$timestamp,'payeeNo'=>$phone,'clientId'=>$reference,'returnContext'=>'reference='.$reference,'paymentReason'=>(str_starts_with($reference,'TBP-TEST-')?'Essai API payout ':'Restitution caution ').$reference,'returnURL'=>rtrim(App::env('APP_URL'),'/').'/payment/return','callbackURL'=>rtrim(App::env('APP_URL'),'/').'/api/paiementpro/payout-callback']];
  }
  public function status(string $sessionId,?string $mode=null):object {
   if($sessionId==='')throw new \InvalidArgumentException('Session absente');
