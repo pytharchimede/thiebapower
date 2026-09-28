@@ -12,5 +12,11 @@ final class PaymentController {
   (new RentalLifecycleService)->confirmedPayment($reference);
   http_response_code(202);echo 'release pending';
  }
- public function returnPage():void {echo 'Paiement en cours de vérification. Référence : '.htmlspecialchars($_GET['reference']??'',ENT_QUOTES,'UTF-8');}
+ public function returnPage():void {
+  // Paiement Pro may append "?merchantId=..." to a URL that already has a query string.
+  $candidate=explode('?',(string)($_GET['reference']??''),2)[0];
+  $reference=preg_match('/^TBP-[A-F0-9]{16}$/D',$candidate)?$candidate:'';
+  header('Content-Type: text/html; charset=utf-8');
+  echo '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Paiement · Thiebapower</title><link rel="stylesheet" href="/style.css"></head><body class="kiosk"><main class="kiosk-shell" style="max-width:700px;margin:8vh auto;padding:32px"><a href="/" class="kiosk-logo">THIEBA<span>POWER</span></a><h1>Paiement en cours de vérification</h1><p>Votre retour sur cette page ne confirme pas encore l’encaissement. Conservez votre référence et attendez la confirmation du personnel avant de retirer une batterie.</p><p>Référence : <strong>'.htmlspecialchars($reference!==''?$reference:'indisponible',ENT_QUOTES,'UTF-8').'</strong></p><a href="/" class="touch-button outline">Retour au kiosque</a></main></body></html>';
+ }
 }
