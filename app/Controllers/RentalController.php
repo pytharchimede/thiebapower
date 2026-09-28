@@ -2,6 +2,7 @@
 namespace App\Controllers;
 use App\Core\App;
 use App\Repositories\RentalRepository;
+use App\Services\Audit;
 final class RentalController {
  public function index():void {
   $prices=App::db()->query('SELECT * FROM pricing WHERE id=1')->fetch();
@@ -18,7 +19,7 @@ final class RentalController {
   if(!$this->checkoutEnabled()){
    http_response_code(503);header('Content-Type: text/plain; charset=utf-8');echo 'Les locations seront disponibles prochainement.';return;
   }
-  try {App::redirect((new \App\Services\RentalCheckoutService)->begin($_POST));}
+  try {$url=(new \App\Services\RentalCheckoutService)->begin($_POST);Audit::event('rental.checkout_started','station',(string)($_POST['station_code']??''));App::redirect($url);}
   catch(\InvalidArgumentException $e){http_response_code(422);echo 'Informations de location invalides';}
   catch(\Throwable $e){error_log($e);http_response_code(503);echo 'Location momentanément indisponible';}
  }
