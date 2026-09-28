@@ -1,0 +1,6 @@
+CREATE TABLE payout_api_requests (
+ reference VARCHAR(120) NOT NULL PRIMARY KEY,
+ endpoint VARCHAR(300) NOT NULL,
+ parameters JSON NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
