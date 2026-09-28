@@ -50,6 +50,8 @@ final class PaymentLabController {
     $db->prepare("UPDATE payment_lab_operations SET status='failed',provider_message=? WHERE reference=?")->execute([$reason,$ref]);
    }elseif($session!==''){
     $db->prepare("UPDATE payment_lab_operations SET status='processing',provider_session_id=?,provider_message=? WHERE reference=?")->execute([$session,substr($status,0,250),$ref]);
+   }elseif($status==='INITIATED'&&(string)($reply->code??'')==='0'){
+    $db->prepare("UPDATE payment_lab_operations SET status='initiated',provider_message='Initiation acceptée sans session ; versement à confirmer' WHERE reference=?")->execute([$ref]);
    }
    App::redirect('/admin/payout');
   }catch(\Throwable $e){PayoutApiAudit::record($ref,'error',['exception'=>get_class($e),'description'=>$e->getMessage(),'faultcode'=>$e instanceof \SoapFault?$e->faultcode:'']);error_log('Payment lab payout outcome unknown '.$ref.': '.$e->getMessage());App::redirect('/admin/payout');}
@@ -67,6 +69,20 @@ final class PaymentLabController {
    }elseif((string)($reply->status??'')==='FAILED'){$db->prepare("UPDATE payment_lab_operations SET status='failed' WHERE id=? AND status='processing'")->execute([$id]);}
    App::redirect('/admin/payout');
   }catch(\Throwable $e){PayoutApiAudit::record($op['reference'],'error',['exception'=>get_class($e),'description'=>$e->getMessage()]);error_log('Payment lab status '.$op['reference'].': '.$e->getMessage());http_response_code(503);echo 'Statut indisponible ; ne relancez pas le reversement.';}
+ }
+ public function archive():void {
+  $this->guard();$this->enabled('payout');
+  $id=filter_input(INPUT_POST,'id',FILTER_VALIDATE_INT);
+  $reference=trim((string)($_POST['confirm_reference']??''));$note=trim((string)($_POST['archive_note']??''));
+  if(!$id||($_POST['confirm_archive']??'')!=='1'||strlen($note)<6||strlen($note)>250){$this->fail('Vérification et motif requis');return;}
+  $db=App::db();$db->beginTransaction();
+  try {
+   $s=$db->prepare("SELECT * FROM payment_lab_operations WHERE id=? AND kind='payout' FOR UPDATE");$s->execute([$id]);$op=$s->fetch();
+   if(!$op||!in_array($op['status'],['unknown','initiated'],true)||!hash_equals($op['reference'],$reference))throw new \LogicException('Essai non éligible');
+   $db->prepare("UPDATE payment_lab_operations SET status='archived',archived_at=UTC_TIMESTAMP(),archive_note=? WHERE id=?")->execute([$note,$id]);
+   $db->commit();
+  }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();http_response_code(409);exit('Impossible de clore cet essai');}
+  App::redirect('/admin/payout');
  }
  public function notification():void {
   $p=$_POST ?: (json_decode(file_get_contents('php://input'),true)?:[]);$ref=(string)($p['referenceNumber']??'');
