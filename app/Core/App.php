@@ -13,7 +13,7 @@ final class App {
  'GET /'=>[RentalController::class,'index'], 'POST /rentals'=>[RentalController::class,'create'], 'GET /rentals/status'=>[RentalController::class,'status'],
  'POST /api/heycharge/callback'=>[PaymentController::class,'callback'], 'GET /payment/return'=>[PaymentController::class,'returnPage'],
  'POST /admin/payment-lab/payin'=>[PaymentLabController::class,'payin'], 'POST /admin/payment-lab/payout'=>[PaymentLabController::class,'payout'], 'POST /admin/payment-lab/reconcile'=>[PaymentLabController::class,'reconcile'], 'POST /admin/payment-lab/archive'=>[PaymentLabController::class,'archive'],
- 'POST /api/paiementpro/payout-callback'=>[PaymentLabController::class,'payoutNotification'], 'POST /api/paiementpro/test-callback'=>[PaymentLabController::class,'notification'], 'GET /payment/test-return'=>[PaymentLabController::class,'returnPage'],
+ 'POST /api/paiementpro/payout-callback'=>[PaymentLabController::class,'payoutNotification'], 'GET /api/paiementpro/payout-callback'=>[PaymentLabController::class,'payoutNotification'], 'POST /api/paiementpro/test-callback'=>[PaymentLabController::class,'notification'], 'GET /payment/test-return'=>[PaymentLabController::class,'returnPage'],
  'POST /admin/simulation/paid'=>[SimulationController::class,'paid'], 'POST /admin/simulation/returned'=>[SimulationController::class,'returned'], 'POST /admin/simulation/reconcile'=>[SimulationController::class,'reconcile'],
  'GET /admin/payout'=>[PayoutConsoleController::class,'index'],
  'GET /admin'=>[AdminController::class,'index'], 'POST /admin/prices'=>[AdminController::class,'prices'], 'POST /admin/batteries'=>[AdminController::class,'battery'], 'POST /admin/modes'=>[AdminController::class,'modes']
