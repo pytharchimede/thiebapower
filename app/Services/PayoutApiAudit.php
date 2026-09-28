@@ -2,6 +2,14 @@
 namespace App\Services;
 use App\Core\App;
 final class PayoutApiAudit {
+ public static function request(string $reference,array $request):void {
+  $allowed=['merchantId','currency','amount','referenceNo','channel','clientName','timestamp','payeeNo','clientId','returnContext','paymentReason','returnURL','callbackURL'];
+  $safe=array_intersect_key($request['params'],array_flip($allowed));
+  $safe['token']='[HMAC SHA-256 masqué]';
+  $json=json_encode($safe,JSON_INVALID_UTF8_SUBSTITUTE|JSON_THROW_ON_ERROR);
+  try {App::db()->prepare('INSERT INTO payout_api_requests(reference,endpoint,parameters) VALUES(?,?,?)')->execute([$reference,$request['wsdl'],$json]);}
+  catch(\Throwable $e){error_log('Payout request audit unavailable '.$reference.': '.$e->getMessage());}
+ }
  public static function record(string $reference,string $source,mixed $response):void {
   if(!in_array($source,['init','status','callback','error'],true))throw new \InvalidArgumentException('Source invalide');
   $fields=['status','code','description','sessionid','sessionId','referenceNo','amount','currency','transactionId','transactionid','faultcode','faultstring','exception'];
