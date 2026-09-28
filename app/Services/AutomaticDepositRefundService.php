@@ -23,7 +23,9 @@ final class AutomaticDepositRefundService {
       ->execute([$returnedAt->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'),$deduction,$rentalId]);
    $db->prepare('INSERT INTO deposit_settlements(rental_id,deduction,refund_amount,status) VALUES(?,?,?,?)')
       ->execute([$rentalId,$deduction,$refund,$refund===0?'refunded':'pending']);
-   $id=(int)$db->lastInsertId();$db->commit();return $id;
+   $id=(int)$db->lastInsertId();$db->commit();
+   Audit::event('rental.return_recorded','rental',(string)$rentalId,['deduction'=>$deduction,'refund_amount'=>$refund,'settlement_id'=>$id]);
+   return $id;
   }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
  }
  /** Called by a trusted background worker after recordVerifiedReturn; never from a browser return URL. */
@@ -37,6 +39,7 @@ final class AutomaticDepositRefundService {
    $reference='TBP-REFUND-'.$settlementId;
    $db->prepare("UPDATE deposit_settlements SET status='processing',provider_reference=?,sent_at=UTC_TIMESTAMP() WHERE id=? AND status='pending'")->execute([$reference,$settlementId]);
    $db->commit();
+   Audit::event('payout.dispatch_started','settlement',(string)$settlementId,['reference'=>$reference,'amount'=>$row['refund_amount']]);
   }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
   // The reference and processing state are committed before the network request.
   // Never retry an unknown response automatically: reconcile it with Paiement Pro first.
@@ -45,6 +48,7 @@ final class AutomaticDepositRefundService {
    PayoutApiAudit::request($reference,$request);
    $reply=$this->payout->initiate($request);
    PayoutApiAudit::record($reference,'init',$reply);
+   Audit::event('payout.initiation_response','settlement',(string)$settlementId,['status'=>$reply->status??'','code'=>$reply->code??'']);
    // An initiation response alone does not prove the beneficiary received the funds.
    $outcome=PayoutResult::initiation($reply);
    if($outcome['state']==='failed'){$db->prepare("UPDATE deposit_settlements SET status='failed' WHERE id=? AND status='processing'")->execute([$settlementId]);error_log('Thiebapower payout rejected '.$reference.' code '.(string)($reply->code??''));}
