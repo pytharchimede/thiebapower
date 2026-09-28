@@ -22,7 +22,7 @@ final class PaymentLabController {
   $mode=IntegrationSettings::all()['paiementpro'];$ref=$this->reference('PAYIN');$db=App::db();
   $db->prepare("INSERT INTO payment_lab_operations(reference,kind,amount,environment) VALUES(?,'payin',300,?)")->execute([$ref,$mode]);
   try {
-   $url=(new PaiementProService)->initiateTest(['reference'=>$ref,'customer_name'=>$name,'customer_email'=>$email,'customer_phone'=>$phone,'rental_fee'=>100,'deposit'=>200]);
+   $url=(new PaiementProService)->initiateTest(['reference'=>$ref,'customer_name'=>$name,'customer_email'=>$email,'customer_phone'=>$phone,'rental_fee'=>100,'deposit'=>200,'payment_environment'=>$mode]);
    $db->prepare("UPDATE payment_lab_operations SET status='initiated' WHERE reference=?")->execute([$ref]);
    header('Location: '.$url,true,303);
   }catch(\Throwable $e){error_log('Payment lab payin '.$ref.': '.$e->getMessage());$db->prepare("UPDATE payment_lab_operations SET status='failed',provider_message='Initialisation refusée' WHERE reference=?")->execute([$ref]);http_response_code(503);echo 'Initialisation refusée. Référence : '.htmlspecialchars($ref);}
