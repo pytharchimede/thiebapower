@@ -28,7 +28,7 @@
 <?php endforeach; ?>
 </select>
 </label>
-<label>Mot de passe provisoire<input name="password" type="password" autocomplete="new-password" required minlength="12">
+<label>Mot de passe provisoire<input name="password" type="password" autocomplete="new-password" required>
 </label>
 <button class="admin-button">Créer le compte</button>
 </form>
@@ -86,7 +86,7 @@
 <option value="0" <?= !$user['is_active'] ? 'selected' : '' ?>>Suspendu</option>
 </select>
 </label>
-<label>Nouveau mot de passe (laisser vide pour conserver)<input type="password" name="password" minlength="12" autocomplete="new-password">
+<label>Nouveau mot de passe (laisser vide pour conserver)<input type="password" name="password" autocomplete="new-password">
 </label>
 <button class="admin-button">Enregistrer</button>
 </form>

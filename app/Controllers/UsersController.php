@@ -27,9 +27,9 @@ final class UsersController
         $password = (string) ($_POST['password'] ?? '');
         $role = (string) ($_POST['role'] ?? '');
         if (!preg_match('/^[a-z0-9._-]{3,80}$/D', $username) || $name === '' || strlen($name) > 160 ||
-            strlen($password) < 12 || strlen($password) > 256 || !isset(Auth::ROLES[$role])) {
+            $password === '' || strlen($password) > 256 || !isset(Auth::ROLES[$role])) {
             http_response_code(422);
-            exit('Compte invalide : mot de passe de 12 caractères minimum');
+            exit('Compte invalide : vérifiez les champs et renseignez un mot de passe');
         }
         try {
             App::db()->prepare('INSERT INTO users(username,display_name,password_hash,role) VALUES(?,?,?,?)')
@@ -49,7 +49,7 @@ final class UsersController
         $role = (string) ($_POST['role'] ?? '');
         $active = ($_POST['is_active'] ?? '') === '1' ? 1 : 0;
         $password = (string) ($_POST['password'] ?? '');
-        if (!$id || !isset(Auth::ROLES[$role]) || ($password !== '' && (strlen($password) < 12 || strlen($password) > 256))) {
+        if (!$id || !isset(Auth::ROLES[$role]) || strlen($password) > 256) {
             http_response_code(422);
             exit('Modification invalide');
         }
