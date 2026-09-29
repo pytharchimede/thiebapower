@@ -8,6 +8,7 @@ use App\Models\Rental;
 use App\Services\PaiementProPayoutService;
 use App\Services\PayoutCallbackAssessment;
 use App\Services\PayoutResult;
+use App\Services\PaymentVerification;
 
 $tests=[];
 $test=function(string $name,callable $fn)use(&$tests):void{$fn();$tests[]=$name;};
@@ -32,4 +33,16 @@ $callbackExpected=['reference'=>'TBP-REFUND-2','amount'=>200,'merchantId'=>'PP-X
 $test('matching callback is still unauthenticated',fn()=>$same('false',PayoutCallbackAssessment::assess($payload,$callbackExpected)['authenticated']));
 $test('repeated callbacks are deterministic and cannot transition state',fn()=>$same(PayoutCallbackAssessment::assess($payload,$callbackExpected),PayoutCallbackAssessment::assess($payload,$callbackExpected)));
 $test('database enforces one settlement per rental',function()use($same){$schema=file_get_contents(dirname(__DIR__).'/database/schema.sql');$same(true,str_contains($schema,'rental_id BIGINT UNSIGNED NOT NULL UNIQUE'));});
+putenv('PAYMENT_CALLBACK_SECRET='.str_repeat('a',64));
+putenv('PAIEMENTPRO_MERCHANT_ID=PP-TEST');
+$verification=new PaymentVerification;
+$rental=['reference'=>'TBP-0123456789ABCDEF','payment_environment'=>'production','rental_fee'=>100,'deposit'=>0];
+$notification=['merchantId'=>'PP-TEST','referenceNumber'=>$rental['reference'],'countryCurrencyCode'=>'952','amount'=>'100','responsecode'=>'0'];
+$token=$verification->token($rental['reference']);
+$test('valid payment notification is accepted',fn()=>$same(true,$verification->verified($notification,$rental,$token)));
+$test('callback without token is rejected',fn()=>$same(false,$verification->verified($notification,$rental,null)));
+$test('wrong amount is rejected',fn()=>$same(false,$verification->verified(array_replace($notification,['amount'=>'999']),$rental,$token)));
+$test('failure is rejected',fn()=>$same(false,$verification->verified(array_replace($notification,['responsecode'=>'-1']),$rental,$token)));
+$test('wrong callback token is rejected',fn()=>$same(false,$verification->verified($notification,$rental,str_repeat('b',64))));
+putenv('PAYMENT_CALLBACK_SECRET');putenv('PAIEMENTPRO_MERCHANT_ID');
 fwrite(STDOUT,count($tests)." tests OK\n");

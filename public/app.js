@@ -79,12 +79,14 @@
         }
     });
 
+    const filterBatteries = () => document.querySelectorAll('.battery-option').forEach(button => { button.hidden = !!button.dataset.station && button.dataset.station !== stationInput.value.trim(); });
     get('station-next').addEventListener('click', () => {
         if (!stationInput.value.trim()) {
             scanResult.textContent = 'Saisissez ou scannez d’abord le code de la station.';
             stationInput.focus();
             return;
         }
+        filterBatteries();
         showStep(2);
     });
 

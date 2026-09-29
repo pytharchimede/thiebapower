@@ -39,15 +39,15 @@
                 <button type="button" class="back-button" data-back="1">← Retour</button>
                 <div class="screen-icon" aria-hidden="true">ϟ</div>
                 <h2>Choisissez une batterie</h2>
-                <p>La caution peut varier selon la batterie, y compris être nulle.</p>
+                <p><?= $depositEnabled ? 'La caution peut varier selon la batterie.' : 'Aucune caution demandée.' ?></p>
                 <div class="battery-options" id="battery-options">
                     <?php foreach ($batteries as $battery): ?>
                         <button type="button" class="battery-option"
                             data-id="<?= (int) $battery['id'] ?>"
                             data-serial="<?= htmlspecialchars($battery['serial'], ENT_QUOTES, 'UTF-8') ?>"
-                            data-deposit="<?= (int) ($battery['deposit_override'] ?? $prices['default_deposit']) ?>">
+                            data-deposit="<?= $depositEnabled ? (int) ($battery['deposit_override'] ?? $prices['default_deposit']) : 0 ?>" data-station="<?= htmlspecialchars((string)$battery['station_imei'],ENT_QUOTES,'UTF-8') ?>">
                             <span class="option-symbol" aria-hidden="true">ϟ</span>
-                            <span><strong><?= htmlspecialchars($battery['serial'], ENT_QUOTES, 'UTF-8') ?></strong><small>Caution <?= number_format((int) ($battery['deposit_override'] ?? $prices['default_deposit']), 0, ',', ' ') ?> FCFA</small></span>
+                            <span><strong><?= htmlspecialchars($battery['serial'], ENT_QUOTES, 'UTF-8') ?></strong><small><?= $depositEnabled ? 'Caution '.number_format((int) ($battery['deposit_override'] ?? $prices['default_deposit']), 0, ',', ' ').' FCFA' : 'Sans caution' ?></small></span>
                             <span class="option-arrow" aria-hidden="true">→</span>
                         </button>
                     <?php endforeach; ?>
@@ -63,10 +63,10 @@
                     <div><span>Station</span><strong id="summary-station">—</strong></div>
                     <div><span>Batterie</span><strong id="summary-battery">—</strong></div>
                     <div><span>Location · <?= (int) $prices['duration_minutes'] ?> min</span><strong id="summary-fee"><?= number_format((int) $prices['rental_fee'], 0, ',', ' ') ?> FCFA</strong></div>
-                    <div><span>Caution restituable</span><strong id="summary-deposit">—</strong></div>
+                    <div <?= $depositEnabled ? '' : 'hidden' ?>><span>Caution restituable</span><strong id="summary-deposit">—</strong></div>
                     <div class="total"><span>Total à payer</span><strong id="summary-total">—</strong></div>
                 </div>
-                <p class="deposit-info">Retour dans le délai : caution intégralement restituable. Après le délai : <?= (int) $prices['late_percent'] ?> % de la caution retenus par heure supplémentaire entamée, dans la limite de la caution.</p>
+                <p class="deposit-info" <?= $depositEnabled ? '' : 'hidden' ?>>Retour dans le délai : caution intégralement restituable. Après le délai : <?= (int) $prices['late_percent'] ?> % de la caution retenus par heure supplémentaire entamée, dans la limite de la caution.</p>
                 <?php if ($checkoutEnabled): ?>
                     <form method="post" action="/rentals" id="rental-checkout">
                         <input type="hidden" name="station_code" id="checkout-station">
@@ -74,9 +74,9 @@
                         <label class="input-label">Votre nom<input name="name" required maxlength="160"></label>
                         <label class="input-label">Votre email<input name="email" type="email" required></label>
                         <label class="input-label">Votre téléphone<input name="phone" type="tel" required placeholder="+225..."></label>
-                        <label class="input-label">Canal de restitution
+                        <?php if ($depositEnabled): ?><label class="input-label">Canal de restitution
                             <select name="payout_channel" required><option value="">Choisir</option><option value="WAVECI">Wave CI</option><option value="MOMOCI">MTN MoMo CI</option><option value="OMCIV">Orange Money CI</option><option value="FLOOZ">Flooz</option></select>
-                        </label>
+                        </label><?php endif; ?>
                         <button class="touch-button primary">Procéder au paiement <span aria-hidden="true">→</span></button>
                     </form>
                 <?php else: ?>
