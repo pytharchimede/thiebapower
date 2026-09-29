@@ -4,19 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Reversements Paiement Pro · Thiebapower</title>
+<link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/payout.css">
 </head>
-<body>
-<main>
-<header class="top">
-<div>
-<div class="brand">THIEBA<span>POWER</span>
-</div>
-<h1>Reversements Paiement Pro</h1>
-<p>Tester uniquement l’API payout : paramètres envoyés, réponse SOAP et statut sur une seule page.</p>
-</div>
-<a href="/admin">← Tableau de bord</a>
-</header>
+<body class="admin-body payout-page">
+<?php $adminPageTitle='Reversements API'; $adminPageOverline='PAIEMENT PRO'; $adminPageSubtitle='Suivi des appels et réponses du fournisseur'; require __DIR__.'/partials/admin_shell_start.php'; ?>
+<main class="payout-main">
 <div class="grid">
 <section class="card">
 <div class="eyebrow">Connexion active</div>
@@ -227,5 +220,6 @@ callbackURL: https://thiebapower.com/api/paiementpro/payout-callback</pre>
 </div>
 <p class="footer">Le token HMAC et la clé secrète ne sont jamais affichés. Aucun bouton ne réémet une référence inconnue.</p>
 </main>
+<?php require __DIR__.'/partials/admin_shell_end.php'; ?>
 </body>
 </html>

@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parc de terminaux · Thiebapower</title><link rel="stylesheet" href="/style.css"></head>
-<body class="management-page"><header class="management-header"><a class="kiosk-logo" href="/admin">THIEBA<span>POWER</span></a><nav><a href="/admin">Tableau de bord</a><a href="/admin#pricing">Tarification</a></nav></header>
+<body class="admin-body">
+<?php $adminPageTitle='Terminaux'; $adminPageOverline='PARC HEYCHARGE'; $adminPageSubtitle='Stations, inventaire et étiquettes QR'; require __DIR__.'/partials/admin_shell_start.php'; ?>
 <main class="management-main">
 <p class="admin-overline">PARC HEYCHARGE</p><h1>Terminaux et batteries</h1>
 <p>Retrouvez les terminaux du compte HeyCharge, synchronisez leur inventaire, puis activez les stations ouvertes à la location.</p>
@@ -14,4 +15,4 @@
 <td><form method="post" action="/admin/stations/sync"><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf'],ENT_QUOTES,'UTF-8') ?>"><input type="hidden" name="imei" value="<?= htmlspecialchars($station['imei'],ENT_QUOTES,'UTF-8') ?>"><button class="admin-ghost">Synchroniser</button></form><a href="/admin/stations/detail?imei=<?= rawurlencode($station['imei']) ?>">Détails</a> · <a href="/admin/stations/labels?imei=<?= rawurlencode($station['imei']) ?>">Étiquette</a></td></tr>
 <?php endforeach; ?>
 </tbody></table></div><?php if(!$stations): ?><p>Aucun terminal enregistré. Importez les stations associées à la clé API.</p><?php endif; ?></section>
-</main></body></html>
+</main><?php require __DIR__.'/partials/admin_shell_end.php'; ?></body></html>

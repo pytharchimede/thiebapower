@@ -1,5 +1,6 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Étiquettes des stations · Thiebapower</title><link rel="stylesheet" href="/style.css"></head><body class="label-page">
-<header class="label-toolbar"><a href="/admin/stations">← Retour au parc</a><strong>Étiquettes Thiebapower</strong><button type="button" onclick="window.print()">Imprimer les étiquettes</button></header>
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Étiquettes des stations · Thiebapower</title><link rel="stylesheet" href="/style.css"></head><body class="admin-body label-page">
+<?php $adminPageTitle='Étiquettes QR'; $adminPageOverline='PARC HEYCHARGE'; $adminPageSubtitle='Une étiquette par station, prête à imprimer'; require __DIR__.'/partials/admin_shell_start.php'; ?>
+<div class="label-toolbar"><a href="/admin/stations">← Retour au parc</a><strong>Format 100 × 150 mm</strong><button type="button" onclick="window.print()">Imprimer les étiquettes</button></div>
 <main class="label-sheet">
 <?php foreach($labels as $station): ?><article class="station-label">
  <div class="label-top"><span class="label-brand">THIEBA<b>POWER</b></span><span class="label-bolt">ϟ</span></div>
@@ -9,4 +10,4 @@
  <div class="label-bottom"><strong><?= htmlspecialchars($station['label']?:'Station Thiebapower',ENT_QUOTES,'UTF-8') ?></strong><small>Station <?= htmlspecialchars($station['imei'],ENT_QUOTES,'UTF-8') ?></small><small><?= htmlspecialchars($station['url'],ENT_QUOTES,'UTF-8') ?></small><?php if(!$station['enabled']): ?><small>À activer avant installation</small><?php endif; ?></div>
  </article><?php endforeach; ?>
 <?php if(!$labels): ?><p>Aucune étiquette disponible. Vérifiez l’URL du site et les stations synchronisées.</p><?php endif; ?>
-</main></body></html>
+</main><?php require __DIR__.'/partials/admin_shell_end.php'; ?></body></html>

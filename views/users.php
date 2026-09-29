@@ -6,15 +6,8 @@
 <title>Comptes et permissions · Thiebapower</title>
 <link rel="stylesheet" href="/style.css">
 </head>
-<body class="management-page">
-<header class="management-header">
-<a class="kiosk-logo" href="/admin">THIEBA<span>POWER</span>
-</a>
-<nav>
-<a href="/admin">Tableau de bord</a>
-<a href="/admin/audit">Journal</a>
-</nav>
-</header>
+<body class="admin-body">
+<?php $adminPageTitle='Comptes et droits'; $adminPageOverline='SÉCURITÉ'; $adminPageSubtitle='Utilisateurs et permissions'; require __DIR__.'/partials/admin_shell_start.php'; ?>
 <main class="management-main">
 <p class="admin-overline">ADMINISTRATION</p>
 <h1>Comptes et permissions</h1>
@@ -129,5 +122,6 @@
 </div>
 </section>
 </main>
+<?php require __DIR__.'/partials/admin_shell_end.php'; ?>
 </body>
 </html>

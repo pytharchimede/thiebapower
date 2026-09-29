@@ -7,38 +7,7 @@
     <link rel="stylesheet" href="/style.css">
 </head>
 <body class="admin-body">
-<div class="admin-layout">
-    <aside class="admin-sidebar">
-        <a class="admin-brand" href="/admin">THIEBA<span>POWER</span></a>
-        <div class="admin-caption">ESPACE DE GESTION</div>
-        <nav aria-label="Navigation principale">
-            <a href="#overview">Vue d’ensemble</a>
-            <?php if (App\Services\Auth::can('payout.view')): ?><a href="/admin/payout">Reversements API</a><?php endif; ?>
-            <?php if (App\Services\Auth::can('pricing.manage')): ?><a href="#pricing">Tarification</a><?php endif; ?>
-            <?php if (App\Services\Auth::can('fleet.manage')): ?><a href="#fleet">Batteries</a><a href="/admin/stations">Terminaux</a><?php endif; ?>
-            <a href="/admin/rentals">Locations</a>
-            <?php if (App\Services\Auth::can('audit.view')): ?><a href="/admin/audit">Journal et visites</a><?php endif; ?>
-            <?php if (App\Services\Auth::can('users.manage')): ?><a href="/admin/users">Comptes et droits</a><?php endif; ?>
-        </nav>
-        <div class="sidebar-bottom">
-            <span class="sidebar-indicator"></span> HeyCharge <?= htmlspecialchars($modes['heycharge'],ENT_QUOTES,'UTF-8') ?> · Paiement Pro <?= htmlspecialchars($modes['paiementpro'],ENT_QUOTES,'UTF-8') ?>
-        </div>
-    </aside>
-    <div class="admin-content">
-        <header class="admin-top">
-            <div>
-                <span class="admin-overline">TABLEAU DE BORD</span>
-                <h1>Bonjour, <?= htmlspecialchars($currentUser['display_name'], ENT_QUOTES, 'UTF-8') ?></h1>
-                <p>Suivez votre parc, les locations et les opérations financières.</p>
-            </div>
-            <div class="admin-top-actions">
-                <a class="admin-site-link" href="/">Ouvrir le kiosque</a>
-                <form method="post" action="/admin/logout">
-                    <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
-                    <button class="admin-ghost">Déconnexion</button>
-                </form>
-            </div>
-        </header>
+<?php $adminPageTitle='Tableau de bord'; $adminPageOverline='PILOTAGE'; $adminPageSubtitle='Suivez votre parc, les locations et les opérations financières.'; require __DIR__.'/partials/admin_shell_start.php'; ?>
         <main class="admin-main">
             <section id="overview" class="admin-overview">
                 <div class="admin-section-heading"><div><span class="admin-overline">PILOTAGE</span><h2>Vue d’ensemble</h2></div><span class="admin-date"><?= date('d/m/Y') ?></span></div>
@@ -94,8 +63,7 @@
             </section>
 
         </main>
-    </div>
-</div>
+<?php require __DIR__.'/partials/admin_shell_end.php'; ?>
 
 </body>
 </html>
