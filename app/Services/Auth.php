@@ -104,11 +104,16 @@ final class Auth
         return $user;
     }
 
+    public static function validUsername(string $username): bool
+    {
+        return preg_match('/^[^\p{C}]{1,80}$/uD', trim($username)) === 1;
+    }
+
     public static function login(string $username, string $password): bool
     {
         self::start();
         $username = trim($username);
-        if (strlen($username) > 80 || strlen($password) > 512) {
+        if (!self::validUsername($username) || strlen($password) > 512) {
             Audit::event('auth.invalid_input');
             return false;
         }

@@ -27,8 +27,8 @@ final class UsersController
         $password = (string) ($_POST['password'] ?? '');
         $role = (string) ($_POST['role'] ?? '');
         $errors = [];
-        if (!preg_match('/^[a-z0-9._-]{3,80}$/D', $username)) {
-            $errors[] = 'Identifiant : 3 à 80 caractères, lettres sans accent, chiffres, point, tiret ou soulignement.';
+        if (!Auth::validUsername($username)) {
+            $errors[] = 'Identifiant : renseignez de 1 à 80 caractères, sans caractère de contrôle.';
         }
         if ($name === '' || strlen($name) > 160) {
             $errors[] = 'Nom affiché : renseignez un nom (160 octets maximum).';

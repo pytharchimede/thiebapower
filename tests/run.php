@@ -16,6 +16,10 @@ $tests=[];
 $test=function(string $name,callable $fn)use(&$tests):void{$fn();$tests[]=$name;};
 $same=static function(mixed $expected,mixed $actual,string $message=''):void{if($expected!==$actual)throw new RuntimeException(($message?$message.': ':'').'expected '.var_export($expected,true).', got '.var_export($actual,true));};
 
+$test('account identifiers support emails accents spaces and short names',function()use($same){
+ foreach(['a','ab','ulrich@example.ci','Amani Yao Ulrich','Équipe Réseau',str_repeat('é',80)] as $value)$same(true,App\Services\Auth::validUsername($value));
+ foreach(['','   ',str_repeat('é',81),"nom\ncompte", "nom\0compte"] as $value)$same(false,App\Services\Auth::validUsername($value));
+});
 $test('initiation with session stays processing',fn()=>$same('processing',PayoutResult::initiation((object)['status'=>'INITIATED','code'=>0,'sessionid'=>'S1'])['state']));
 $test('initiation without session is initiated, not paid',fn()=>$same('initiated',PayoutResult::initiation((object)['status'=>'INITIATED','code'=>0])['state']));
 $test('ambiguous response is unknown',fn()=>$same('unknown',PayoutResult::initiation((object)['status'=>'OK'])['state']));
