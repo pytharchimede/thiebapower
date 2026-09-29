@@ -13,6 +13,8 @@ final class Auth
         'rentals.manage' => 'Confirmer les locations simulées',
         'payout.view' => 'Consulter les paiements et les réponses API',
         'payout.send' => 'Initier et clôturer les essais financiers',
+        'finance.view' => 'Voir les points financiers et la caisse',
+        'finance.manage' => 'Enregistrer les mouvements de caisse',
         'audit.view' => 'Consulter le journal et les visites',
         'users.manage' => 'Gérer les comptes et les permissions',
     ];

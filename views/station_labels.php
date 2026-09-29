@@ -1,6 +1,6 @@
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Étiquettes des stations · Thiebapower</title><link rel="stylesheet" href="/style.css"></head><body class="admin-body label-page">
 <?php $adminPageTitle='Étiquettes QR'; $adminPageOverline='PARC HEYCHARGE'; $adminPageSubtitle='Une étiquette par station, prête à imprimer'; require __DIR__.'/partials/admin_shell_start.php'; ?>
-<div class="label-toolbar"><a href="/admin/stations">← Retour au parc</a><strong>A4 paysage · marges latérales 7 cm · marge haute 5 cm</strong><button type="button" onclick="window.print()">Imprimer les étiquettes</button></div>
+<div class="label-toolbar"><a href="/admin/stations">← Retour au parc</a><strong>A4 paysage · marges latérales 7 cm · marge haute 5 cm</strong><a class="admin-button" href="/admin/stations/labels.pdf<?= isset($_GET['imei'])?'?imei='.rawurlencode((string)$_GET['imei']):'' ?>">Télécharger le PDF A4</a><button type="button" onclick="window.print()">Imprimer</button></div>
 <main class="label-sheet">
 <?php foreach($labels as $station): ?><article class="station-label">
  <div class="label-top"><span class="label-brand">THIEBA<b>POWER</b></span><span class="label-tagline">Votre énergie, partout</span></div>

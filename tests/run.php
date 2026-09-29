@@ -49,11 +49,23 @@ $test('wrong amount is rejected',fn()=>$same(false,$verification->verified(array
 $test('failure is rejected',fn()=>$same(false,$verification->verified(array_replace($notification,['responsecode'=>'-1']),$rental,$token)));
 $test('wrong callback token is rejected',fn()=>$same(false,$verification->verified($notification,$rental,str_repeat('b',64))));
 $test('payment and hardware callbacks have separate routes',function()use($same){
- $routes=file_get_contents(dirname(__DIR__).'/app/Core/App.php');
+ $routes=require dirname(__DIR__).'/routes/api.php';
  $payment=file_get_contents(dirname(__DIR__).'/app/Services/PaiementProService.php');
- $same(true,str_contains($routes,"'POST /api/paiementpro/rental-callback' => [PaymentController::class, 'callback']"));
+ $same([App\Controllers\PaymentController::class,'callback'],$routes['POST /api/paiementpro/rental-callback']);
+ $same([App\Controllers\StationController::class,'callbackStatus'],$routes['GET /api/heycharge/callback']);
  $same(true,str_contains($payment,'/api/paiementpro/rental-callback?token='));
  $same(false,str_contains($payment,'/api/heycharge/callback?token='));
+});
+$test('route files expose protected finance and downloadable label PDF',function()use($same){
+ $routes=require dirname(__DIR__).'/routes/admin.php';
+ $same([App\Controllers\StationController::class,'labelsPdf'],$routes['GET /admin/stations/labels.pdf']);
+ $same([App\Controllers\FinanceController::class,'index'],$routes['GET /admin/finance']);
+});
+$test('label PDF has an exact landscape A4 media box and vector QR',function()use($same){
+ $pdf=(new App\Services\StationLabelPdf)->render([['imei'=>'DCHEY02603000938','label'=>'Station test','url'=>'https://thiebapower.com/rent?station=DCHEY02603000938']]);
+ $same(true,str_contains($pdf,'/MediaBox [0 0 841.89 595.28]'));
+ $same(true,str_contains($pdf,'/Count 1'));
+ $same(true,substr_count($pdf,' re f')>250);
 });
 putenv('PAYMENT_CALLBACK_SECRET');putenv('PAIEMENTPRO_MERCHANT_ID');
 $bank=['battery_id'=>'B1','slot_id'=>'2','lock_status'=>'1','battery_capacity'=>'70','battery_abnormal'=>'0','cable_abnormal'=>'0'];

@@ -5,7 +5,7 @@
 <main class="management-main">
 <p class="admin-overline">PARC HEYCHARGE</p><h1>Terminaux et batteries</h1>
 <p>Retrouvez les terminaux du compte HeyCharge, synchronisez leur inventaire, puis activez les stations ouvertes à la location.</p>
-<section class="management-card"><h2>Compte HeyCharge et étiquettes</h2><form method="post" action="/admin/stations/discover"><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf'],ENT_QUOTES,'UTF-8') ?>"><button class="admin-ghost">Importer les stations du compte</button></form><p><a class="admin-site-link" href="/admin/stations/labels">Créer et imprimer toutes les étiquettes QR</a></p></section>
+<section class="management-card"><h2>Compte HeyCharge et étiquettes</h2><form method="post" action="/admin/stations/discover"><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf'],ENT_QUOTES,'UTF-8') ?>"><button class="admin-ghost">Importer les stations du compte</button></form><p><a class="admin-site-link" href="/admin/stations/labels">Prévisualiser les étiquettes</a> · <a class="admin-site-link" href="/admin/stations/labels.pdf">Télécharger le PDF A4</a></p></section>
 <section class="management-card"><h2>État du parc</h2><p><?= count($stations) ?> terminaux · <?php foreach ($totals as $row): ?><?= htmlspecialchars($row['status'],ENT_QUOTES,'UTF-8') ?> : <?= (int)$row['quantity'] ?> · <?php endforeach; ?></p></section>
 <section class="management-card"><h2>Terminaux</h2><div class="management-table-wrap"><table><thead><tr><th>Station</th><th>Connexion</th><th>Batteries</th><th>Disponibles</th><th>Charge min.</th><th>Dernière synchronisation</th><th>Actions</th></tr></thead><tbody>
 <?php foreach($stations as $station): ?>

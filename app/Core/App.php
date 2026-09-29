@@ -1,17 +1,6 @@
 <?php
 namespace App\Core;
 
-use App\Controllers\AdminController;
-use App\Controllers\AuditController;
-use App\Controllers\AuthController;
-use App\Controllers\PaymentController;
-use App\Controllers\PaymentLabController;
-use App\Controllers\PayoutConsoleController;
-use App\Controllers\RentalController;
-use App\Controllers\RentalOperationsController;
-use App\Controllers\SimulationController;
-use App\Controllers\StationController;
-use App\Controllers\UsersController;
 use App\Services\Audit;
 
 final class App
@@ -49,56 +38,11 @@ final class App
         register_shutdown_function(static function () use ($method, $path, $started): void {
             Audit::visit($method, $path, (int) http_response_code(), $started);
         });
-        $routes = [
-            'GET /' => [RentalController::class, 'index'],
-            'GET /rent' => [RentalController::class, 'index'],
-            'POST /rentals' => [RentalController::class, 'create'],
-            'GET /rentals/status' => [RentalController::class, 'status'],
-            'POST /api/paiementpro/rental-callback' => [PaymentController::class, 'callback'],
-            'GET /api/paiementpro/rental-callback' => [PaymentController::class, 'callback'],
-            'GET /api/heycharge/callback' => [StationController::class, 'callbackStatus'],
-            'POST /api/heycharge/callback' => [StationController::class, 'callbackStatus'],
-            'GET /payment/return' => [PaymentController::class, 'returnPage'],
-            'POST /api/paiementpro/payout-callback' => [PaymentLabController::class, 'payoutNotification'],
-            'GET /api/paiementpro/payout-callback' => [PaymentLabController::class, 'payoutNotification'],
-            'POST /api/paiementpro/test-callback' => [PaymentLabController::class, 'notification'],
-            'GET /payment/test-return' => [PaymentLabController::class, 'returnPage'],
-            'GET /admin/login' => [AuthController::class, 'loginPage'],
-            'POST /admin/login' => [AuthController::class, 'login'],
-            'POST /admin/logout' => [AuthController::class, 'logout'],
-            'POST /api/heycharge/callback/register' => [StationController::class, 'register'],
-            'POST /api/heycharge/callback/return' => [StationController::class, 'returned'],
-            'POST /api/heycharge/callback/status' => [StationController::class, 'status'],
-            'POST /admin/stations' => [StationController::class, 'save'],
-            'GET /admin/rentals' => [RentalOperationsController::class, 'index'],
-            'POST /admin/rentals/cancel' => [RentalOperationsController::class, 'cancelPending'],
-            'GET /admin/stations' => [StationController::class, 'index'],
-            'POST /admin/stations/discover' => [StationController::class, 'discover'],
-            'GET /admin/stations/labels' => [StationController::class, 'labels'],
-            'GET /admin/stations/detail' => [StationController::class, 'detail'],
-            'POST /admin/stations/toggle' => [StationController::class, 'toggle'],
-            'POST /admin/stations/sync' => [StationController::class, 'sync'],
-            'POST /admin/stations/release-battery' => [StationController::class, 'releaseBattery'],
-            'POST /admin/stations/confirm-reinsertion' => [StationController::class, 'confirmReinsertion'],
-            'POST /admin/stations/reconcile' => [StationController::class, 'reconcile'],
-            'GET /admin' => [AdminController::class, 'index'],
-            'POST /admin/prices' => [AdminController::class, 'prices'],
-            'POST /admin/batteries' => [AdminController::class, 'battery'],
-            'POST /admin/modes' => [AdminController::class, 'modes'],
-            'GET /admin/users' => [UsersController::class, 'index'],
-            'POST /admin/users' => [UsersController::class, 'create'],
-            'POST /admin/users/update' => [UsersController::class, 'update'],
-            'POST /admin/roles/permissions' => [UsersController::class, 'permissions'],
-            'GET /admin/audit' => [AuditController::class, 'index'],
-            'GET /admin/payout' => [PayoutConsoleController::class, 'index'],
-            'POST /admin/payment-lab/payin' => [PaymentLabController::class, 'payin'],
-            'POST /admin/payment-lab/payout' => [PaymentLabController::class, 'payout'],
-            'POST /admin/payment-lab/reconcile' => [PaymentLabController::class, 'reconcile'],
-            'POST /admin/payment-lab/archive' => [PaymentLabController::class, 'archive'],
-            'POST /admin/simulation/paid' => [SimulationController::class, 'paid'],
-            'POST /admin/simulation/returned' => [SimulationController::class, 'returned'],
-            'POST /admin/simulation/reconcile' => [SimulationController::class, 'reconcile'],
-        ];
+        $routes = array_merge(
+            require dirname(__DIR__, 2) . '/routes/web.php',
+            require dirname(__DIR__, 2) . '/routes/api.php',
+            require dirname(__DIR__, 2) . '/routes/admin.php',
+        );
         try {
             $handler = $routes[$method . ' ' . $path] ?? null;
             if ($handler === null) {

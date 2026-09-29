@@ -9,6 +9,7 @@ use App\Services\HeyChargeOpenApi;
 use App\Services\IntegrationSettings;
 use App\Services\HeyChargeAccountService;
 use App\Services\StationQr;
+use App\Services\StationLabelPdf;
 final class StationController {
  public function callbackStatus():void {
   header('Content-Type: application/json; charset=utf-8');
@@ -30,17 +31,32 @@ final class StationController {
  }
  public function labels():void {
   Auth::requirePermission('fleet.manage');
+  $labels=$this->labelData();
+  App::view('station_labels',compact('labels'));
+ }
+ public function labelsPdf():void {
+  Auth::requirePermission('fleet.manage');
+  $labels=$this->labelData();
+  if(!$labels){http_response_code(404);echo 'Aucune station à imprimer';return;}
+  $pdf=(new StationLabelPdf)->render($labels);
+  header('Content-Type: application/pdf');
+  header('Content-Disposition: attachment; filename="thiebapower-etiquettes-stations-a4.pdf"');
+  header('Cache-Control: private, no-store');
+  header('Content-Length: '.strlen($pdf));
+  echo $pdf;
+ }
+ private function labelData():array {
   $db=App::db();$imei=(string)($_GET['imei']??'');
-  if($imei!==''&&!preg_match('/^[A-Za-z0-9_-]{1,120}$/D',$imei)){http_response_code(404);return;}
+  if($imei!==''&&!preg_match('/^[A-Za-z0-9_-]{1,120}$/D',$imei)){http_response_code(404);return [];}
   $q=$db->prepare("SELECT imei,label,enabled FROM stations WHERE (?='' OR imei=?) ORDER BY label,imei");$q->execute([$imei,$imei]);
   $stations=$q->fetchAll();
-  if($imei!==''&&!$stations){http_response_code(404);return;}
+  if($imei!==''&&!$stations){http_response_code(404);return [];}
   $labels=[];$base=rtrim(App::env('APP_URL'),'/');
   foreach($stations as $station){
    try {$url=$base.'/rent?station='.rawurlencode($station['imei']);$station['qr']=StationQr::svg($url);$station['url']=$url;$labels[]=$station;}
    catch(\InvalidArgumentException $e){error_log('Station label '.$station['imei'].': '.$e->getMessage());}
   }
-  App::view('station_labels',compact('labels'));
+  return $labels;
  }
  public function detail():void {
   Auth::requirePermission('fleet.manage');

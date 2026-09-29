@@ -75,7 +75,7 @@ final class AutomaticDepositRefundService {
   }
   if($result==='mismatch')throw new \RuntimeException('Discordance de reversement fournisseur (session, référence, montant, devise, canal ou bénéficiaire)');
   if($result!=='succeeded')return false;
-  $db->prepare("UPDATE deposit_settlements SET status='refunded' WHERE id=? AND status='processing'")->execute([$settlementId]);
+  $db->prepare("UPDATE deposit_settlements SET status='refunded',confirmed_at=UTC_TIMESTAMP() WHERE id=? AND status='processing'")->execute([$settlementId]);
   return true;
  }
 }

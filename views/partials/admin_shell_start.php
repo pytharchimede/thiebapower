@@ -4,6 +4,7 @@ $adminPath=parse_url($_SERVER['REQUEST_URI']??'/admin',PHP_URL_PATH)?:'/admin';
 $navItems=[
  ['Tableau de bord','/admin','dashboard.view','overview'],
  ['Locations','/admin/rentals','dashboard.view','rentals'],
+ ['Caisse et finances','/admin/finance','finance.view','finance'],
  ['Terminaux','/admin/stations','fleet.manage','stations'],
  ['Étiquettes QR','/admin/stations/labels','fleet.manage','labels'],
  ['Tarification','/admin#pricing','pricing.manage','pricing'],

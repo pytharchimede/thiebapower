@@ -2,6 +2,10 @@
 
 Application PHP 8.2+ et MariaDB pour la location de batteries externes sur cPanel. Le dépôt sépare les routes, contrôleurs, services, modèle, vues et accès aux données. Le domaine `thiebapower.com` charge `public/index.php` depuis `/home/ifmapci/repositories/thiebapower`, tandis que les ressources publiques sont copiées dans `/home/ifmapci/thiebapower.com/`.
 
+Les routes sont déclarées dans `routes/web.php` (kiosque), `routes/api.php` (notifications fournisseurs) et `routes/admin.php` (administration). `App::run()` les charge dans cet ordre et conserve les mêmes URL et contrôles d'accès dans les contrôleurs.
+
+Administration : `/admin/stations/labels.pdf` télécharge une page PDF A4 paysage par station, avec une zone imprimée de 157 × 150 mm commençant à 70 mm du bord gauche et 50 mm du haut. Ajouter `?imei=...` pour une station. `/admin/finance` donne les points quotidiens, les paiements de production confirmés, les cautions remboursées et la caisse physique séparée. La migration `database/migrations/20260929_finance_cash.sql` est à exécuter une seule fois avant d'ouvrir cette page. Les remboursements antérieurs à cette migration n'ayant pas de date de confirmation fiable, ils ne sont pas réaffectés à une période arbitraire.
+
 ## Mise en service
 
 Lire [le guide de déploiement](docs/v1-deployment.md). Les migrations antérieures sont déjà appliquées sur l'installation existante ; tirer le code puis appliquer `database/migrations/20260928_v1_accounts_audit.sql` **avant** de rouvrir `/admin`. Ne jamais publier `.env`. Vérifier les fichiers avec `find app public views bin tests -name '*.php' -print0 | xargs -0 -n1 php -l` et `php tests/v1_smoke.php`.
