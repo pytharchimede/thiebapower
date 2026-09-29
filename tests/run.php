@@ -64,7 +64,7 @@ $test('route files expose protected finance and downloadable label PDF',function
 $test('label PDF has an exact landscape A4 media box and vector QR',function()use($same){
  $pdf=(new App\Services\StationLabelPdf)->render([['imei'=>'DCHEY02603000938','label'=>'Station test','url'=>'https://thiebapower.com/rent?station=DCHEY02603000938']]);
  $same(true,str_contains($pdf,'/MediaBox [0 0 841.89 595.28]'));
- $same(true,str_contains($pdf,'0.00 0.00 841.89 595.28 re f'), 'A4 background covers the entire page');
+ $same(true,str_contains($pdf,'141.73 198.43 558.43 198.43 re f'), '197 x 70 mm artwork centered with 50/70 mm margins');
  $same(true,str_contains($pdf,'/Count 1'));
  $same(true,substr_count($pdf,' re f')>250);
 });

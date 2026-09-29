@@ -26,35 +26,28 @@ final class StationLabelPdf {
  }
  private function page(array $station):string {
   $this->commands=[];
-  // Full-bleed A4 background; the label content keeps its specified 70 mm
-  // side margins, 50 mm top margin and 8 mm internal padding.
-  $this->rect(0,0,self::PAGE_W,self::PAGE_H,'#092e37');
-  $this->rect(0,0,self::PAGE_W,8,'#0c6471');
-  $this->rect(0,202,self::PAGE_W,8,'#0c6471');
-  $this->rect(67,47,163,156,'#237581');
-  $this->rect(70,50,157,150,'#103d46');
-  $this->rect(70,50,157,8,'#0c6471');
-  $this->text(77,56,'THIEBA',14,'#ffffff',true);
-  $this->text(96,56,'POWER',14,'#ffba5e',true);
-  $this->text(77,72,'BATTERIES EXTERNES EN LIBRE SERVICE',7,'#b8ded4',true);
-  $this->text(77,84,'Louez une batterie',18,'#ffffff',true);
-  $this->text(77,92,'externe.',18,'#ffba5e',true);
-  $this->text(77,103,'Scannez le QR code avec votre téléphone.',8,'#e5f3f1');
-  $this->text(77,109,'Choisissez, payez, puis récupérez la batterie.',8,'#e5f3f1');
-  $this->rect(176,66,44,54,'#ffffff');
-  $this->qr($station['url'],180,68,36);
-  $this->text(179,117,'SCANNEZ POUR LOUER',8,'#103d46',true);
-  $this->rect(77,127,143,.4,'#629da1');
-  foreach ([['01','SCANNEZ',77],['02','CHOISISSEZ',113],['03','PAYEZ',149],['04','RÉCUPÉREZ',184]] as [$number,$title,$x]) {
-   $this->rect($x,134,9,9,'#ffba5e');$this->text($x+1.4,140.3,$number,9,'#103d46',true);
-   $this->text($x,150,$title,7,'#ffffff',true);
+  // A4 landscape: 50 mm on the left and right, 70 mm above and below.
+  // Artwork is exactly 197 x 70 mm; the content has 6 mm of internal space.
+  $this->rect(50,70,197,70,'#103d46');
+  $this->rect(50,70,197,5,'#0c6471');
+  $this->text(57,80,'THIEBA',14,'#ffffff',true);
+  $this->text(76,80,'POWER',14,'#ffba5e',true);
+  $this->text(57,88,'BATTERIES EXTERNES EN LIBRE SERVICE',7,'#b8ded4',true);
+  $this->text(57,99,'Louez une batterie externe.',18,'#ffffff',true);
+  $this->text(57,107,'Scannez le QR code, payez et récupérez votre batterie.',8,'#e5f3f1');
+  $this->rect(57,113,136,.35,'#629da1');
+  foreach ([['01','SCANNEZ',57],['02','CHOISISSEZ',91],['03','PAYEZ',125],['04','RÉCUPÉREZ',159]] as [$number,$title,$x]) {
+   $this->rect($x,118,8,8,'#ffba5e');
+   $this->text($x+1.2,123.8,$number,8,'#103d46',true);
+   $this->text($x+9.5,123.5,$title,6.8,'#ffffff',true);
   }
-  $this->text(77,163,'PAIEMENT MOBILE',7,'#b8ded4',true);
-  $this->text(77,170,'Wave    Orange Money    MTN MoMo    Moov Money',8,'#ffffff',true);
+  $this->text(57,133,'Wave  ·  Orange Money  ·  MTN MoMo  ·  Moov Money',8,'#e5f3f1');
+  $this->rect(201,76,40,58,'#ffffff');
+  $this->qr($station['url'],205,78,32);
+  $this->text(204,117,'SCANNEZ POUR LOUER',7,'#103d46',true);
   $label=trim((string)($station['label']??''));
-  $this->text(77,181,self::shorten($label!==''?$label:'Station Thiebapower',42),9,'#ffba5e',true);
-  $this->text(77,188,'Station '.(string)$station['imei'],7,'#d1e7e6');
-  $this->text(77,194,self::shorten($station['url'],92),6,'#d1e7e6');
+  $this->text(204,125,self::shorten($label!==''?$label:'Station Thiebapower',22),7,'#103d46',true);
+  $this->text(204,131,self::shorten((string)$station['imei'],25),6,'#315b61');
   return implode("\n",$this->commands)."\n";
  }
  private function qr(string $url,float $x,float $y,float $size):void {
