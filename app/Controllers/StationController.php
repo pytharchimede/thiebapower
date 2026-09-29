@@ -61,7 +61,7 @@ final class StationController {
   $serial=(string)($_POST['confirm_serial']??'');
   if(!preg_match('/^[A-Za-z0-9_-]{1,120}$/D',$imei)||!$batteryId||!preg_match('/^[A-Za-z0-9_-]{1,100}$/D',$serial)||IntegrationSettings::all()['heycharge']!=='normal'){http_response_code(422);exit('Commande invalide');}
   $db=App::db();$q=$db->prepare('SELECT id,serial,slot_id,status FROM batteries WHERE id=? AND station_imei=?');$q->execute([$batteryId,$imei]);$battery=$q->fetch();
-  if(!$battery||$battery['serial']!==$serial||!in_array($battery['status'],['available','maintenance'],true)||!$battery['slot_id']){http_response_code(409);exit('Batterie indisponible pour une éjection manuelle');}
+  if(!$battery||$battery['serial']!==$serial||!in_array($battery['status'],['available','maintenance','charging'],true)||!$battery['slot_id']){http_response_code(409);exit('Batterie indisponible pour une éjection manuelle');}
   try {
    $remote=(new HeyChargeOpenApi)->station($imei);
    if(($remote['imei']??'')!==$imei||!StationFleetService::contains($remote,$serial)||!StationFleetService::battery($remote,$serial)||
@@ -71,7 +71,7 @@ final class StationController {
   try {
    $q=$db->prepare('SELECT serial,slot_id,status FROM batteries WHERE id=? AND station_imei=? FOR UPDATE');$q->execute([$batteryId,$imei]);$current=$q->fetch();
    $q=$db->prepare("SELECT id FROM manual_release_commands WHERE battery_id=? AND status IN ('requested','unknown') LIMIT 1");$q->execute([$batteryId]);
-   if(!$current||$current['serial']!==$serial||$current['slot_id']!==$battery['slot_id']||!in_array($current['status'],['available','maintenance'],true)||$q->fetchColumn())throw new \LogicException('Commande déjà en cours ou batterie réservée');
+   if(!$current||$current['serial']!==$serial||$current['slot_id']!==$battery['slot_id']||!in_array($current['status'],['available','maintenance','charging'],true)||$q->fetchColumn())throw new \LogicException('Commande déjà en cours ou batterie réservée');
    $db->prepare("UPDATE batteries SET status='maintenance' WHERE id=?")->execute([$batteryId]);
    $db->prepare('INSERT INTO manual_release_commands(battery_id,station_imei,battery_serial,slot_id,requested_by) VALUES(?,?,?,?,?)')->execute([$batteryId,$imei,$serial,$battery['slot_id'],Auth::id()]);
    $commandId=(int)$db->lastInsertId();$db->commit();
@@ -100,7 +100,7 @@ final class StationController {
    $q=$db->prepare('SELECT serial,status,station_imei,slot_id FROM batteries WHERE id=? FOR UPDATE');$q->execute([$batteryId]);$battery=$q->fetch();
    $q=$db->prepare("SELECT id FROM manual_release_commands WHERE battery_id=? AND station_imei=? AND battery_serial=? AND status IN ('requested','unknown') ORDER BY id DESC LIMIT 1 FOR UPDATE");$q->execute([$batteryId,$imei,$serial]);$commandId=$q->fetchColumn();
    if(!$battery||$battery['serial']!==$serial||$battery['status']!=='maintenance'||$battery['station_imei']!==$imei||!$commandId)throw new \LogicException('Éjection non éligible à une réinsertion');
-   $status=StationFleetService::rentable($item)?'available':'maintenance';
+   $status=StationFleetService::rentable($item)?'available':'charging';
    $db->prepare('UPDATE batteries SET status=?,slot_id=?,battery_capacity=?,battery_abnormal=?,cable_abnormal=? WHERE id=?')
     ->execute([$status,(string)$item['slot_id'],min(100,max(0,(int)($item['battery_capacity']??0))),(int)($item['battery_abnormal']??0)?1:0,(int)($item['cable_abnormal']??0)?1:0,$batteryId]);
    $db->prepare("UPDATE manual_release_commands SET status='reinserted',confirmed_at=UTC_TIMESTAMP() WHERE id=?")->execute([$commandId]);

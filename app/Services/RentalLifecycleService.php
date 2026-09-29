@@ -3,28 +3,28 @@ namespace App\Services;
 use App\Core\App;
 use App\Repositories\RentalRepository;
 final class RentalLifecycleService {
- /** A verified provider failure releases only a pending reservation. */
+ /** A verified failure waits until the two-minute reservation window ends. */
  public function failedPayment(string $reference):bool {
   $db=App::db();$db->beginTransaction();
   try {
-   $q=$db->prepare('SELECT * FROM rentals WHERE reference=? FOR UPDATE');$q->execute([$reference]);$r=$q->fetch();
+   $q=$db->prepare('SELECT r.*, r.reservation_expires_at<=UTC_TIMESTAMP() AS expired FROM rentals r WHERE r.reference=? FOR UPDATE');$q->execute([$reference]);$r=$q->fetch();
    $changed=false;
    if($r && $r['status']==='pending_payment'){
     $db->prepare("UPDATE rentals SET status='payment_failed' WHERE id=?")->execute([$r['id']]);
-    $db->prepare("UPDATE batteries SET status='available' WHERE id=? AND status='reserved'")->execute([$r['battery_id']]);
+    if((int)$r['expired']===1)$db->prepare("UPDATE batteries SET status='available' WHERE id=? AND status='reserved'")->execute([$r['battery_id']]);
     $changed=true;
    }
    $db->commit();
    return $changed;
   }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
  }
- /** Expire an unconfirmed payment without claiming the provider rejected it. */
+ /** Release a reserved battery after the payment window, without an ejection. */
  public function expirePendingPayment(string $reference):bool {
   $db=App::db();$db->beginTransaction();
   try {
    $q=$db->prepare('SELECT id,battery_id,status,reservation_expires_at, reservation_expires_at<=UTC_TIMESTAMP() AS expired FROM rentals WHERE reference=? FOR UPDATE');$q->execute([$reference]);$r=$q->fetch();
-   if(!$r||$r['status']!=='pending_payment'||(int)$r['expired']!==1){$db->commit();return false;}
-   $db->prepare("UPDATE rentals SET status='payment_timeout' WHERE id=?")->execute([$r['id']]);
+   if(!$r||!in_array($r['status'],['pending_payment','payment_failed'],true)||(int)$r['expired']!==1){$db->commit();return false;}
+   if($r['status']==='pending_payment')$db->prepare("UPDATE rentals SET status='payment_timeout' WHERE id=?")->execute([$r['id']]);
    $db->prepare("UPDATE batteries SET status='available' WHERE id=? AND status='reserved'")->execute([$r['battery_id']]);
    $db->commit();
    Audit::event('payment.reservation_timeout','rental',$reference);
@@ -38,6 +38,7 @@ final class RentalLifecycleService {
    $q=$db->prepare('SELECT * FROM rentals WHERE reference=? FOR UPDATE');$q->execute([$reference]);$r=$q->fetch();
    if($r && in_array($r['status'],['payment_failed','payment_timeout'],true)){
     $db->prepare("UPDATE rentals SET status='payment_review' WHERE id=?")->execute([$r['id']]);
+    $db->prepare("UPDATE batteries SET status='available' WHERE id=? AND status='reserved'")->execute([$r['battery_id']]);
     $db->commit();
     Audit::event('payment.late_success_review','rental',$reference);
     return;
@@ -98,7 +99,7 @@ final class RentalLifecycleService {
   if($returnStation!==null && !preg_match('/^[A-Za-z0-9_-]{1,32}$/D',$slot))throw new \RuntimeException('Emplacement de retour invalide');
   $location=null;
   if($returnStation!==null && $returnBattery!==null){
-   $status=StationFleetService::rentable($returnBattery)?'available':'maintenance';
+   $status=StationFleetService::rentable($returnBattery)?'available':'charging';
    $location=['status'=>$status,'station_imei'=>$returnStation,'slot_id'=>$slot,
     'battery_capacity'=>min(100,max(0,(int)($returnBattery['battery_capacity']??0))),
     'battery_abnormal'=>(int)($returnBattery['battery_abnormal']??0)?1:0,

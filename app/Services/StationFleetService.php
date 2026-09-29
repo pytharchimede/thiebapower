@@ -19,12 +19,12 @@ final class StationFleetService {
     $pending=false;
     if($old){$q=$db->prepare("SELECT id FROM manual_release_commands WHERE battery_id=? AND status IN ('requested','unknown') LIMIT 1");$q->execute([$old['id']]);$pending=(bool)$q->fetchColumn();}
     if($old && in_array($old['status'],['reserved','rented'],true))$status=$old['status'];
-    else $status=$pending?'maintenance':(self::rentable($item)?'available':'maintenance');
+    else $status=$pending?'maintenance':(self::rentable($item)?'available':'charging');
     $db->prepare('INSERT INTO batteries(serial,status,station_imei,slot_id,battery_capacity,battery_abnormal,cable_abnormal) VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE status=VALUES(status),station_imei=VALUES(station_imei),slot_id=VALUES(slot_id),battery_capacity=VALUES(battery_capacity),battery_abnormal=VALUES(battery_abnormal),cable_abnormal=VALUES(cable_abnormal)')
      ->execute([$serial,$status,$imei,$slot,min(100,max(0,(int)($item['battery_capacity']??0))),(int)($item['battery_abnormal']??0)?1:0,(int)($item['cable_abnormal']??0)?1:0]);
    }
    $q=$db->prepare("SELECT id,serial,status FROM batteries WHERE station_imei=?");$q->execute([$imei]);
-   foreach($q->fetchAll() as $row)if(!in_array($row['serial'],$seen,true)&&$row['status']==='available')$db->prepare("UPDATE batteries SET status='maintenance' WHERE id=?")->execute([$row['id']]);
+   foreach($q->fetchAll() as $row)if(!in_array($row['serial'],$seen,true)&&in_array($row['status'],['available','charging'],true))$db->prepare("UPDATE batteries SET status='maintenance' WHERE id=?")->execute([$row['id']]);
    $q=$db->prepare("SELECT id,battery_id,battery_serial FROM manual_release_commands WHERE station_imei=? AND status IN ('requested','unknown') FOR UPDATE");$q->execute([$imei]);
    foreach($q->fetchAll() as $command)if(!in_array($command['battery_serial'],$seen,true)){
     $db->prepare("UPDATE manual_release_commands SET status='confirmed',confirmed_at=UTC_TIMESTAMP() WHERE id=?")->execute([$command['id']]);
@@ -35,7 +35,8 @@ final class StationFleetService {
  }
  public static function rentable(array $battery):bool {
   return preg_match('/^[A-Za-z0-9_-]{1,100}$/D',(string)($battery['battery_id']??''))===1
-   && preg_match('/^[A-Za-z0-9_-]{1,32}$/D',(string)($battery['slot_id']??''))===1;
+   && preg_match('/^[A-Za-z0-9_-]{1,32}$/D',(string)($battery['slot_id']??''))===1
+   && (int)($battery['battery_capacity']??0)>=70;
  }
  public static function availableAt(array $station,string $serial,string $slot):bool {
   foreach($station['batteries']??[] as $battery)

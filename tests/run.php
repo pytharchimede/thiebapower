@@ -55,10 +55,10 @@ $test('payment and hardware callbacks have separate routes',function()use($same)
  $same(false,str_contains($payment,'/api/heycharge/callback?token='));
 });
 putenv('PAYMENT_CALLBACK_SECRET');putenv('PAIEMENTPRO_MERCHANT_ID');
-$bank=['battery_id'=>'B1','slot_id'=>'2','lock_status'=>'1','battery_capacity'=>'45','battery_abnormal'=>'0','cable_abnormal'=>'0'];
-$test('inserted power bank is rentable',fn()=>$same(true,StationFleetService::availableAt(['batteries'=>[$bank]],'B1','2')));
+$bank=['battery_id'=>'B1','slot_id'=>'2','lock_status'=>'1','battery_capacity'=>'70','battery_abnormal'=>'0','cable_abnormal'=>'0'];
+$test('inserted power bank at 70 percent is rentable',fn()=>$same(true,StationFleetService::availableAt(['batteries'=>[$bank]],'B1','2')));
 $test('wrong slot is not rentable',fn()=>$same(false,StationFleetService::availableAt(['batteries'=>[$bank]],'B1','3')));
 $test('cable indicator does not hide inserted battery',fn()=>$same(true,StationFleetService::rentable(array_replace($bank,['cable_abnormal'=>'1']))));
-$test('charge indicator does not hide inserted battery',fn()=>$same(true,StationFleetService::rentable(array_replace($bank,['battery_capacity'=>'5']))));
+$test('inserted battery below 70 percent remains charging',fn()=>$same(false,StationFleetService::rentable(array_replace($bank,['battery_capacity'=>'69']))));
 $test('missing slot is not rentable',fn()=>$same(false,StationFleetService::rentable(array_replace($bank,['slot_id'=>'']))));
 fwrite(STDOUT,count($tests)." tests OK\n");
