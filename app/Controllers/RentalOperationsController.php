@@ -20,8 +20,8 @@ final class RentalOperationsController {
   Auth::requirePermission('rentals.manage',true);
   $reference=(string)($_POST['reference']??'');$confirmation=(string)($_POST['confirm_reference']??'');$proof=trim((string)($_POST['provider_proof']??''));
   if(!preg_match('/^TBP-[A-F0-9]{16}$/D',$reference)||!hash_equals($reference,$confirmation)||strlen($proof)<6||strlen($proof)>120){http_response_code(422);exit('Référence ou preuve fournisseur invalide');}
-  $q=App::db()->prepare('SELECT status,created_at FROM rentals WHERE reference=?');$q->execute([$reference]);$r=$q->fetch();
-  if(!$r||$r['status']!=='pending_payment'||strtotime($r['created_at'].' UTC')>time()-900){http_response_code(409);exit('Attendre la fin de la session de paiement');}
+  $q=App::db()->prepare('SELECT status,reservation_expires_at, reservation_expires_at<=UTC_TIMESTAMP() AS expired FROM rentals WHERE reference=?');$q->execute([$reference]);$r=$q->fetch();
+  if(!$r||$r['status']!=='pending_payment'||(int)$r['expired']!==1){http_response_code(409);exit('Attendre la fin de la session de paiement');}
   if(!(new RentalLifecycleService)->failedPayment($reference)){http_response_code(409);exit('État de la location modifié');}
   Audit::event('rental.pending_cancelled','rental',$reference,['provider_proof'=>$proof]);
   App::redirect('/admin/rentals?status=payment_failed');
