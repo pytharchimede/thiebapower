@@ -33,6 +33,8 @@ Dans `/admin` → Terminaux, enregistrer ou constater chaque IMEI, cliquer **Syn
 
 Dans le détail du terminal, l'administrateur peut éjecter une batterie disponible ou en maintenance en recopiant son numéro de série. La commande la retire immédiatement des batteries louables ; la lecture API suivante confirme sa disparition du terminal. En cas de réponse réseau inconnue, ne pas répéter la commande : vérifier physiquement puis synchroniser. Les batteries réservées ou louées ne peuvent jamais être éjectées par cette commande.
 
+Si une batterie est éjectée puis réinsérée avant que le worker ne constate son absence, l'administrateur peut utiliser **Vérifier la réinsertion** sur la ligne de la batterie. L'application consulte le terminal, contrôle le numéro et l'emplacement, clôt la commande en `reinserted` et restaure `available` uniquement si les indicateurs matériels et la charge le permettent. Appliquer `database/migrations/20260929_manual_battery_reinsertion.sql` après la migration d'éjection.
+
 Créer la tâche cron cPanel suivante toutes les minutes, en adaptant uniquement le chemin du binaire PHP si nécessaire :
 
 ```cron

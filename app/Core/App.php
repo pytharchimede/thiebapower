@@ -76,6 +76,7 @@ final class App
             'POST /admin/stations/toggle' => [StationController::class, 'toggle'],
             'POST /admin/stations/sync' => [StationController::class, 'sync'],
             'POST /admin/stations/release-battery' => [StationController::class, 'releaseBattery'],
+            'POST /admin/stations/confirm-reinsertion' => [StationController::class, 'confirmReinsertion'],
             'POST /admin/stations/reconcile' => [StationController::class, 'reconcile'],
             'GET /admin' => [AdminController::class, 'index'],
             'POST /admin/prices' => [AdminController::class, 'prices'],

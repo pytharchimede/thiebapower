@@ -85,6 +85,30 @@ final class StationController {
   }
   App::redirect('/admin/stations/detail?imei='.rawurlencode($imei));
  }
+ public function confirmReinsertion():void {
+  Auth::requirePermission('fleet.manage',true);
+  $imei=(string)($_POST['imei']??'');$batteryId=filter_var($_POST['battery_id']??null,FILTER_VALIDATE_INT);
+  $serial=(string)($_POST['confirm_serial']??'');
+  if(!preg_match('/^[A-Za-z0-9_-]{1,120}$/D',$imei)||!$batteryId||!preg_match('/^[A-Za-z0-9_-]{1,100}$/D',$serial)||IntegrationSettings::all()['heycharge']!=='normal'){http_response_code(422);exit('Confirmation invalide');}
+  try {
+   $remote=(new HeyChargeOpenApi)->station($imei);
+   $item=StationFleetService::battery($remote,$serial);
+   if(($remote['imei']??'')!==$imei||!$item||!preg_match('/^[A-Za-z0-9_-]{1,32}$/D',(string)($item['slot_id']??'')))throw new \RuntimeException('Batterie non retrouvée dans ce terminal');
+  }catch(\Throwable $e){error_log('Manual reinsertion verification: '.$e->getMessage());http_response_code(503);exit('Réinsertion non vérifiée auprès de HeyCharge');}
+  $db=App::db();$db->beginTransaction();
+  try {
+   $q=$db->prepare('SELECT serial,status,station_imei,slot_id FROM batteries WHERE id=? FOR UPDATE');$q->execute([$batteryId]);$battery=$q->fetch();
+   $q=$db->prepare("SELECT id FROM manual_release_commands WHERE battery_id=? AND station_imei=? AND battery_serial=? AND status IN ('requested','unknown') ORDER BY id DESC LIMIT 1 FOR UPDATE");$q->execute([$batteryId,$imei,$serial]);$commandId=$q->fetchColumn();
+   if(!$battery||$battery['serial']!==$serial||$battery['status']!=='maintenance'||$battery['station_imei']!==$imei||!$commandId)throw new \LogicException('Éjection non éligible à une réinsertion');
+   $status=StationFleetService::rentable($item)?'available':'maintenance';
+   $db->prepare('UPDATE batteries SET status=?,slot_id=?,battery_capacity=?,battery_abnormal=?,cable_abnormal=? WHERE id=?')
+    ->execute([$status,(string)$item['slot_id'],min(100,max(0,(int)($item['battery_capacity']??0))),(int)($item['battery_abnormal']??0)?1:0,(int)($item['cable_abnormal']??0)?1:0,$batteryId]);
+   $db->prepare("UPDATE manual_release_commands SET status='reinserted',confirmed_at=UTC_TIMESTAMP() WHERE id=?")->execute([$commandId]);
+   $db->commit();
+  }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();http_response_code(409);exit('Réinsertion non éligible');}
+  Audit::event('battery.manual_reinsertion_confirmed','battery',$serial,['station'=>$imei,'command_id'=>$commandId,'status'=>$status]);
+  App::redirect('/admin/stations/detail?imei='.rawurlencode($imei));
+ }
  public function reconcile():void {
   Auth::requirePermission('rentals.manage',true);
   $reference=(string)($_POST['reference']??'');
