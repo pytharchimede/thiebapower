@@ -25,7 +25,9 @@ try {
   try {(new RentalLifecycleService)->reconcileStation($row['reference']);}
   catch(\Throwable $e){error_log('HeyCharge reconciliation '.$row['reference'].': '.$e->getMessage());}
  }
- $stations=$db->query("SELECT imei FROM stations WHERE enabled=1 AND (last_seen_at IS NULL OR last_seen_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL 5 MINUTE)) ORDER BY last_seen_at LIMIT 5")->fetchAll();
+ // A registration callback creates a disabled station. Fetch its actual inventory
+ // automatically, but leave activation to an operator after verification.
+ $stations=$db->query("SELECT imei FROM stations WHERE (enabled=1 AND (last_seen_at IS NULL OR last_seen_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL 5 MINUTE))) OR (enabled=0 AND last_seen_at IS NULL AND EXISTS (SELECT 1 FROM heycharge_events e WHERE e.imei=stations.imei AND e.event_type='register' AND e.received_at>DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY))) ORDER BY last_seen_at LIMIT 5")->fetchAll();
  foreach($stations as $row){
   try {(new StationFleetService)->sync($row['imei']);}
   catch(\Throwable $e){
