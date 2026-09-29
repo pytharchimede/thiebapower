@@ -65,14 +65,7 @@
 <input type="hidden" name="csrf" value="<?=htmlspecialchars($csrf,ENT_QUOTES,'UTF-8')?>">
 <label>Numéro du bénéficiaire<input name="phone" type="tel" required placeholder="+225...">
 </label>
-<label>Canal<select name="channel" required>
-<option value="">Sélectionner</option>
-<option value="WAVECI">Wave CI</option>
-<option value="MOMOCI">MTN MoMo CI</option>
-<option value="OMCIV">Orange Money CI</option>
-<option value="FLOOZ">Flooz</option>
-</select>
-</label>
+<?php $paymentField='channel';$paymentLegend='Canal';require __DIR__.'/partials/payment_channels.php'; ?>
 <label class="check">
 <input type="checkbox" name="confirm_amount" value="200" required>Je confirme le versement réel de 200 FCFA.</label>
 <button class="button" <?= $enabled && $labOpen === 0 && $canSend ? '' : 'disabled' ?>>Envoyer 200 FCFA à Paiement Pro</button>

@@ -1,6 +1,6 @@
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scanner pour louer · Thiebapower</title><link rel="stylesheet" href="/style.css"></head>
 <body class="kiosk kiosk-qr-page"><header class="kiosk-header"><a class="kiosk-logo" href="/">THIEBA<span>POWER</span></a><span>Votre énergie, partout</span></header>
-<main class="kiosk-qr-shell"><section class="kiosk-qr-copy"><span class="kiosk-tag">LIBRE SERVICE · CÔTE D’IVOIRE</span><h1>Une batterie.<br><em>Votre liberté.</em></h1><p>Scannez le QR code avec votre téléphone. Choisissez une batterie, réglez votre location et récupérez-la dans la station.</p></section>
+<main class="kiosk-qr-shell"><section class="kiosk-qr-copy"><span class="kiosk-tag">LIBRE SERVICE · CÔTE D’IVOIRE</span><h1>Une batterie.<br><em>Votre liberté.</em></h1><p>Scannez le QR code avec votre téléphone. Choisissez une batterie, réglez votre location et récupérez-la dans la station.</p><?php require __DIR__.'/partials/payment_logos.php'; ?></section>
 <section class="kiosk-qr-panel" aria-label="QR code de location">
 <?php if($selected!==''&&$qr): ?>
  <span class="admin-overline">STATION THIEBAPOWER</span><h2>Scannez pour louer</h2><div class="kiosk-qr-art"><?= $qr ?></div><p class="station-identity"><?= htmlspecialchars($selected,ENT_QUOTES,'UTF-8') ?></p><p>Ouvrez l’appareil photo de votre téléphone et pointez-le sur ce QR code.</p>

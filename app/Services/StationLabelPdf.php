@@ -49,7 +49,10 @@ final class StationLabelPdf {
    $this->text($x+1.2,123.8,$number,8,'#103d46',true);
    $this->text($x+9.5,123.5,$title,6.8,'#ffffff',true);
   }
-  $this->text(57,133,'Wave  ·  Orange Money  ·  MTN MoMo  ·  Moov Money',8,'#e5f3f1');
+  foreach([57,68,79,90] as $i=>$logoX){
+   $this->commands[]='q '.self::n(self::pt(8)).' 0 0 '.self::n(self::pt(8)).' '.self::n(self::pt($logoX)).' '.self::n(self::pt(210-128-8)).' cm /Im'.$i.' Do Q';
+  }
+  $this->text(103,133.5,'VISA',11,'#ffffff',true);
   $this->rect(201,76,40,58,'#ffffff');
   $this->qr($station['url'],204,77,34);
   $this->text(204,117,'SCANNEZ POUR LOUER',7,'#103d46',true);
@@ -72,10 +75,18 @@ final class StationLabelPdf {
   $catalog=$add('');$pages=$add('');
   $font=$add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
   $bold=$add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  $imageResources=[];
+  foreach(['wave','om','momo','flooz'] as $i=>$name){
+   $path=dirname(__DIR__,2).'/public/images/payments/logo_'.$name.'.jpg';
+   $bytes=file_get_contents($path);$dimensions=getimagesize($path);
+   if($bytes===false||$dimensions===false)throw new \RuntimeException('Logo de paiement introuvable');
+   $id=$add('<< /Type /XObject /Subtype /Image /Width '.$dimensions[0].' /Height '.$dimensions[1].' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '.strlen($bytes).' >>'."\nstream\n".$bytes."\nendstream");
+   $imageResources[]='/Im'.$i.' '.$id.' 0 R';
+  }
   $kids=[];
   foreach ($stations as $station) {
    $content=$this->page($station);$stream=$add('<< /Length '.strlen($content).' >>' . "\nstream\n".$content.'endstream');
-   $kids[]=$add('<< /Type /Page /Parent '.$pages.' 0 R /MediaBox [0 0 '.self::n(self::pt(self::PAGE_W)).' '.self::n(self::pt(self::PAGE_H)).'] /Resources << /Font << /F1 '.$font.' 0 R /F2 '.$bold.' 0 R >> >> /Contents '.$stream.' 0 R >>');
+   $kids[]=$add('<< /Type /Page /Parent '.$pages.' 0 R /MediaBox [0 0 '.self::n(self::pt(self::PAGE_W)).' '.self::n(self::pt(self::PAGE_H)).'] /Resources << /Font << /F1 '.$font.' 0 R /F2 '.$bold.' 0 R >> /XObject << '.implode(' ',$imageResources).' >> >> /Contents '.$stream.' 0 R >>');
   }
   $objects[$pages-1]='<< /Type /Pages /Count '.count($kids).' /Kids ['.implode(' ',array_map(static fn($id)=>$id.' 0 R',$kids)).'] >>';
   $objects[$catalog-1]='<< /Type /Catalog /Pages '.$pages.' 0 R >>';

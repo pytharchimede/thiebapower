@@ -70,6 +70,8 @@ $test('label PDF has an exact landscape A4 media box and vector QR',function()us
  $same(true,str_contains($pdf,'/MediaBox [0 0 841.89 595.28]'));
  $same(true,str_contains($pdf,'141.73 198.43 558.43 198.43 re f'), '197 x 70 mm artwork centered with 50/70 mm margins');
  $same(true,str_contains($pdf,'/Count 1'));
+ $same(4,substr_count($pdf,'/Subtype /Image'));
+ $same(true,str_contains($pdf,'/Im3 '));
  $same(true,substr_count($pdf,' re f')>250);
 });
 $test('label margins validate centimetres and reject unusable print areas',function()use($same){

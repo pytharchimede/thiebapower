@@ -64,9 +64,8 @@
                         <label class="input-label">Votre nom<input name="name" required maxlength="160"></label>
                         <label class="input-label">Votre email<input name="email" type="email" required></label>
                         <label class="input-label">Votre téléphone<input name="phone" type="tel" required placeholder="+225..."></label>
-                        <?php if ($depositEnabled): ?><label class="input-label">Canal de restitution
-                            <select name="payout_channel" required><option value="">Choisir</option><option value="WAVECI">Wave CI</option><option value="MOMOCI">MTN MoMo CI</option><option value="OMCIV">Orange Money CI</option><option value="FLOOZ">Flooz</option></select>
-                        </label><?php endif; ?>
+                        <?php if ($depositEnabled): $paymentField='payout_channel';$paymentLegend='Canal de restitution';require __DIR__.'/partials/payment_channels.php';endif; ?>
+                        <?php require __DIR__.'/partials/payment_logos.php'; ?>
                         <button class="touch-button primary">Procéder au paiement <span aria-hidden="true">→</span></button>
                     </form>
                 <?php else: ?>
