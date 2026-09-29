@@ -16,7 +16,8 @@
 <h2>Créer un compte</h2>
 <form action="/admin/users" method="post" class="management-grid">
 <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
-<label>Identifiant<input name="username" required minlength="3" maxlength="80" pattern="[a-z0-9._-]+">
+<label>Identifiant<input name="username" required minlength="3" maxlength="80" pattern="[A-Za-z0-9._-]+" autocomplete="username">
+<small>3 à 80 caractères : lettres sans accent, chiffres, point, tiret ou soulignement. Exemple : ulrich.amani</small>
 </label>
 <label>Nom affiché<input name="display_name" required maxlength="160">
 </label>
