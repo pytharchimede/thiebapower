@@ -4,7 +4,7 @@ Contrats : [Station Communication Server API Reference](https://alidocs.dingtalk
 
 ## 1. Code et base
 
-Partir de `develop`. Sauvegarder la base et `.env`, tirer le code, puis appliquer `database/migrations/20260929_heycharge_terminals.sql`, puis `database/migrations/20260929_rental_operations.sql`, une seule fois après les migrations V1. La caution reste activée par défaut. Copier `public/style.css`, `public/payout.css`, `public/app.js` dans la racine publique conformément à `docs/v1-deployment.md`. Vérifier `php -l`, `php tests/run.php`, `php tests/v1_smoke.php`, puis `php bin/doctor.php` pour l’état des dépendances, migrations, clés et cron.
+Partir de `develop`. Sauvegarder la base et `.env`, tirer le code, puis appliquer `database/migrations/20260929_heycharge_terminals.sql`, puis `database/migrations/20260929_rental_operations.sql`, puis `database/migrations/20260929_manual_battery_release.sql`, une seule fois après les migrations V1. La caution reste activée par défaut. Copier `public/style.css`, `public/payout.css`, `public/app.js` dans la racine publique conformément à `docs/v1-deployment.md`. Vérifier `php -l`, `php tests/run.php`, `php tests/v1_smoke.php`, puis `php bin/doctor.php` pour l’état des dépendances, migrations, clés et cron.
 
 ## 2. Secrets privés dans `.env`
 
@@ -30,6 +30,8 @@ Communiquer à HeyCharge le préfixe exact `https://thiebapower.com/api/heycharg
 La notification des encaissements Paiement Pro utilise une URL distincte, `/api/paiementpro/rental-callback?token=...`, générée lors de chaque paiement. L'URL racine HeyCharge répond à un contrôle GET et ne reçoit pas de paiement.
 
 Dans `/admin` → Terminaux, enregistrer ou constater chaque IMEI, cliquer **Synchroniser** pour importer `battery_id`, `slot_id` et état, vérifier le parc, puis **Activer**. Dans Intégrations, choisir HeyCharge **Normal**. Une station désactivée ou une batterie non disponible ne peut pas être louée. Le kiosque masque les batteries sous le seuil de charge, puis le serveur vérifie leur présence et leur état directement auprès de HeyCharge avant de créer le paiement.
+
+Dans le détail du terminal, l'administrateur peut éjecter une batterie disponible ou en maintenance en recopiant son numéro de série. La commande la retire immédiatement des batteries louables ; la lecture API suivante confirme sa disparition du terminal. En cas de réponse réseau inconnue, ne pas répéter la commande : vérifier physiquement puis synchroniser. Les batteries réservées ou louées ne peuvent jamais être éjectées par cette commande.
 
 Créer la tâche cron cPanel suivante toutes les minutes, en adaptant uniquement le chemin du binaire PHP si nécessaire :
 

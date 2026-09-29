@@ -15,17 +15,13 @@ final class AdminController {
   $modes=IntegrationSettings::all();
   $stats=$db->query("SELECT status,COUNT(*) quantity FROM rentals GROUP BY status")->fetchAll();
   $rentals=$db->query('SELECT r.id,r.reference,r.customer_name,r.customer_phone,r.rental_fee,r.deposit,r.status,r.payment_session_id,r.due_at,r.created_at,s.refund_amount,s.status refund_status,s.provider_session_id refund_session FROM rentals r LEFT JOIN deposit_settlements s ON s.rental_id=r.id ORDER BY r.id DESC LIMIT 10')->fetchAll();
-  $testOperations=$db->query('SELECT * FROM payment_lab_operations ORDER BY id DESC LIMIT 10')->fetchAll();
-  $payinEnabled=App::env('PAYMENT_LAB_PAYIN_ENABLED')==='1';
-  $payoutEnabled=App::env('PAYMENT_LAB_PAYOUT_ENABLED')==='1';
-  $simulationEnabled=App::env('SIMULATED_RENTALS_ENABLED')==='1' && $modes['heycharge']==='simulation';
-  $autoRefundEnabled=App::env('AUTOMATIC_REFUNDS_ENABLED')==='1';
   $workerLastRun=$db->query("SELECT last_run_at FROM service_heartbeats WHERE name='heycharge'")->fetchColumn()?:null;
   $workerRecent=$workerLastRun && strtotime($workerLastRun.' UTC')>=time()-240;
   $ready=['paiementpro_sandbox'=>App::env('PAIEMENTPRO_SANDBOX_WSDL')!=='' && App::env('PAIEMENTPRO_SANDBOX_MERCHANT_ID')!=='',
           'paiementpro_production'=>App::env('PAIEMENTPRO_MERCHANT_ID')!=='',
-          'heycharge_normal'=>App::env('HEYCHARGE_API_BASE')!=='' && App::env('HEYCHARGE_API_KEY')!==''];
-  App::view('admin',compact('prices','batteries','modes','stats','rentals','testOperations','csrf','ready','payinEnabled','payoutEnabled','simulationEnabled','autoRefundEnabled','currentUser','stations','workerLastRun','workerRecent'));
+          'heycharge_normal'=>App::env('HEYCHARGE_API_BASE')!=='' && App::env('HEYCHARGE_API_KEY')!=='',
+          'payment_callback'=>(new \App\Services\PaymentVerification)->ready()];
+  App::view('admin',compact('prices','batteries','modes','stats','rentals','csrf','ready','currentUser','stations','workerLastRun','workerRecent'));
  }
  public function modes():void {
   Auth::requirePermission('integrations.manage',true);

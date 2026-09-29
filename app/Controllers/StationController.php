@@ -5,6 +5,8 @@ use App\Services\Auth;
 use App\Services\Audit;
 use App\Services\StationFleetService;
 use App\Services\RentalLifecycleService;
+use App\Services\HeyChargeOpenApi;
+use App\Services\IntegrationSettings;
 final class StationController {
  public function callbackStatus():void {
   header('Content-Type: application/json; charset=utf-8');
@@ -25,9 +27,12 @@ final class StationController {
   $db=App::db();$q=$db->prepare('SELECT * FROM stations WHERE imei=?');$q->execute([$imei]);$station=$q->fetch();
   if(!$station){http_response_code(404);return;}
   $q=$db->prepare('SELECT * FROM batteries WHERE station_imei=? ORDER BY CAST(slot_id AS UNSIGNED),slot_id,serial');$q->execute([$imei]);$batteries=$q->fetchAll();
+  $q=$db->prepare("SELECT battery_id,status,requested_at FROM manual_release_commands WHERE station_imei=? AND status IN ('requested','unknown') ORDER BY id DESC");$q->execute([$imei]);
+  $openReleases=[];foreach($q->fetchAll() as $row)$openReleases[$row['battery_id']]=$row;
+  $q=$db->prepare('SELECT battery_serial,slot_id,status,requested_at,confirmed_at FROM manual_release_commands WHERE station_imei=? ORDER BY id DESC LIMIT 20');$q->execute([$imei]);$manualReleases=$q->fetchAll();
   $q=$db->prepare('SELECT id,event_type,battery_serial,received_at FROM heycharge_events WHERE imei=? ORDER BY id DESC LIMIT 30');$q->execute([$imei]);$events=$q->fetchAll();
   $q=$db->prepare('SELECT reference,status,created_at,started_at,returned_at FROM rentals WHERE station_code=? ORDER BY id DESC LIMIT 20');$q->execute([$imei]);$rentals=$q->fetchAll();
-  App::view('station_detail',compact('station','batteries','events','rentals'));
+  App::view('station_detail',compact('station','batteries','events','rentals','openReleases','manualReleases'));
  }
  public function save():void {
   Auth::requirePermission('fleet.manage',true);
@@ -48,6 +53,36 @@ final class StationController {
   if(!$q->fetchColumn()){http_response_code(404);return;}
   try {(new StationFleetService)->sync($imei);Audit::event('station.synced','station',$imei);}
   catch(\Throwable $e){error_log($e);http_response_code(503);exit('Station indisponible');}
+  App::redirect('/admin/stations/detail?imei='.rawurlencode($imei));
+ }
+ public function releaseBattery():void {
+  Auth::requirePermission('fleet.manage',true);
+  $imei=(string)($_POST['imei']??'');$batteryId=filter_var($_POST['battery_id']??null,FILTER_VALIDATE_INT);
+  $serial=(string)($_POST['confirm_serial']??'');
+  if(!preg_match('/^[A-Za-z0-9_-]{1,120}$/D',$imei)||!$batteryId||!preg_match('/^[A-Za-z0-9_-]{1,100}$/D',$serial)||IntegrationSettings::all()['heycharge']!=='normal'){http_response_code(422);exit('Commande invalide');}
+  $db=App::db();$q=$db->prepare('SELECT id,serial,slot_id,status FROM batteries WHERE id=? AND station_imei=?');$q->execute([$batteryId,$imei]);$battery=$q->fetch();
+  if(!$battery||$battery['serial']!==$serial||!in_array($battery['status'],['available','maintenance'],true)||!$battery['slot_id']){http_response_code(409);exit('Batterie indisponible pour une éjection manuelle');}
+  try {
+   $remote=(new HeyChargeOpenApi)->station($imei);
+   if(($remote['imei']??'')!==$imei||!StationFleetService::contains($remote,$serial)||!StationFleetService::battery($remote,$serial)||
+      (string)(StationFleetService::battery($remote,$serial)['slot_id']??'')!==$battery['slot_id'])throw new \RuntimeException('Batterie absente de cet emplacement');
+  }catch(\Throwable $e){error_log('Manual release preflight: '.$e->getMessage());http_response_code(503);exit('État du terminal indisponible');}
+  $db->beginTransaction();
+  try {
+   $q=$db->prepare('SELECT serial,slot_id,status FROM batteries WHERE id=? AND station_imei=? FOR UPDATE');$q->execute([$batteryId,$imei]);$current=$q->fetch();
+   $q=$db->prepare("SELECT id FROM manual_release_commands WHERE battery_id=? AND status IN ('requested','unknown') LIMIT 1");$q->execute([$batteryId]);
+   if(!$current||$current['serial']!==$serial||$current['slot_id']!==$battery['slot_id']||!in_array($current['status'],['available','maintenance'],true)||$q->fetchColumn())throw new \LogicException('Commande déjà en cours ou batterie réservée');
+   $db->prepare("UPDATE batteries SET status='maintenance' WHERE id=?")->execute([$batteryId]);
+   $db->prepare('INSERT INTO manual_release_commands(battery_id,station_imei,battery_serial,slot_id,requested_by) VALUES(?,?,?,?,?)')->execute([$batteryId,$imei,$serial,$battery['slot_id'],Auth::id()]);
+   $commandId=(int)$db->lastInsertId();$db->commit();
+  }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();http_response_code(409);exit('Éjection déjà en cours ou batterie indisponible');}
+  Audit::event('battery.manual_release_requested','battery',$serial,['station'=>$imei,'slot'=>$battery['slot_id'],'command_id'=>$commandId]);
+  try {(new HeyChargeOpenApi)->release($imei,$serial,$battery['slot_id']);}
+  catch(\Throwable $e){
+   error_log('Manual release '.$commandId.': '.$e->getMessage());
+   $db->prepare("UPDATE manual_release_commands SET status='unknown' WHERE id=? AND status='requested'")->execute([$commandId]);
+   Audit::event('battery.manual_release_unknown','battery',$serial,['command_id'=>$commandId]);
+  }
   App::redirect('/admin/stations/detail?imei='.rawurlencode($imei));
  }
  public function reconcile():void {

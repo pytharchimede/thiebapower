@@ -13,7 +13,7 @@ foreach(['APP_URL','HEYCHARGE_API_KEY','PAIEMENTPRO_MERCHANT_ID','PAYMENT_CALLBA
  $checks[$name]=$name==='PAYMENT_CALLBACK_SECRET'?strlen(App::env($name))>=32:App::env($name)!=='';
 try {
  $db=App::db();$checks['Connexion MariaDB']=true;
- foreach(['stations','heycharge_events','service_heartbeats'] as $table){$q=$db->prepare('SHOW TABLES LIKE ?');$q->execute([$table]);$checks['Table '.$table]=(bool)$q->fetchColumn();}
+ foreach(['stations','heycharge_events','service_heartbeats','manual_release_commands'] as $table){$q=$db->prepare('SHOW TABLES LIKE ?');$q->execute([$table]);$checks['Table '.$table]=(bool)$q->fetchColumn();}
  foreach(['deposit_enabled'=>'pricing','last_station_check_at'=>'rentals','release_command_at'=>'rentals','station_imei'=>'batteries'] as $column=>$table){$q=$db->query('SHOW COLUMNS FROM '.$table.' LIKE '.$db->quote($column));$checks[$table.'.'.$column]=(bool)$q->fetch();}
  if($checks['Table service_heartbeats']){
   $last=$db->query("SELECT last_run_at FROM service_heartbeats WHERE name='heycharge'")->fetchColumn();
