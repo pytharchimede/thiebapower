@@ -1,0 +1,17 @@
+name: PHP checks
+on:
+  push:
+    branches: [develop, main, 'feature/**', 'fix/**']
+  pull_request:
+    branches: [develop, main]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: find app public views bin tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Unit and smoke checks
+        run: |
+          php tests/run.php
+          php tests/v1_smoke.php
