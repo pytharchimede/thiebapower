@@ -15,7 +15,6 @@ HEYCHARGE_API_KEY=<clé réelle fournie par HeyCharge>
 PAIEMENTPRO_MERCHANT_ID=<identifiant marchand>
 PAYMENT_CALLBACK_SECRET=<64 caractères hexadécimaux aléatoires>
 PUBLIC_RENTALS_ENABLED=0
-MIN_RENTAL_BATTERY_PERCENT=20
 AUTOMATIC_REFUNDS_ENABLED=0
 ```
 
@@ -29,7 +28,7 @@ Communiquer à HeyCharge le préfixe exact `https://thiebapower.com/api/heycharg
 
 La notification des encaissements Paiement Pro utilise une URL distincte, `/api/paiementpro/rental-callback?token=...`, générée lors de chaque paiement. L'URL racine HeyCharge répond à un contrôle GET et ne reçoit pas de paiement.
 
-Dans `/admin` → Terminaux, enregistrer ou constater chaque IMEI, cliquer **Synchroniser** pour importer `battery_id`, `slot_id` et état, vérifier le parc, puis **Activer**. Dans Intégrations, choisir HeyCharge **Normal**. Une station désactivée ou une batterie non disponible ne peut pas être louée. Le kiosque masque les batteries sous le seuil de charge, puis le serveur vérifie leur présence et leur état directement auprès de HeyCharge avant de créer le paiement.
+Dans `/admin` → Terminaux, enregistrer ou constater chaque IMEI, cliquer **Synchroniser** pour importer `battery_id`, `slot_id` et état, vérifier le parc, puis **Activer**. Dans Intégrations, choisir HeyCharge **Normal**. Toutes les batteries présentes dans les emplacements valides de la station active sont proposées à la location, quelle que soit leur charge ou leurs indicateurs matériels. Ceux-ci restent visibles dans l'administration. Les batteries réservées, louées ou sous commande d'éjection administrateur ne sont pas proposées. Avant le paiement et avant la sortie, le serveur revérifie la présence de la batterie auprès de HeyCharge.
 
 Dans le détail du terminal, l'administrateur peut éjecter une batterie disponible ou en maintenance en recopiant son numéro de série. La commande la retire immédiatement des batteries louables ; la lecture API suivante confirme sa disparition du terminal. En cas de réponse réseau inconnue, ne pas répéter la commande : vérifier physiquement puis synchroniser. Les batteries réservées ou louées ne peuvent jamais être éjectées par cette commande.
 

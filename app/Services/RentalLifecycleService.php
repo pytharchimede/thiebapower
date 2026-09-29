@@ -38,7 +38,7 @@ final class RentalLifecycleService {
    $q=$db->prepare('SELECT serial,slot_id FROM batteries WHERE id=?');$q->execute([$r['battery_id']]);$battery=$q->fetch();
    if(!$battery||!$battery['slot_id'])throw new \RuntimeException('Emplacement inconnu');
    $station=(new HeyChargeOpenApi)->station($r['station_code']);
-   if(!StationFleetService::availableAt($station,$battery['serial'],$battery['slot_id']))throw new \RuntimeException('Batterie absente, déchargée ou défectueuse');
+   if(!StationFleetService::availableAt($station,$battery['serial'],$battery['slot_id']))throw new \RuntimeException('Batterie absente du terminal');
    $db->prepare('UPDATE rentals SET release_command_at=UTC_TIMESTAMP() WHERE id=?')->execute([$r['id']]);
    (new HeyChargeOpenApi)->release($r['station_code'],$battery['serial'],$battery['slot_id']);
   }catch(\Throwable $e){error_log('Station release outcome unknown '.$reference.': '.$e->getMessage());$db->prepare("UPDATE rentals SET status='release_failed' WHERE id=? AND status='releasing'")->execute([$r['id']]);}

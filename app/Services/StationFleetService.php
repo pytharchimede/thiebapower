@@ -34,11 +34,8 @@ final class StationFleetService {
   }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
  }
  public static function rentable(array $battery):bool {
-  $minimum=max(0,min(100,(int)App::env('MIN_RENTAL_BATTERY_PERCENT','20')));
-  return (string)($battery['battery_abnormal']??'1')==='0'
-   && (string)($battery['cable_abnormal']??'1')==='0'
-   && (string)($battery['lock_status']??'0')==='1'
-   && (int)($battery['battery_capacity']??0)>=$minimum;
+  return preg_match('/^[A-Za-z0-9_-]{1,100}$/D',(string)($battery['battery_id']??''))===1
+   && preg_match('/^[A-Za-z0-9_-]{1,32}$/D',(string)($battery['slot_id']??''))===1;
  }
  public static function availableAt(array $station,string $serial,string $slot):bool {
   foreach($station['batteries']??[] as $battery)
