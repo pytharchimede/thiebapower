@@ -10,6 +10,7 @@ use App\Services\IntegrationSettings;
 use App\Services\HeyChargeAccountService;
 use App\Services\StationQr;
 use App\Services\StationLabelPdf;
+use App\Services\StationLabelSettings;
 final class StationController {
  public function callbackStatus():void {
   header('Content-Type: application/json; charset=utf-8');
@@ -32,18 +33,29 @@ final class StationController {
  public function labels():void {
   Auth::requirePermission('fleet.manage');
   $labels=$this->labelData();
-  App::view('station_labels',compact('labels'));
+  $margins=StationLabelSettings::load();
+  App::view('station_labels',compact('labels','margins'));
  }
  public function labelsPdf():void {
   Auth::requirePermission('fleet.manage');
   $labels=$this->labelData();
   if(!$labels){http_response_code(404);echo 'Aucune station à imprimer';return;}
-  $pdf=(new StationLabelPdf)->render($labels);
+  try {$margins=isset($_GET['left'])?StationLabelSettings::fromCentimetres($_GET):StationLabelSettings::load();}
+  catch(\InvalidArgumentException $e){http_response_code(422);echo htmlspecialchars($e->getMessage(),ENT_QUOTES,'UTF-8');return;}
+  $pdf=(new StationLabelPdf)->render($labels,$margins);
   header('Content-Type: application/pdf');
-  header('Content-Disposition: attachment; filename="thiebapower-etiquettes-stations-a4.pdf"');
+  header('Content-Disposition: '.(isset($_GET['preview'])?'inline':'attachment').'; filename="thiebapower-etiquettes-stations-a4.pdf"');
   header('Cache-Control: private, no-store');
   header('Content-Length: '.strlen($pdf));
   echo $pdf;
+ }
+ public function saveLabelSettings():void {
+  Auth::requirePermission('fleet.manage',true);
+  try {$margins=StationLabelSettings::fromCentimetres($_POST);StationLabelSettings::save($margins);}
+  catch(\InvalidArgumentException $e){http_response_code(422);echo htmlspecialchars($e->getMessage(),ENT_QUOTES,'UTF-8');return;}
+  Audit::event('station.label_settings_saved','station','labels',$margins);
+  $imei=(string)($_POST['imei']??'');
+  App::redirect('/admin/stations/labels?saved=1'.($imei!==''?'&imei='.rawurlencode($imei):''));
  }
  private function labelData():array {
   $db=App::db();$imei=(string)($_GET['imei']??'');

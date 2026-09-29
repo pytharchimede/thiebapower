@@ -11,6 +11,7 @@ return [
     'POST /admin/rentals/cancel' => [\App\Controllers\RentalOperationsController::class, 'cancelPending'],
     'GET /admin/stations' => [\App\Controllers\StationController::class, 'index'],
     'POST /admin/stations/discover' => [\App\Controllers\StationController::class, 'discover'],
+    'POST /admin/stations/labels/settings' => [\App\Controllers\StationController::class, 'saveLabelSettings'],
     'GET /admin/stations/labels' => [\App\Controllers\StationController::class, 'labels'],
     'GET /admin/stations/labels.pdf' => [\App\Controllers\StationController::class, 'labelsPdf'],
     'GET /admin/stations/detail' => [\App\Controllers\StationController::class, 'detail'],

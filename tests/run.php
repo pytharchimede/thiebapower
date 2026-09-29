@@ -68,6 +68,17 @@ $test('label PDF has an exact landscape A4 media box and vector QR',function()us
  $same(true,str_contains($pdf,'/Count 1'));
  $same(true,substr_count($pdf,' re f')>250);
 });
+$test('label margins validate centimetres and reject unusable print areas',function()use($same){
+ $same(App\Services\StationLabelSettings::DEFAULTS,App\Services\StationLabelSettings::fromCentimetres(['left'=>5,'right'=>5,'top'=>7,'bottom'=>7]));
+ foreach([['left'=>-1],['left'=>100,'right'=>100],['top'=>100,'bottom'=>100]] as $bad){
+  $rejected=false;try{App\Services\StationLabelSettings::validate($bad);}catch(InvalidArgumentException $e){$rejected=true;}$same(true,$rejected);
+ }
+});
+$test('label PDF scales uniformly within custom margins',function()use($same){
+ $pdf=(new App\Services\StationLabelPdf)->render([['imei'=>'DCHEY02603000938','label'=>'Station test','url'=>'https://thiebapower.com/rent?station=DCHEY02603000938']],['left'=>40,'right'=>40,'top'=>60,'bottom'=>60]);
+ $scale=min(217/197,90/70);$matrix=number_format($scale,6,'.','').' 0 0 '.number_format($scale,6,'.','');
+ $same(true,str_contains($pdf,'q '.$matrix));$same(true,str_contains($pdf,'/MediaBox [0 0 841.89 595.28]'));
+});
 putenv('PAYMENT_CALLBACK_SECRET');putenv('PAIEMENTPRO_MERCHANT_ID');
 $bank=['battery_id'=>'B1','slot_id'=>'2','lock_status'=>'1','battery_capacity'=>'70','battery_abnormal'=>'0','cable_abnormal'=>'0'];
 $test('inserted power bank at 70 percent is rentable',fn()=>$same(true,StationFleetService::availableAt(['batteries'=>[$bank]],'B1','2')));
