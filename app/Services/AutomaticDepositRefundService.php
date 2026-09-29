@@ -7,7 +7,7 @@ final class AutomaticDepositRefundService {
  private PaiementProPayoutService $payout;
  public function __construct(?PaiementProPayoutService $payout=null){$this->payout=$payout??new PaiementProPayoutService;}
  /** Only call this method after an authenticated HeyCharge return event has been matched to the active rental. */
- public function recordVerifiedReturn(int $rentalId,\DateTimeImmutable $returnedAt):int {
+ public function recordVerifiedReturn(int $rentalId,\DateTimeImmutable $returnedAt,?array $batteryLocation=null):int {
   $db=App::db();$db->beginTransaction();
   try {
    $s=$db->prepare('SELECT * FROM rentals WHERE id=? FOR UPDATE');$s->execute([$rentalId]);$r=$s->fetch();
@@ -23,6 +23,13 @@ final class AutomaticDepositRefundService {
       ->execute([$returnedAt->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'),$deduction,$rentalId]);
    $db->prepare('INSERT INTO deposit_settlements(rental_id,deduction,refund_amount,status) VALUES(?,?,?,?)')
       ->execute([$rentalId,$deduction,$refund,$refund===0?'refunded':'pending']);
+   if($batteryLocation!==null){
+    $q=$db->prepare("UPDATE batteries SET status=?,station_imei=?,slot_id=?,battery_capacity=?,battery_abnormal=?,cable_abnormal=? WHERE id=? AND status='rented'");
+    $q->execute([$batteryLocation['status'],$batteryLocation['station_imei'],$batteryLocation['slot_id'],$batteryLocation['battery_capacity'],$batteryLocation['battery_abnormal'],$batteryLocation['cable_abnormal'],$r['battery_id']]);
+   }else{
+    $q=$db->prepare("UPDATE batteries SET status='available' WHERE id=? AND status='rented'");$q->execute([$r['battery_id']]);
+   }
+   if($q->rowCount()!==1)throw new \LogicException('Batterie non louée au moment du retour');
    $id=(int)$db->lastInsertId();$db->commit();
    Audit::event('rental.return_recorded','rental',(string)$rentalId,['deduction'=>$deduction,'refund_amount'=>$refund,'settlement_id'=>$id]);
    return $id;

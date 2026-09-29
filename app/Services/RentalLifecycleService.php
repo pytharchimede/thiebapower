@@ -83,14 +83,15 @@ final class RentalLifecycleService {
  public function confirmedReturn(int $rentalId,\DateTimeImmutable $returnedAt,?string $returnStation=null,?array $returnBattery=null):int {
   $slot=$returnBattery!==null?(string)($returnBattery['slot_id']??''):'';
   if($returnStation!==null && !preg_match('/^[A-Za-z0-9_-]{1,32}$/D',$slot))throw new \RuntimeException('Emplacement de retour invalide');
-  $settlement=(new AutomaticDepositRefundService)->recordVerifiedReturn($rentalId,$returnedAt);
-  $q=App::db()->prepare('SELECT battery_id FROM rentals WHERE id=?');$q->execute([$rentalId]);
-  $batteryId=$q->fetchColumn();
+  $location=null;
   if($returnStation!==null && $returnBattery!==null){
    $status=StationFleetService::rentable($returnBattery)?'available':'maintenance';
-   App::db()->prepare("UPDATE batteries SET status=?,station_imei=?,slot_id=?,battery_capacity=?,battery_abnormal=?,cable_abnormal=? WHERE id=? AND status='rented'")
-    ->execute([$status,$returnStation,$slot,min(100,max(0,(int)($returnBattery['battery_capacity']??0))),(int)($returnBattery['battery_abnormal']??0)?1:0,(int)($returnBattery['cable_abnormal']??0)?1:0,$batteryId]);
-  }else App::db()->prepare("UPDATE batteries SET status='available' WHERE id=? AND status='rented'")->execute([$batteryId]);
+   $location=['status'=>$status,'station_imei'=>$returnStation,'slot_id'=>$slot,
+    'battery_capacity'=>min(100,max(0,(int)($returnBattery['battery_capacity']??0))),
+    'battery_abnormal'=>(int)($returnBattery['battery_abnormal']??0)?1:0,
+    'cable_abnormal'=>(int)($returnBattery['cable_abnormal']??0)?1:0];
+  }
+  $settlement=(new AutomaticDepositRefundService)->recordVerifiedReturn($rentalId,$returnedAt,$location);
   if(App::env('AUTOMATIC_REFUNDS_ENABLED')==='1')(new AutomaticDepositRefundService)->dispatch($settlement);
   return $settlement;
  }
