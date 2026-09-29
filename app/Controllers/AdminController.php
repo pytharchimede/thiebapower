@@ -11,6 +11,7 @@ final class AdminController {
   $db=App::db();
   $prices=$db->query('SELECT * FROM pricing WHERE id=1')->fetch();
   $batteries=$db->query('SELECT * FROM batteries ORDER BY id')->fetchAll();
+  $stations=$db->query('SELECT * FROM stations ORDER BY imei')->fetchAll();
   $modes=IntegrationSettings::all();
   $stats=$db->query("SELECT status,COUNT(*) quantity FROM rentals GROUP BY status")->fetchAll();
   $rentals=$db->query('SELECT r.id,r.reference,r.customer_name,r.customer_phone,r.rental_fee,r.deposit,r.status,r.payment_session_id,r.due_at,r.created_at,s.refund_amount,s.status refund_status,s.provider_session_id refund_session FROM rentals r LEFT JOIN deposit_settlements s ON s.rental_id=r.id ORDER BY r.id DESC LIMIT 10')->fetchAll();
@@ -22,7 +23,7 @@ final class AdminController {
   $ready=['paiementpro_sandbox'=>App::env('PAIEMENTPRO_SANDBOX_WSDL')!=='' && App::env('PAIEMENTPRO_SANDBOX_MERCHANT_ID')!=='',
           'paiementpro_production'=>App::env('PAIEMENTPRO_MERCHANT_ID')!=='',
           'heycharge_normal'=>App::env('HEYCHARGE_API_BASE')!=='' && App::env('HEYCHARGE_API_KEY')!==''];
-  App::view('admin',compact('prices','batteries','modes','stats','rentals','testOperations','csrf','ready','payinEnabled','payoutEnabled','simulationEnabled','autoRefundEnabled','currentUser'));
+  App::view('admin',compact('prices','batteries','modes','stats','rentals','testOperations','csrf','ready','payinEnabled','payoutEnabled','simulationEnabled','autoRefundEnabled','currentUser','stations'));
  }
  public function modes():void {
   Auth::requirePermission('integrations.manage',true);
@@ -41,9 +42,10 @@ final class AdminController {
   $deposit=filter_input(INPUT_POST,'default_deposit',FILTER_VALIDATE_INT);
   $minutes=filter_input(INPUT_POST,'duration_minutes',FILTER_VALIDATE_INT);
   $percent=filter_input(INPUT_POST,'late_percent',FILTER_VALIDATE_INT);
+  $depositEnabled=($_POST['deposit_enabled']??'')==='1'?1:0;
   if(!is_int($fee)||$fee<0||!is_int($deposit)||$deposit<0||!is_int($minutes)||$minutes<1||!is_int($percent)||$percent<0||$percent>100){http_response_code(422);exit('Tarifs invalides');}
-  App::db()->prepare('UPDATE pricing SET rental_fee=?,default_deposit=?,duration_minutes=?,late_percent=? WHERE id=1')->execute([$fee,$deposit,$minutes,$percent]);
-  Audit::event('pricing.updated','pricing','1',['rental_fee'=>$fee,'default_deposit'=>$deposit,'duration_minutes'=>$minutes,'late_percent'=>$percent]);
+  App::db()->prepare('UPDATE pricing SET rental_fee=?,default_deposit=?,duration_minutes=?,late_percent=?,deposit_enabled=? WHERE id=1')->execute([$fee,$deposit,$minutes,$percent,$depositEnabled]);
+  Audit::event('pricing.updated','pricing','1',['rental_fee'=>$fee,'default_deposit'=>$deposit,'duration_minutes'=>$minutes,'late_percent'=>$percent,'deposit_enabled'=>$depositEnabled]);
   App::redirect('/admin');
  }
  public function battery():void {

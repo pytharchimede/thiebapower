@@ -9,6 +9,7 @@ use App\Controllers\PaymentLabController;
 use App\Controllers\PayoutConsoleController;
 use App\Controllers\RentalController;
 use App\Controllers\SimulationController;
+use App\Controllers\StationController;
 use App\Controllers\UsersController;
 use App\Services\Audit;
 
@@ -60,6 +61,14 @@ final class App
             'GET /admin/login' => [AuthController::class, 'loginPage'],
             'POST /admin/login' => [AuthController::class, 'login'],
             'POST /admin/logout' => [AuthController::class, 'logout'],
+            'POST /api/heycharge/callback/register' => [StationController::class, 'register'],
+            'POST /api/heycharge/callback/return' => [StationController::class, 'returned'],
+            'POST /api/heycharge/callback/status' => [StationController::class, 'status'],
+            'POST /admin/stations' => [StationController::class, 'save'],
+            'POST /admin/stations/toggle' => [StationController::class, 'toggle'],
+            'POST /admin/stations/sync' => [StationController::class, 'sync'],
+            'POST /admin/stations/confirm-payment' => [StationController::class, 'confirmPayment'],
+            'POST /admin/stations/reconcile' => [StationController::class, 'reconcile'],
             'GET /admin' => [AdminController::class, 'index'],
             'POST /admin/prices' => [AdminController::class, 'prices'],
             'POST /admin/batteries' => [AdminController::class, 'battery'],

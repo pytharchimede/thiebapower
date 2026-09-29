@@ -6,14 +6,15 @@ use App\Services\Audit;
 final class RentalController {
  public function index():void {
   $prices=App::db()->query('SELECT * FROM pricing WHERE id=1')->fetch();
-  $batteries=App::db()->query("SELECT id,serial,deposit_override FROM batteries WHERE status='available' ORDER BY id")->fetchAll();
-  App::view('rent',['prices'=>$prices,'batteries'=>$batteries,'checkoutEnabled'=>$this->checkoutEnabled()]);
+  $modes=\App\Services\IntegrationSettings::all();
+  $batteries=App::db()->query($modes['heycharge']==='normal' ? "SELECT b.id,b.serial,b.deposit_override,b.station_imei FROM batteries b JOIN stations s ON s.imei=b.station_imei WHERE b.status='available' AND s.enabled=1 AND s.status='online' ORDER BY b.id" : "SELECT id,serial,deposit_override,station_imei FROM batteries WHERE status='available' ORDER BY id")->fetchAll();
+  App::view('rent',['prices'=>$prices,'batteries'=>$batteries,'checkoutEnabled'=>$this->checkoutEnabled(),'depositEnabled'=>(int)$prices['deposit_enabled']===1]);
  }
  private function checkoutEnabled():bool {
   if(App::env('PUBLIC_RENTALS_ENABLED')!=='1')return false;
   $modes=\App\Services\IntegrationSettings::all();
   if($modes['heycharge']==='simulation')return App::env('SIMULATED_RENTALS_ENABLED')==='1' && ($modes['paiementpro']==='production'?App::env('PAIEMENTPRO_MERCHANT_ID')!=='' : App::env('PAIEMENTPRO_SANDBOX_MERCHANT_ID')!=='');
-  return (new \App\Services\PaymentVerification)->ready() && (new \App\Services\HeyChargeOpenApi)->configured();
+  return ($modes['paiementpro']==='production' ? App::env('PAIEMENTPRO_MERCHANT_ID')!=='' : App::env('PAIEMENTPRO_SANDBOX_MERCHANT_ID')!=='') && (new \App\Services\HeyChargeOpenApi)->configured();
  }
  public function create():void {
   if(!$this->checkoutEnabled()){
