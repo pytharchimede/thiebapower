@@ -26,7 +26,12 @@ final class StationLabelPdf {
  }
  private function page(array $station):string {
   $this->commands=[];
-  // The artwork starts exactly 70 mm from either side and 50 mm from the top.
+  // Full-bleed A4 background; the label content keeps its specified 70 mm
+  // side margins, 50 mm top margin and 8 mm internal padding.
+  $this->rect(0,0,self::PAGE_W,self::PAGE_H,'#092e37');
+  $this->rect(0,0,self::PAGE_W,8,'#0c6471');
+  $this->rect(0,202,self::PAGE_W,8,'#0c6471');
+  $this->rect(67,47,163,156,'#237581');
   $this->rect(70,50,157,150,'#103d46');
   $this->rect(70,50,157,8,'#0c6471');
   $this->text(77,56,'THIEBA',14,'#ffffff',true);

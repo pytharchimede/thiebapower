@@ -4,7 +4,7 @@ Application PHP 8.2+ et MariaDB pour la location de batteries externes sur cPane
 
 Les routes sont déclarées dans `routes/web.php` (kiosque), `routes/api.php` (notifications fournisseurs) et `routes/admin.php` (administration). `App::run()` les charge dans cet ordre et conserve les mêmes URL et contrôles d'accès dans les contrôleurs.
 
-Administration : `/admin/stations/labels.pdf` télécharge une page PDF A4 paysage par station, avec une zone imprimée de 157 × 150 mm commençant à 70 mm du bord gauche et 50 mm du haut. Ajouter `?imei=...` pour une station. `/admin/finance` donne les points quotidiens, les paiements de production confirmés, les cautions remboursées et la caisse physique séparée. La migration `database/migrations/20260929_finance_cash.sql` est à exécuter une seule fois avant d'ouvrir cette page. Les remboursements antérieurs à cette migration n'ayant pas de date de confirmation fiable, ils ne sont pas réaffectés à une période arbitraire.
+Administration : `/admin/stations/labels.pdf` télécharge une page PDF A4 paysage par station, avec un fond couvrant toute la page et une zone de contenu de 157 × 150 mm commençant à 70 mm du bord gauche et 50 mm du haut. Ajouter `?imei=...` pour une station. `/admin/finance` donne les points quotidiens, les paiements de production confirmés, les cautions remboursées et la caisse physique séparée. La migration `database/migrations/20260929_finance_cash.sql` est à exécuter une seule fois avant d'ouvrir cette page. Les remboursements antérieurs à cette migration n'ayant pas de date de confirmation fiable, ils ne sont pas réaffectés à une période arbitraire.
 
 ## Mise en service
 
