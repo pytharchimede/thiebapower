@@ -4,7 +4,7 @@ Contrats : [Station Communication Server API Reference](https://alidocs.dingtalk
 
 ## 1. Code et base
 
-Partir de `develop`. Sauvegarder la base et `.env`, tirer le code, puis appliquer `database/migrations/20260929_heycharge_terminals.sql` une seule fois après les migrations V1. La caution reste activée par défaut. Copier `public/style.css`, `public/payout.css`, `public/app.js` dans la racine publique conformément à `docs/v1-deployment.md`. Vérifier `php -l` et `php tests/run.php && php tests/v1_smoke.php`.
+Partir de `develop`. Sauvegarder la base et `.env`, tirer le code, puis appliquer `database/migrations/20260929_heycharge_terminals.sql`, puis `database/migrations/20260929_rental_operations.sql`, une seule fois après les migrations V1. La caution reste activée par défaut. Copier `public/style.css`, `public/payout.css`, `public/app.js` dans la racine publique conformément à `docs/v1-deployment.md`. Vérifier `php -l`, `php tests/run.php`, `php tests/v1_smoke.php`, puis `php bin/doctor.php` pour l’état des dépendances, migrations, clés et cron.
 
 ## 2. Secrets privés dans `.env`
 
@@ -15,6 +15,7 @@ HEYCHARGE_API_KEY=<clé réelle fournie par HeyCharge>
 PAIEMENTPRO_MERCHANT_ID=<identifiant marchand>
 PAYMENT_CALLBACK_SECRET=<64 caractères hexadécimaux aléatoires>
 PUBLIC_RENTALS_ENABLED=0
+MIN_RENTAL_BATTERY_PERCENT=20
 AUTOMATIC_REFUNDS_ENABLED=0
 ```
 
@@ -24,9 +25,9 @@ L'initialisation des locations utilise l'API JSON officielle de Paiement Pro. Ch
 
 ## 3. Terminaux et événements
 
-Communiquer à HeyCharge le préfixe exact `https://thiebapower.com/api/heycharge/callback`. Le fournisseur appelle `/register`, `/return` et `/status` sous ce préfixe. Une station inconnue signalée par `register` apparaît désactivée dans l'administration.
+Communiquer à HeyCharge le préfixe exact `https://thiebapower.com/api/heycharge/callback`. Le fournisseur appelle `/register`, `/return` et `/status` sous ce préfixe. Une station inconnue signalée par `register` apparaît désactivée dans l’administration. Les écrans `/admin/stations`, `/admin/stations/detail?imei=...` et `/admin/rentals` présentent le parc, les événements et les locations à traiter.
 
-Dans `/admin` → Terminaux, enregistrer ou constater chaque IMEI, cliquer **Synchroniser** pour importer `battery_id`, `slot_id` et état, vérifier le parc, puis **Activer**. Dans Intégrations, choisir HeyCharge **Normal**. Une station désactivée ou une batterie non disponible ne peut pas être louée.
+Dans `/admin` → Terminaux, enregistrer ou constater chaque IMEI, cliquer **Synchroniser** pour importer `battery_id`, `slot_id` et état, vérifier le parc, puis **Activer**. Dans Intégrations, choisir HeyCharge **Normal**. Une station désactivée ou une batterie non disponible ne peut pas être louée. Le kiosque masque les batteries sous le seuil de charge, puis le serveur vérifie leur présence et leur état directement auprès de HeyCharge avant de créer le paiement.
 
 Créer la tâche cron cPanel suivante toutes les minutes, en adaptant uniquement le chemin du binaire PHP si nécessaire :
 
@@ -34,7 +35,7 @@ Créer la tâche cron cPanel suivante toutes les minutes, en adaptant uniquement
 * * * * * /usr/local/bin/php /home/ifmapci/repositories/thiebapower/bin/heycharge_worker.php
 ```
 
-Le worker rapproche les sorties et retours par `GET /v1/station/:imei`, et rafraîchit l'inventaire des stations actives. Les callbacks matériels sans signature documentée servent de signaux et de journal ; ils ne déclenchent pas seuls une restitution. Une commande de sortie à issue inconnue n'est jamais répétée automatiquement. Le retour sur une autre station exige son événement `return` puis une lecture API positive. L'heure du retour retenue est celle de la vérification par l'API, ce qui peut décaler le calcul de la caution de quelques minutes.
+Le passage du worker est visible dans `/admin` (dernier passage UTC). Le worker traite les commandes en cours et les retours par petites séries, en priorisant les événements de retour récents. Il rapproche les sorties et retours par `GET /v1/station/:imei`, et rafraîchit l'inventaire des stations actives. Les callbacks matériels sans signature documentée servent de signaux et de journal ; ils ne déclenchent pas seuls une restitution. Une commande de sortie à issue inconnue n’est jamais répétée automatiquement. Les notifications Paiement Pro explicitement refusées libèrent la réservation. Après quinze minutes, une réservation sans notification doit être vérifiée dans le portail Paiement Pro avant sa libération manuelle dans `/admin/rentals`. Si un succès arrive ensuite, elle passe en « payment_review » et ne provoque pas d’éjection. Le retour sur une autre station exige son événement `return` puis une lecture API positive. L'heure du retour retenue est celle de la vérification par l'API, ce qui peut décaler le calcul de la caution de quelques minutes.
 
 ## 4. Caution et ouverture
 

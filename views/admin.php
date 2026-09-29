@@ -17,8 +17,8 @@
             <?php if (App\Services\Auth::can('payout.view')): ?><a href="/admin/payout">Reversements API</a><?php endif; ?>
             <?php if (App\Services\Auth::can('payout.send')): ?><a href="#payment-lab">Essais financiers</a><?php endif; ?>
             <?php if (App\Services\Auth::can('pricing.manage')): ?><a href="#pricing">Tarification</a><?php endif; ?>
-            <?php if (App\Services\Auth::can('fleet.manage')): ?><a href="#fleet">Batteries</a><a href="#stations">Terminaux</a><?php endif; ?>
-            <a href="#activity">Locations</a>
+            <?php if (App\Services\Auth::can('fleet.manage')): ?><a href="#fleet">Batteries</a><a href="/admin/stations">Terminaux</a><?php endif; ?>
+            <a href="/admin/rentals">Locations</a>
             <?php if (App\Services\Auth::can('rentals.manage')): ?><a href="#simulation">Simulation</a><?php endif; ?>
             <?php if (App\Services\Auth::can('audit.view')): ?><a href="/admin/audit">Journal et visites</a><?php endif; ?>
             <?php if (App\Services\Auth::can('users.manage')): ?><a href="/admin/users">Comptes et droits</a><?php endif; ?>
@@ -71,7 +71,7 @@
                             <div class="provider-status">Clé Open API : <?= $ready['heycharge_normal'] ? 'renseignée' : 'à compléter' ?> · Notification paiement : <?= $ready['payment_callback'] ? 'configurée' : 'secret manquant' ?></div>
                         </fieldset>
                     </div>
-                    <div class="admin-banner"><div><strong>Mise en service des locations réelles</strong><p>API HeyCharge : <?= $ready['heycharge_normal'] ? 'configurée' : 'clé manquante dans .env' ?> · Paiement Pro : <?= $ready['paiementpro_production'] ? 'marchand configuré' : 'marchand manquant' ?> · Callback sécurisé : <?= $ready['payment_callback'] ? 'secret configuré' : 'secret manquant' ?>.</p><p>Préfixe des événements à communiquer à HeyCharge : <code><?= htmlspecialchars(App\Core\App::env('HEYCHARGE_WEBHOOK_URL','https://thiebapower.com/api/heycharge/callback'), ENT_QUOTES, 'UTF-8') ?></code>. Synchronisez et activez les terminaux ci-dessous. Le suivi automatique nécessite le cron du guide de mise en service.</p></div></div>
+                    <div class="admin-banner"><div><strong>Mise en service des locations réelles</strong><p>API HeyCharge : <?= $ready['heycharge_normal'] ? 'configurée' : 'clé manquante dans .env' ?> · Paiement Pro : <?= $ready['paiementpro_production'] ? 'marchand configuré' : 'marchand manquant' ?> · Callback sécurisé : <?= $ready['payment_callback'] ? 'secret configuré' : 'secret manquant' ?> · Cron HeyCharge : <?= $workerRecent ? 'actif' : 'à vérifier' ?><?= $workerLastRun ? ' (dernier passage '.htmlspecialchars($workerLastRun,ENT_QUOTES,'UTF-8').' UTC)' : '' ?>.</p><p>Préfixe des événements à communiquer à HeyCharge : <code><?= htmlspecialchars(App\Core\App::env('HEYCHARGE_WEBHOOK_URL','https://thiebapower.com/api/heycharge/callback'), ENT_QUOTES, 'UTF-8') ?></code>. Synchronisez et activez les terminaux ci-dessous.</p></div></div>
                     <button class="admin-button">Enregistrer les modes</button>
                 </form>
             </section>
@@ -128,10 +128,10 @@
 
             <?php if (App\Services\Auth::can('fleet.manage')): ?>
             <section id="stations" class="admin-card">
-                <div class="admin-section-heading"><div><span class="admin-overline">HEYCHARGE</span><h2>Terminaux</h2><p>Enregistrez un IMEI, synchronisez son inventaire, puis activez la station.</p></div></div>
+                <div class="admin-section-heading"><div><span class="admin-overline">HEYCHARGE</span><h2>Terminaux</h2><p>Enregistrez un IMEI, synchronisez son inventaire, puis activez la station.</p></div><a class="admin-site-link" href="/admin/stations">Voir tout le parc</a></div>
                 <form action="/admin/stations" method="post" class="admin-form"><input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>"><label>IMEI<input name="imei" required pattern="[A-Za-z0-9_-]+" maxlength="120"></label><label>Nom du terminal<input name="label" maxlength="160"></label><button class="admin-button">Enregistrer</button></form>
                 <div class="admin-table-wrap"><table><thead><tr><th>IMEI</th><th>Nom</th><th>État</th><th>Vu le</th><th>Actions</th></tr></thead><tbody>
-                <?php foreach ($stations as $station): ?><tr><td><?= htmlspecialchars($station['imei'],ENT_QUOTES,'UTF-8') ?></td><td><?= htmlspecialchars((string)$station['label'],ENT_QUOTES,'UTF-8') ?></td><td><?= htmlspecialchars($station['status'],ENT_QUOTES,'UTF-8') ?> · <?= $station['enabled'] ? 'activé' : 'désactivé' ?></td><td><?= htmlspecialchars((string)$station['last_seen_at'],ENT_QUOTES,'UTF-8') ?></td><td>
+                <?php foreach ($stations as $station): ?><tr><td><a href="/admin/stations/detail?imei=<?= rawurlencode($station['imei']) ?>"><?= htmlspecialchars($station['imei'],ENT_QUOTES,'UTF-8') ?></a></td><td><?= htmlspecialchars((string)$station['label'],ENT_QUOTES,'UTF-8') ?></td><td><?= htmlspecialchars($station['status'],ENT_QUOTES,'UTF-8') ?> · <?= $station['enabled'] ? 'activé' : 'désactivé' ?></td><td><?= htmlspecialchars((string)$station['last_seen_at'],ENT_QUOTES,'UTF-8') ?></td><td>
                 <form method="post" action="/admin/stations/sync"><input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf,ENT_QUOTES,'UTF-8') ?>"><input type="hidden" name="imei" value="<?= htmlspecialchars($station['imei'],ENT_QUOTES,'UTF-8') ?>"><button class="admin-ghost">Synchroniser</button></form>
                 <form method="post" action="/admin/stations/toggle"><input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf,ENT_QUOTES,'UTF-8') ?>"><input type="hidden" name="imei" value="<?= htmlspecialchars($station['imei'],ENT_QUOTES,'UTF-8') ?>"><input type="hidden" name="enabled" value="<?= $station['enabled'] ? 0 : 1 ?>"><button class="admin-ghost"><?= $station['enabled'] ? 'Désactiver' : 'Activer' ?></button></form>
                 </td></tr><?php endforeach; ?></tbody></table></div>
@@ -139,7 +139,7 @@
             <?php endif; ?>
 
             <section id="activity" class="admin-card">
-                <div class="admin-section-heading"><div><span class="admin-overline">SUIVI</span><h2>Dernières locations</h2></div></div>
+                <div class="admin-section-heading"><div><span class="admin-overline">SUIVI</span><h2>Dernières locations</h2></div><a class="admin-site-link" href="/admin/rentals">Voir toutes les locations</a></div>
                 <div class="admin-table-wrap"><table><thead><tr><th>Référence</th><th>Client</th><th>Location</th><th>Caution</th><th>État</th><th>Date</th></tr></thead><tbody><?php foreach ($rentals as $r): ?><tr><td><?= htmlspecialchars($r['reference'], ENT_QUOTES, 'UTF-8') ?></td><td><?= htmlspecialchars($r['customer_name'], ENT_QUOTES, 'UTF-8') ?></td><td><?= number_format((int) $r['rental_fee'], 0, ',', ' ') ?> F</td><td><?= number_format((int) $r['deposit'], 0, ',', ' ') ?> F</td><td><span class="status-pill"><?= htmlspecialchars($r['status'], ENT_QUOTES, 'UTF-8') ?></span>
                     <?php if (App\Services\Auth::can('rentals.manage') && $modes['heycharge']==='normal'): ?>
                     <?php if (in_array($r['status'],['releasing','release_failed','active'],true)): ?><form method="post" action="/admin/stations/reconcile"><input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf,ENT_QUOTES,'UTF-8') ?>"><input type="hidden" name="reference" value="<?= htmlspecialchars($r['reference'],ENT_QUOTES,'UTF-8') ?>"><button class="admin-ghost">Vérifier la station</button></form><?php endif; ?>

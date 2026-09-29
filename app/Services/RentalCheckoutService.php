@@ -10,13 +10,21 @@ final class RentalCheckoutService {
   $depositEnabled=(int)(App::db()->query('SELECT deposit_enabled FROM pricing WHERE id=1')->fetchColumn())===1;
   $batteryId=filter_var($input['battery_id']??null,FILTER_VALIDATE_INT);
   if($name===''||strlen($name)>160||!filter_var($email,FILTER_VALIDATE_EMAIL)||!preg_match('/^\+?[0-9]{10,16}$/',$phone)||$station===''||strlen($station)>120||!$batteryId||($depositEnabled&&!in_array($channel,['WAVECI','MOMOCI','OMCIV','FLOOZ'],true)))throw new \InvalidArgumentException('Informations de location invalides');
-  $db=App::db();$db->beginTransaction();
+  $db=App::db();
+  $physical=IntegrationSettings::all()['heycharge']==='normal';
+  if($physical){
+   $q=$db->prepare('SELECT serial,slot_id,station_imei FROM batteries WHERE id=?');$q->execute([$batteryId]);$candidate=$q->fetch();
+   if(!$candidate||$candidate['station_imei']!==$station||!$candidate['slot_id'])throw new \RuntimeException('Station ou batterie indisponible');
+   $remote=(new HeyChargeOpenApi)->station($station);
+   if(($remote['imei']??'')!==$station||!StationFleetService::availableAt($remote,$candidate['serial'],$candidate['slot_id']))throw new \RuntimeException('Batterie indisponible sur la station');
+  }
+  $db->beginTransaction();
   try {
    $q=$db->prepare("SELECT * FROM batteries WHERE id=? AND status='available' FOR UPDATE");$q->execute([$batteryId]);$battery=$q->fetch();
    if(!$battery)throw new \RuntimeException('Batterie indisponible');
-   if(IntegrationSettings::all()['heycharge']==='normal'){
+   if($physical){
     $q=$db->prepare("SELECT enabled FROM stations WHERE imei=?");$q->execute([$station]);
-    if((int)$q->fetchColumn()!==1||$battery['station_imei']!==$station||!$battery['slot_id'])throw new \RuntimeException('Station ou batterie indisponible');
+    if((int)$q->fetchColumn()!==1||$battery['station_imei']!==$station||!$battery['slot_id']||$battery['slot_id']!==$candidate['slot_id']||$battery['serial']!==$candidate['serial'])throw new \RuntimeException('Station ou batterie indisponible');
    }
    $price=$db->query('SELECT * FROM pricing WHERE id=1')->fetch();$reference='TBP-'.strtoupper(bin2hex(random_bytes(8)));
    $db->prepare("INSERT INTO rentals(reference,battery_id,station_code,payment_environment,customer_name,customer_email,customer_phone,payout_channel,rental_fee,deposit,late_percent,duration_minutes,status,reservation_expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,'pending_payment',DATE_ADD(UTC_TIMESTAMP(),INTERVAL 15 MINUTE))")

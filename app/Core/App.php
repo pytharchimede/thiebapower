@@ -8,6 +8,7 @@ use App\Controllers\PaymentController;
 use App\Controllers\PaymentLabController;
 use App\Controllers\PayoutConsoleController;
 use App\Controllers\RentalController;
+use App\Controllers\RentalOperationsController;
 use App\Controllers\SimulationController;
 use App\Controllers\StationController;
 use App\Controllers\UsersController;
@@ -53,6 +54,7 @@ final class App
             'POST /rentals' => [RentalController::class, 'create'],
             'GET /rentals/status' => [RentalController::class, 'status'],
             'POST /api/heycharge/callback' => [PaymentController::class, 'callback'],
+            'GET /api/heycharge/callback' => [PaymentController::class, 'callback'],
             'GET /payment/return' => [PaymentController::class, 'returnPage'],
             'POST /api/paiementpro/payout-callback' => [PaymentLabController::class, 'payoutNotification'],
             'GET /api/paiementpro/payout-callback' => [PaymentLabController::class, 'payoutNotification'],
@@ -65,6 +67,10 @@ final class App
             'POST /api/heycharge/callback/return' => [StationController::class, 'returned'],
             'POST /api/heycharge/callback/status' => [StationController::class, 'status'],
             'POST /admin/stations' => [StationController::class, 'save'],
+            'GET /admin/rentals' => [RentalOperationsController::class, 'index'],
+            'POST /admin/rentals/cancel' => [RentalOperationsController::class, 'cancelPending'],
+            'GET /admin/stations' => [StationController::class, 'index'],
+            'GET /admin/stations/detail' => [StationController::class, 'detail'],
             'POST /admin/stations/toggle' => [StationController::class, 'toggle'],
             'POST /admin/stations/sync' => [StationController::class, 'sync'],
             'POST /admin/stations/reconcile' => [StationController::class, 'reconcile'],

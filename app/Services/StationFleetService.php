@@ -16,8 +16,8 @@ final class StationFleetService {
     $seen[]=$serial;
     $q=$db->prepare('SELECT * FROM batteries WHERE serial=? FOR UPDATE');$q->execute([$serial]);$old=$q->fetch();
     if($old && $old['station_imei']!==null && $old['station_imei']!==$imei && in_array($old['status'],['reserved','rented'],true))continue;
-    if($old && in_array($old['status'],['reserved','rented','maintenance'],true))$status=$old['status'];
-    else $status=((string)($item['battery_abnormal']??'0')==='0'&&(string)($item['cable_abnormal']??'0')==='0'&&(string)($item['lock_status']??'1')==='1')?'available':'maintenance';
+    if($old && in_array($old['status'],['reserved','rented'],true))$status=$old['status'];
+    else $status=self::rentable($item)?'available':'maintenance';
     $db->prepare('INSERT INTO batteries(serial,status,station_imei,slot_id,battery_capacity,battery_abnormal,cable_abnormal) VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE status=VALUES(status),station_imei=VALUES(station_imei),slot_id=VALUES(slot_id),battery_capacity=VALUES(battery_capacity),battery_abnormal=VALUES(battery_abnormal),cable_abnormal=VALUES(cable_abnormal)')
      ->execute([$serial,$status,$imei,$slot,min(100,max(0,(int)($item['battery_capacity']??0))),(int)($item['battery_abnormal']??0)?1:0,(int)($item['cable_abnormal']??0)?1:0]);
    }
@@ -26,8 +26,24 @@ final class StationFleetService {
    $db->commit();return $remote;
   }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
  }
+ public static function rentable(array $battery):bool {
+  $minimum=max(0,min(100,(int)App::env('MIN_RENTAL_BATTERY_PERCENT','20')));
+  return (string)($battery['battery_abnormal']??'1')==='0'
+   && (string)($battery['cable_abnormal']??'1')==='0'
+   && (string)($battery['lock_status']??'0')==='1'
+   && (int)($battery['battery_capacity']??0)>=$minimum;
+ }
+ public static function availableAt(array $station,string $serial,string $slot):bool {
+  foreach($station['batteries']??[] as $battery)
+   if((string)($battery['battery_id']??'')===$serial && (string)($battery['slot_id']??'')===$slot)return self::rentable($battery);
+  return false;
+ }
  public static function contains(array $station,string $batteryId):bool {
   foreach($station['batteries']??[] as $b)if((string)($b['battery_id']??'')===$batteryId)return true;
   return false;
+ }
+ public static function battery(array $station,string $batteryId):?array {
+  foreach($station['batteries']??[] as $b)if((string)($b['battery_id']??'')===$batteryId)return $b;
+  return null;
  }
 }

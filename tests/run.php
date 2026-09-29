@@ -9,6 +9,7 @@ use App\Services\PaiementProPayoutService;
 use App\Services\PayoutCallbackAssessment;
 use App\Services\PayoutResult;
 use App\Services\PaymentVerification;
+use App\Services\StationFleetService;
 
 $tests=[];
 $test=function(string $name,callable $fn)use(&$tests):void{$fn();$tests[]=$name;};
@@ -40,9 +41,16 @@ $rental=['reference'=>'TBP-0123456789ABCDEF','payment_environment'=>'production'
 $notification=['merchantId'=>'PP-TEST','referenceNumber'=>$rental['reference'],'countryCurrencyCode'=>'952','amount'=>'100','responsecode'=>'0'];
 $token=$verification->token($rental['reference']);
 $test('valid payment notification is accepted',fn()=>$same(true,$verification->verified($notification,$rental,$token)));
+$test('provider failure is classified without authorizing release',fn()=>$same('failed',$verification->outcome(array_replace($notification,['responsecode'=>'-1']),$rental,$token)));
+$test('wrong amount has no authenticated outcome',fn()=>$same('invalid',$verification->outcome(array_replace($notification,['amount'=>'999']),$rental,$token)));
 $test('callback without token is rejected',fn()=>$same(false,$verification->verified($notification,$rental,null)));
 $test('wrong amount is rejected',fn()=>$same(false,$verification->verified(array_replace($notification,['amount'=>'999']),$rental,$token)));
 $test('failure is rejected',fn()=>$same(false,$verification->verified(array_replace($notification,['responsecode'=>'-1']),$rental,$token)));
 $test('wrong callback token is rejected',fn()=>$same(false,$verification->verified($notification,$rental,str_repeat('b',64))));
 putenv('PAYMENT_CALLBACK_SECRET');putenv('PAIEMENTPRO_MERCHANT_ID');
+$bank=['battery_id'=>'B1','slot_id'=>'2','lock_status'=>'1','battery_capacity'=>'45','battery_abnormal'=>'0','cable_abnormal'=>'0'];
+$test('healthy charged power bank is rentable',fn()=>$same(true,StationFleetService::availableAt(['batteries'=>[$bank]],'B1','2')));
+$test('wrong slot is not rentable',fn()=>$same(false,StationFleetService::availableAt(['batteries'=>[$bank]],'B1','3')));
+$test('faulty power bank is not rentable',fn()=>$same(false,StationFleetService::rentable(array_replace($bank,['battery_abnormal'=>'1']))));
+$test('empty power bank is not rentable',fn()=>$same(false,StationFleetService::rentable(array_replace($bank,['battery_capacity'=>'5']))));
 fwrite(STDOUT,count($tests)." tests OK\n");

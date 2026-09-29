@@ -20,10 +20,12 @@ final class AdminController {
   $payoutEnabled=App::env('PAYMENT_LAB_PAYOUT_ENABLED')==='1';
   $simulationEnabled=App::env('SIMULATED_RENTALS_ENABLED')==='1' && $modes['heycharge']==='simulation';
   $autoRefundEnabled=App::env('AUTOMATIC_REFUNDS_ENABLED')==='1';
+  $workerLastRun=$db->query("SELECT last_run_at FROM service_heartbeats WHERE name='heycharge'")->fetchColumn()?:null;
+  $workerRecent=$workerLastRun && strtotime($workerLastRun.' UTC')>=time()-240;
   $ready=['paiementpro_sandbox'=>App::env('PAIEMENTPRO_SANDBOX_WSDL')!=='' && App::env('PAIEMENTPRO_SANDBOX_MERCHANT_ID')!=='',
           'paiementpro_production'=>App::env('PAIEMENTPRO_MERCHANT_ID')!=='',
           'heycharge_normal'=>App::env('HEYCHARGE_API_BASE')!=='' && App::env('HEYCHARGE_API_KEY')!==''];
-  App::view('admin',compact('prices','batteries','modes','stats','rentals','testOperations','csrf','ready','payinEnabled','payoutEnabled','simulationEnabled','autoRefundEnabled','currentUser','stations'));
+  App::view('admin',compact('prices','batteries','modes','stats','rentals','testOperations','csrf','ready','payinEnabled','payoutEnabled','simulationEnabled','autoRefundEnabled','currentUser','stations','workerLastRun','workerRecent'));
  }
  public function modes():void {
   Auth::requirePermission('integrations.manage',true);

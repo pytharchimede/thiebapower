@@ -7,7 +7,8 @@ final class RentalController {
  public function index():void {
   $prices=App::db()->query('SELECT * FROM pricing WHERE id=1')->fetch();
   $modes=\App\Services\IntegrationSettings::all();
-  $batteries=App::db()->query($modes['heycharge']==='normal' ? "SELECT b.id,b.serial,b.deposit_override,b.station_imei FROM batteries b JOIN stations s ON s.imei=b.station_imei WHERE b.status='available' AND s.enabled=1 AND s.status='online' ORDER BY b.id" : "SELECT id,serial,deposit_override,station_imei FROM batteries WHERE status='available' ORDER BY id")->fetchAll();
+  $minimum=max(0,min(100,(int)App::env('MIN_RENTAL_BATTERY_PERCENT','20')));
+  $batteries=App::db()->query($modes['heycharge']==='normal' ? "SELECT b.id,b.serial,b.deposit_override,b.station_imei FROM batteries b JOIN stations s ON s.imei=b.station_imei WHERE b.status='available' AND b.battery_capacity >= $minimum AND s.enabled=1 AND s.status='online' ORDER BY b.id" : "SELECT id,serial,deposit_override,station_imei FROM batteries WHERE status='available' ORDER BY id")->fetchAll();
   App::view('rent',['prices'=>$prices,'batteries'=>$batteries,'checkoutEnabled'=>$this->checkoutEnabled(),'depositEnabled'=>(int)$prices['deposit_enabled']===1]);
  }
  private function checkoutEnabled():bool {

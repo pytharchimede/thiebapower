@@ -3,11 +3,32 @@ namespace App\Services;
 use App\Core\App;
 use App\Repositories\RentalRepository;
 final class RentalLifecycleService {
+ /** A verified provider failure releases only a pending reservation. */
+ public function failedPayment(string $reference):bool {
+  $db=App::db();$db->beginTransaction();
+  try {
+   $q=$db->prepare('SELECT * FROM rentals WHERE reference=? FOR UPDATE');$q->execute([$reference]);$r=$q->fetch();
+   $changed=false;
+   if($r && $r['status']==='pending_payment'){
+    $db->prepare("UPDATE rentals SET status='payment_failed' WHERE id=?")->execute([$r['id']]);
+    $db->prepare("UPDATE batteries SET status='available' WHERE id=? AND status='reserved'")->execute([$r['battery_id']]);
+    $changed=true;
+   }
+   $db->commit();
+   return $changed;
+  }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+ }
  /** Must be called only after an authenticated Paiement Pro success notification. */
  public function confirmedPayment(string $reference):void {
   $db=App::db();$db->beginTransaction();
   try {
    $q=$db->prepare('SELECT * FROM rentals WHERE reference=? FOR UPDATE');$q->execute([$reference]);$r=$q->fetch();
+   if($r && $r['status']==='payment_failed'){
+    $db->prepare("UPDATE rentals SET status='payment_review' WHERE id=?")->execute([$r['id']]);
+    $db->commit();
+    Audit::event('payment.late_success_review','rental',$reference);
+    return;
+   }
    if(!$r||$r['status']!=='pending_payment'){$db->commit();return;}
    $db->prepare("UPDATE rentals SET status='releasing' WHERE id=?")->execute([$r['id']]);$db->commit();
   }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
@@ -17,9 +38,7 @@ final class RentalLifecycleService {
    $q=$db->prepare('SELECT serial,slot_id FROM batteries WHERE id=?');$q->execute([$r['battery_id']]);$battery=$q->fetch();
    if(!$battery||!$battery['slot_id'])throw new \RuntimeException('Emplacement inconnu');
    $station=(new HeyChargeOpenApi)->station($r['station_code']);
-   $match=false;
-   foreach($station['batteries']??[] as $item)if(($item['battery_id']??'')===$battery['serial']&&($item['slot_id']??'')===$battery['slot_id']&& (string)($item['battery_abnormal']??'0')==='0')$match=true;
-   if(!$match)throw new \RuntimeException('Batterie absente ou défectueuse');
+   if(!StationFleetService::availableAt($station,$battery['serial'],$battery['slot_id']))throw new \RuntimeException('Batterie absente, déchargée ou défectueuse');
    $db->prepare('UPDATE rentals SET release_command_at=UTC_TIMESTAMP() WHERE id=?')->execute([$r['id']]);
    (new HeyChargeOpenApi)->release($r['station_code'],$battery['serial'],$battery['slot_id']);
   }catch(\Throwable $e){error_log('Station release outcome unknown '.$reference.': '.$e->getMessage());$db->prepare("UPDATE rentals SET status='release_failed' WHERE id=? AND status='releasing'")->execute([$r['id']]);}
@@ -34,15 +53,17 @@ final class RentalLifecycleService {
   if(!$present && $r['status']!=='active' && $r['release_command_at'])$this->confirmedPhysicalRelease($reference,new \DateTimeImmutable('now',new \DateTimeZone('UTC')));
   if($r['status']==='active'){
    $returned=$present;
+   $returnStation=$present?$r['station_code']:null;
+   $returnBattery=$present?StationFleetService::battery($station,$r['serial']):null;
    if(!$returned){
-    $candidate=$db->prepare("SELECT DISTINCT e.imei FROM heycharge_events e JOIN stations s ON s.imei=e.imei WHERE e.event_type='return' AND e.battery_serial=? AND e.received_at>=? AND s.enabled=1 ORDER BY e.imei LIMIT 20");
+    $candidate=$db->prepare("SELECT DISTINCT e.imei FROM heycharge_events e JOIN stations s ON s.imei=e.imei WHERE e.event_type='return' AND e.battery_serial=? AND e.received_at>=? ORDER BY e.imei LIMIT 20");
     $candidate->execute([$r['serial'],$r['started_at']]);
     foreach($candidate->fetchAll() as $row){
      $remote=(new HeyChargeOpenApi)->station($row['imei']);
-     if(($remote['imei']??'')===$row['imei'] && StationFleetService::contains($remote,$r['serial'])){$returned=true;break;}
+     if(($remote['imei']??'')===$row['imei'] && StationFleetService::contains($remote,$r['serial'])){$returned=true;$returnStation=$row['imei'];$returnBattery=StationFleetService::battery($remote,$r['serial']);break;}
     }
    }
-   if($returned)$this->confirmedReturn((int)$r['id'],new \DateTimeImmutable('now',new \DateTimeZone('UTC')));
+   if($returned)$this->confirmedReturn((int)$r['id'],new \DateTimeImmutable('now',new \DateTimeZone('UTC')),$returnStation,$returnBattery);
   }
   Audit::event('station.reconciled','rental',$reference,['battery_present'=>$present]);
  }
@@ -59,10 +80,17 @@ final class RentalLifecycleService {
   }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
  }
  /** Must be called only after a verified physical return event from HeyCharge. */
- public function confirmedReturn(int $rentalId,\DateTimeImmutable $returnedAt):int {
+ public function confirmedReturn(int $rentalId,\DateTimeImmutable $returnedAt,?string $returnStation=null,?array $returnBattery=null):int {
+  $slot=$returnBattery!==null?(string)($returnBattery['slot_id']??''):'';
+  if($returnStation!==null && !preg_match('/^[A-Za-z0-9_-]{1,32}$/D',$slot))throw new \RuntimeException('Emplacement de retour invalide');
   $settlement=(new AutomaticDepositRefundService)->recordVerifiedReturn($rentalId,$returnedAt);
   $q=App::db()->prepare('SELECT battery_id FROM rentals WHERE id=?');$q->execute([$rentalId]);
-  App::db()->prepare("UPDATE batteries SET status='available' WHERE id=? AND status='rented'")->execute([$q->fetchColumn()]);
+  $batteryId=$q->fetchColumn();
+  if($returnStation!==null && $returnBattery!==null){
+   $status=StationFleetService::rentable($returnBattery)?'available':'maintenance';
+   App::db()->prepare("UPDATE batteries SET status=?,station_imei=?,slot_id=?,battery_capacity=?,battery_abnormal=?,cable_abnormal=? WHERE id=? AND status='rented'")
+    ->execute([$status,$returnStation,$slot,min(100,max(0,(int)($returnBattery['battery_capacity']??0))),(int)($returnBattery['battery_abnormal']??0)?1:0,(int)($returnBattery['cable_abnormal']??0)?1:0,$batteryId]);
+  }else App::db()->prepare("UPDATE batteries SET status='available' WHERE id=? AND status='rented'")->execute([$batteryId]);
   if(App::env('AUTOMATIC_REFUNDS_ENABLED')==='1')(new AutomaticDepositRefundService)->dispatch($settlement);
   return $settlement;
  }
