@@ -12,18 +12,10 @@ use App\Services\HeyChargeOpenApi;
 use App\Services\IntegrationSettings;
 use App\Services\RentalLifecycleService;
 use App\Services\StationFleetService;
-use App\Services\HeyChargeAccountService;
 if(IntegrationSettings::all()['heycharge']!=='normal'||!(new HeyChargeOpenApi)->configured())exit(0);
 $db=App::db();
 if((int)$db->query("SELECT GET_LOCK('thiebapower_heycharge_worker',0)")->fetchColumn()!==1)exit(0);
 try {
- $lastDiscovery=$db->query("SELECT last_run_at FROM service_heartbeats WHERE name='heycharge_discovery'")->fetchColumn();
- if(!$lastDiscovery||strtotime($lastDiscovery.' UTC')<time()-600){
-  try {
-   (new HeyChargeAccountService)->discover();
-  }catch(\Throwable $e){error_log('HeyCharge account discovery: '.$e->getMessage());}
-  $db->exec("INSERT INTO service_heartbeats(name,last_run_at) VALUES('heycharge_discovery',UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE last_run_at=VALUES(last_run_at)");
- }
  $expired=$db->query("SELECT reference FROM rentals WHERE status IN ('pending_payment','payment_failed') AND reservation_expires_at<=UTC_TIMESTAMP() AND EXISTS (SELECT 1 FROM batteries b WHERE b.id=rentals.battery_id AND b.status='reserved') ORDER BY reservation_expires_at LIMIT 20")->fetchAll();
  foreach($expired as $row){
   try {(new RentalLifecycleService)->expirePendingPayment($row['reference']);}

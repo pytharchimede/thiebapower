@@ -26,9 +26,11 @@ final class StationController {
  }
  public function discover():void {
   Auth::requirePermission('fleet.manage',true);
-  try {$count=(new HeyChargeAccountService)->discover();Audit::event('station.account_discovered','station','heycharge',['new'=>$count]);}
-  catch(\Throwable $e){error_log('HeyCharge account discovery: '.$e->getMessage());http_response_code(503);exit('Impossible de lire la liste des stations HeyCharge');}
-  App::redirect('/admin/stations');
+  $imei=trim((string)($_POST['imei']??''));
+  if(!preg_match('/^[A-Za-z0-9_-]{1,120}$/D',$imei)){http_response_code(422);echo 'Renseignez l’IMEI de la station à importer.';return;}
+  try {$count=(new HeyChargeAccountService)->discover($imei);Audit::event('station.imported_by_imei','station',$imei,['new'=>$count]);}
+  catch(\Throwable $e){error_log('HeyCharge station import: '.$e->getMessage());http_response_code(503);echo 'Impossible de lire cette station. Vérifiez son IMEI et son rattachement au compte HeyCharge.';return;}
+  App::redirect('/admin/stations/detail?imei='.rawurlencode($imei));
  }
  public function labels():void {
   Auth::requirePermission('fleet.manage');
