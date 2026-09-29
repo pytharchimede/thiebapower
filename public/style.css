@@ -357,3 +357,33 @@ a { color: inherit; }
  .label-page .station-label { width: 100mm; height: 150mm; }
 }
 @media(max-width:760px) { .admin-mobile-menu nav a[aria-current="page"] { background:#e5f7ee; color:#0a5b4e; font-weight:850; } }
+
+/* One station label on each landscape A4 sheet, inside a 157 × 160 mm print area. */
+.label-sheet { display:block; padding:25px; }
+.station-label { width:157mm; height:150mm; margin:0 auto 24px; padding:8mm; border-radius:5mm; text-align:left; background:linear-gradient(115deg,#103d46 0%,#123e49 68%,#086574 100%); }
+.label-top { font-size:17px; letter-spacing:.025em; }
+.label-tagline {font-size:9px; font-weight:500; letter-spacing:0; color:#cce7e5;}
+.label-hero {display:grid; grid-template-columns:minmax(0,1fr) 49mm; align-items:center; gap:8mm; flex:1; min-height:0;}
+.label-kicker {font-size:8px; margin:0 0 5mm;}
+.station-label h1 {font-size:29px; line-height:1.07; margin:0 0 5mm;}
+.label-lead {font-size:10px; line-height:1.5; color:#e2f0ee; max-width:75mm; margin:0;}
+.label-scan {background:white; color:#103d46; border-radius:4mm; text-align:center; padding:3mm 3mm 4mm; display:flex; flex-direction:column; align-items:center; gap:1mm;}
+.label-scan .label-qr {width:39mm; height:39mm; margin:0; padding:1mm; border-radius:0;}
+.label-scan strong {font-size:10px; letter-spacing:.04em;}
+.label-scan small {font-size:8px;}
+.label-footer {border-top:1px solid #73a9aa; padding-top:3mm;}
+.label-process {display:flex; align-items:center; justify-content:space-between; gap:2mm;}
+.label-process div {display:flex; flex-direction:column; align-items:center; text-align:center; min-width:22mm;}
+.label-process div span {font-size:17px; line-height:1.1; color:#ffbd62;}
+.label-process strong {font-size:9px;}.label-process small {font-size:7px; color:#cfe7e5;}
+.label-process i {font-size:13px; font-style:normal; color:#ffbd62;}
+.label-payment {display:flex; align-items:center; justify-content:center; gap:3mm; margin-top:4mm; font-size:8px;}
+.label-payment b {display:inline-block; padding:1mm 2mm; border-radius:2mm; font-size:8px; white-space:nowrap;}
+.pay-wave {background:#e3f8fd;color:#1796c1;}.pay-orange {background:#ff7900;color:white;}.pay-mtn {background:#ffcc00;color:#122e38;}.pay-moov {background:#f5f5f5;color:#ef682d;}
+.label-id {display:block; margin-top:2mm; font-size:6px; text-align:center; overflow-wrap:anywhere; color:#c7dddd;}
+@media print {
+ @page {size:A4 landscape; margin:0;}
+ .label-page {background:white;}
+ .label-page .label-sheet {padding:0;}
+ .label-page .station-label {width:157mm; height:150mm; margin:50mm 70mm 10mm; border-radius:0; box-shadow:none; break-after:page; page-break-after:always; print-color-adjust:exact; -webkit-print-color-adjust:exact;}
+}
