@@ -27,6 +27,8 @@ L'initialisation des locations utilise l'API JSON officielle de Paiement Pro. Ch
 
 Communiquer à HeyCharge le préfixe exact `https://thiebapower.com/api/heycharge/callback`. Le fournisseur appelle `/register`, `/return` et `/status` sous ce préfixe. Une station inconnue signalée par `register` apparaît désactivée dans l’administration. Les écrans `/admin/stations`, `/admin/stations/detail?imei=...` et `/admin/rentals` présentent le parc, les événements et les locations à traiter.
 
+La notification des encaissements Paiement Pro utilise une URL distincte, `/api/paiementpro/rental-callback?token=...`, générée lors de chaque paiement. L'URL racine HeyCharge répond à un contrôle GET et ne reçoit pas de paiement.
+
 Dans `/admin` → Terminaux, enregistrer ou constater chaque IMEI, cliquer **Synchroniser** pour importer `battery_id`, `slot_id` et état, vérifier le parc, puis **Activer**. Dans Intégrations, choisir HeyCharge **Normal**. Une station désactivée ou une batterie non disponible ne peut pas être louée. Le kiosque masque les batteries sous le seuil de charge, puis le serveur vérifie leur présence et leur état directement auprès de HeyCharge avant de créer le paiement.
 
 Créer la tâche cron cPanel suivante toutes les minutes, en adaptant uniquement le chemin du binaire PHP si nécessaire :

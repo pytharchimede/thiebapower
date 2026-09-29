@@ -47,6 +47,13 @@ $test('callback without token is rejected',fn()=>$same(false,$verification->veri
 $test('wrong amount is rejected',fn()=>$same(false,$verification->verified(array_replace($notification,['amount'=>'999']),$rental,$token)));
 $test('failure is rejected',fn()=>$same(false,$verification->verified(array_replace($notification,['responsecode'=>'-1']),$rental,$token)));
 $test('wrong callback token is rejected',fn()=>$same(false,$verification->verified($notification,$rental,str_repeat('b',64))));
+$test('payment and hardware callbacks have separate routes',function()use($same){
+ $routes=file_get_contents(dirname(__DIR__).'/app/Core/App.php');
+ $payment=file_get_contents(dirname(__DIR__).'/app/Services/PaiementProService.php');
+ $same(true,str_contains($routes,"'POST /api/paiementpro/rental-callback' => [PaymentController::class, 'callback']"));
+ $same(true,str_contains($payment,'/api/paiementpro/rental-callback?token='));
+ $same(false,str_contains($payment,'/api/heycharge/callback?token='));
+});
 putenv('PAYMENT_CALLBACK_SECRET');putenv('PAIEMENTPRO_MERCHANT_ID');
 $bank=['battery_id'=>'B1','slot_id'=>'2','lock_status'=>'1','battery_capacity'=>'45','battery_abnormal'=>'0','cable_abnormal'=>'0'];
 $test('healthy charged power bank is rentable',fn()=>$same(true,StationFleetService::availableAt(['batteries'=>[$bank]],'B1','2')));

@@ -6,6 +6,11 @@ use App\Services\Audit;
 use App\Services\StationFleetService;
 use App\Services\RentalLifecycleService;
 final class StationController {
+ public function callbackStatus():void {
+  header('Content-Type: application/json; charset=utf-8');
+  if(($_SERVER['REQUEST_METHOD']??'GET')!=='GET')http_response_code(400);
+  echo json_encode(['code'=>($_SERVER['REQUEST_METHOD']??'GET')==='GET'?0:1,'message'=>($_SERVER['REQUEST_METHOD']??'GET')==='GET'?'HeyCharge callback ready':'Use /register, /return or /status']);
+ }
  public function index():void {
   Auth::requirePermission('fleet.manage');
   $db=App::db();

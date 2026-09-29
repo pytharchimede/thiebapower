@@ -9,7 +9,7 @@ final class PaiementProService {
   return $this->initiateSession($r)['url'];
  }
  public function initiateSession(array $r):array {
-  return $this->createSession($r,'/api/heycharge/callback?token='.(new PaymentVerification)->token($r['reference']),'/payment/return?reference='.rawurlencode($r['reference']));
+  return $this->createSession($r,'/api/paiementpro/rental-callback?token='.(new PaymentVerification)->token($r['reference']),'/payment/return?reference='.rawurlencode($r['reference']));
  }
  private function createSession(array $r,string $notificationPath,string $returnPath):array {
   $mode=$r['payment_environment']??IntegrationSettings::all()['paiementpro'];
