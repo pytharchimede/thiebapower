@@ -44,7 +44,6 @@ final class RentalCheckoutService {
     $q=$db->prepare('SELECT * FROM rentals WHERE reference=? FOR UPDATE');$q->execute([$reference]);$r=$q->fetch();
     if($r && $r['status']==='pending_payment'){
      $db->prepare("UPDATE rentals SET status='payment_failed' WHERE id=?")->execute([$r['id']]);
-     $db->prepare("UPDATE batteries SET status='available' WHERE id=? AND status='reserved'")->execute([$r['battery_id']]);
     }
     $db->commit();
    }catch(\Throwable $inner){if($db->inTransaction())$db->rollBack();error_log($inner);}

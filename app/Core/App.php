@@ -51,6 +51,7 @@ final class App
         });
         $routes = [
             'GET /' => [RentalController::class, 'index'],
+            'GET /rent' => [RentalController::class, 'index'],
             'POST /rentals' => [RentalController::class, 'create'],
             'GET /rentals/status' => [RentalController::class, 'status'],
             'POST /api/paiementpro/rental-callback' => [PaymentController::class, 'callback'],
@@ -72,6 +73,8 @@ final class App
             'GET /admin/rentals' => [RentalOperationsController::class, 'index'],
             'POST /admin/rentals/cancel' => [RentalOperationsController::class, 'cancelPending'],
             'GET /admin/stations' => [StationController::class, 'index'],
+            'POST /admin/stations/discover' => [StationController::class, 'discover'],
+            'GET /admin/stations/labels' => [StationController::class, 'labels'],
             'GET /admin/stations/detail' => [StationController::class, 'detail'],
             'POST /admin/stations/toggle' => [StationController::class, 'toggle'],
             'POST /admin/stations/sync' => [StationController::class, 'sync'],

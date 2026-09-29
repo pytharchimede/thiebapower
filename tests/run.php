@@ -10,6 +10,7 @@ use App\Services\PayoutCallbackAssessment;
 use App\Services\PayoutResult;
 use App\Services\PaymentVerification;
 use App\Services\StationFleetService;
+use App\Services\StationQr;
 
 $tests=[];
 $test=function(string $name,callable $fn)use(&$tests):void{$fn();$tests[]=$name;};
@@ -61,4 +62,11 @@ $test('wrong slot is not rentable',fn()=>$same(false,StationFleetService::availa
 $test('cable indicator does not hide inserted battery',fn()=>$same(true,StationFleetService::rentable(array_replace($bank,['cable_abnormal'=>'1']))));
 $test('inserted battery below 70 percent remains charging',fn()=>$same(false,StationFleetService::rentable(array_replace($bank,['battery_capacity'=>'69']))));
 $test('missing slot is not rentable',fn()=>$same(false,StationFleetService::rentable(array_replace($bank,['slot_id'=>'']))));
+$test('station label QR matches independently encoded reference',function()use($same){
+ $svg=StationQr::svg('https://thiebapower.com/rent?station=DCHEY02603000938');
+ preg_match_all('/M(\d+) (\d+)h1v1h-1z/',$svg,$matches,PREG_SET_ORDER);
+ $cells=[];foreach($matches as $match)$cells[((int)$match[2]-4).','.((int)$match[1]-4)]=true;
+ $bits='';for($y=0;$y<37;$y++)for($x=0;$x<37;$x++)$bits.=isset($cells[$y.','.$x])?'1':'0';
+ $same('0364ce9d6b3a907bcfa3c7837a574eb9e4494d274113b40cb25cd95da80fa5de',hash('sha256',$bits));
+});
 fwrite(STDOUT,count($tests)." tests OK\n");

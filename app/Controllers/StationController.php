@@ -7,6 +7,8 @@ use App\Services\StationFleetService;
 use App\Services\RentalLifecycleService;
 use App\Services\HeyChargeOpenApi;
 use App\Services\IntegrationSettings;
+use App\Services\HeyChargeAccountService;
+use App\Services\StationQr;
 final class StationController {
  public function callbackStatus():void {
   header('Content-Type: application/json; charset=utf-8');
@@ -19,6 +21,26 @@ final class StationController {
   $stations=$db->query("SELECT s.*,COUNT(b.id) batteries_count,SUM(b.status='available') available_count,MIN(b.battery_capacity) minimum_capacity FROM stations s LEFT JOIN batteries b ON b.station_imei=s.imei GROUP BY s.imei ORDER BY s.imei")->fetchAll();
   $totals=$db->query('SELECT status,COUNT(*) quantity FROM batteries GROUP BY status')->fetchAll();
   App::view('stations',compact('stations','totals'));
+ }
+ public function discover():void {
+  Auth::requirePermission('fleet.manage',true);
+  try {$count=(new HeyChargeAccountService)->discover();Audit::event('station.account_discovered','station','heycharge',['new'=>$count]);}
+  catch(\Throwable $e){error_log('HeyCharge account discovery: '.$e->getMessage());http_response_code(503);exit('Impossible de lire la liste des stations HeyCharge');}
+  App::redirect('/admin/stations');
+ }
+ public function labels():void {
+  Auth::requirePermission('fleet.manage');
+  $db=App::db();$imei=(string)($_GET['imei']??'');
+  if($imei!==''&&!preg_match('/^[A-Za-z0-9_-]{1,120}$/D',$imei)){http_response_code(404);return;}
+  $q=$db->prepare("SELECT imei,label,enabled FROM stations WHERE (?='' OR imei=?) ORDER BY label,imei");$q->execute([$imei,$imei]);
+  $stations=$q->fetchAll();
+  if($imei!==''&&!$stations){http_response_code(404);return;}
+  $labels=[];$base=rtrim(App::env('APP_URL'),'/');
+  foreach($stations as $station){
+   try {$url=$base.'/rent?station='.rawurlencode($station['imei']);$station['qr']=StationQr::svg($url);$station['url']=$url;$labels[]=$station;}
+   catch(\InvalidArgumentException $e){error_log('Station label '.$station['imei'].': '.$e->getMessage());}
+  }
+  App::view('station_labels',compact('labels'));
  }
  public function detail():void {
   Auth::requirePermission('fleet.manage');

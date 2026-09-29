@@ -22,40 +22,30 @@
             <div class="side-footer"><span>À partir de</span><strong><?= number_format((int) $prices['rental_fee'], 0, ',', ' ') ?> FCFA</strong><small>pour <?= (int) $prices['duration_minutes'] ?> minutes</small></div>
         </aside>
         <section class="kiosk-workflow" aria-label="Parcours de location">
-            <div class="workflow-top"><span class="workflow-label">LOCATION DE POWERBANK</span><span class="workflow-step" id="step-counter">Étape 1 sur 3</span></div>
+            <div class="workflow-top"><span class="workflow-label">STATION <?= htmlspecialchars($station['imei'],ENT_QUOTES,'UTF-8') ?></span><span class="workflow-step" id="step-counter">Étape 1 sur 2</span></div>
             <div class="progress" aria-hidden="true"><span id="progress-bar"></span></div>
             <div class="kiosk-screen" data-step="1">
-                <div class="screen-icon" aria-hidden="true">▦</div>
-                <h2>Scannez la station</h2>
-                <p>Scannez le QR code de la station ou saisissez son code.</p>
-                <button type="button" id="scan-button" class="touch-button outline">Scanner le QR code</button>
-                <video id="scan-video" playsinline hidden></video>
-                <label class="input-label" for="station-code">Code de la station</label>
-                <input id="station-code" maxlength="120" autocomplete="off" placeholder="Saisir le code affiché sur la station">
-                <p id="scan-result" class="screen-hint" role="status">La caméra ne s’active qu’à votre demande.</p>
-                <button type="button" class="touch-button primary" id="station-next">Continuer <span aria-hidden="true">→</span></button>
-            </div>
-            <div class="kiosk-screen" data-step="2" hidden>
-                <button type="button" class="back-button" data-back="1">← Retour</button>
                 <div class="screen-icon" aria-hidden="true">ϟ</div>
                 <h2>Choisissez une batterie</h2>
+                <p class="station-identity">Station <?= htmlspecialchars($station['label']?:$station['imei'],ENT_QUOTES,'UTF-8') ?></p>
                 <p><?= $depositEnabled ? 'La caution peut varier selon la batterie.' : 'Aucune caution demandée.' ?></p>
                 <div class="battery-options" id="battery-options">
                     <?php foreach ($batteries as $battery): ?>
                         <button type="button" class="battery-option"
                             data-id="<?= (int) $battery['id'] ?>"
                             data-serial="<?= htmlspecialchars($battery['serial'], ENT_QUOTES, 'UTF-8') ?>"
+                            data-slot="<?= htmlspecialchars((string)$battery['slot_id'], ENT_QUOTES, 'UTF-8') ?>"
                             data-deposit="<?= $depositEnabled ? (int) ($battery['deposit_override'] ?? $prices['default_deposit']) : 0 ?>" data-station="<?= htmlspecialchars((string)$battery['station_imei'],ENT_QUOTES,'UTF-8') ?>">
                             <span class="option-symbol" aria-hidden="true">ϟ</span>
-                            <span><strong><?= htmlspecialchars($battery['serial'], ENT_QUOTES, 'UTF-8') ?></strong><small><?= $depositEnabled ? 'Caution '.number_format((int) ($battery['deposit_override'] ?? $prices['default_deposit']), 0, ',', ' ').' FCFA' : 'Sans caution' ?></small></span>
+                            <span><strong>Slot <?= htmlspecialchars((string)$battery['slot_id'],ENT_QUOTES,'UTF-8') ?> · <?= (int)$battery['battery_capacity'] ?> %</strong><small><?= htmlspecialchars($battery['serial'],ENT_QUOTES,'UTF-8') ?> · <?= $depositEnabled ? 'Caution '.number_format((int) ($battery['deposit_override'] ?? $prices['default_deposit']), 0, ',', ' ').' FCFA' : 'Sans caution' ?></small></span>
                             <span class="option-arrow" aria-hidden="true">→</span>
                         </button>
                     <?php endforeach; ?>
                 </div>
-                <?php if (!$batteries): ?><div class="kiosk-notice">Aucune batterie disponible actuellement.</div><?php endif; ?>
+                <?php if (!$batteries): ?><div class="kiosk-notice"><?= $inventoryError ? 'Impossible de lire le terminal pour le moment. Réessayez dans quelques instants.' : 'Aucune batterie chargée et disponible actuellement.' ?></div><?php endif; ?>
             </div>
-            <div class="kiosk-screen" data-step="3" hidden>
-                <button type="button" class="back-button" data-back="2">← Retour</button>
+            <div class="kiosk-screen" data-step="2" hidden>
+                <button type="button" class="back-button" data-back="1">← Retour</button>
                 <div class="screen-icon" aria-hidden="true">✓</div>
                 <h2>Votre récapitulatif</h2>
                 <p>Vérifiez le tarif et la caution avant le paiement.</p>
@@ -69,7 +59,7 @@
                 <p class="deposit-info" <?= $depositEnabled ? '' : 'hidden' ?>>Retour dans le délai : caution intégralement restituable. Après le délai : <?= (int) $prices['late_percent'] ?> % de la caution retenus par heure supplémentaire entamée, dans la limite de la caution.</p>
                 <?php if ($checkoutEnabled): ?>
                     <form method="post" action="/rentals" id="rental-checkout">
-                        <input type="hidden" name="station_code" id="checkout-station">
+                        <input type="hidden" name="station_code" id="checkout-station" value="<?= htmlspecialchars($station['imei'],ENT_QUOTES,'UTF-8') ?>">
                         <input type="hidden" name="battery_id" id="checkout-battery">
                         <label class="input-label">Votre nom<input name="name" required maxlength="160"></label>
                         <label class="input-label">Votre email<input name="email" type="email" required></label>
@@ -88,7 +78,7 @@
     </main>
     <footer class="kiosk-footer"><span>THIEBAPOWER · Votre énergie, partout</span><span>Besoin d’aide ? Adressez-vous au personnel de la station.</span></footer>
 </div>
-<script>window.TB_PRICE = <?= (int) $prices['rental_fee'] ?>;</script>
+<script>window.TB_PRICE = <?= (int) $prices['rental_fee'] ?>; window.TB_STATION = <?= json_encode($station['imei'],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>;</script>
 <script src="/app.js" defer></script>
 </body>
 </html>

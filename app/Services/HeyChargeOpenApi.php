@@ -5,6 +5,7 @@ final class HeyChargeOpenApi {
  public function mode():string {return IntegrationSettings::all()['heycharge'];}
  public function configured():bool {return App::env('HEYCHARGE_API_BASE')!=='' && App::env('HEYCHARGE_API_KEY')!=='';}
  public function station(string $imei):array {return $this->request('GET','/v1/station/'.rawurlencode($this->identifier($imei)));}
+ public function stations():array {return $this->request('GET','/v1/station');}
  public function release(string $imei,string $batteryId,string $slotId):void {
   if($this->mode()!=='normal')throw new \LogicException('Mode matériel désactivé');
   $this->request('POST','/v1/station/'.rawurlencode($this->identifier($imei)),['battery_id'=>$this->identifier($batteryId),'slot_id'=>$this->identifier($slotId)]);
