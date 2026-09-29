@@ -8,7 +8,7 @@ final class RentalOperationsController {
  public function index():void {
   Auth::requirePermission('rentals.manage');
   $status=(string)($_GET['status']??'');
-  $allowed=['pending_payment','releasing','active','returned','payment_failed','release_failed','payment_review'];
+  $allowed=['pending_payment','releasing','active','returned','payment_failed','payment_timeout','release_failed','payment_review'];
   $db=App::db();
   if(in_array($status,$allowed,true)){$q=$db->prepare('SELECT r.*,b.serial battery_serial,s.status refund_status FROM rentals r JOIN batteries b ON b.id=r.battery_id LEFT JOIN deposit_settlements s ON s.rental_id=r.id WHERE r.status=? ORDER BY r.id DESC LIMIT 100');$q->execute([$status]);}
   else {$status='';$q=$db->query('SELECT r.*,b.serial battery_serial,s.status refund_status FROM rentals r JOIN batteries b ON b.id=r.battery_id LEFT JOIN deposit_settlements s ON s.rental_id=r.id ORDER BY r.id DESC LIMIT 100');}

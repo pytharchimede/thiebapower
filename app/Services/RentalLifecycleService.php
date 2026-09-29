@@ -18,12 +18,25 @@ final class RentalLifecycleService {
    return $changed;
   }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
  }
+ /** Expire an unconfirmed payment without claiming the provider rejected it. */
+ public function expirePendingPayment(string $reference):bool {
+  $db=App::db();$db->beginTransaction();
+  try {
+   $q=$db->prepare('SELECT id,battery_id,status,reservation_expires_at, reservation_expires_at<=UTC_TIMESTAMP() AS expired FROM rentals WHERE reference=? FOR UPDATE');$q->execute([$reference]);$r=$q->fetch();
+   if(!$r||$r['status']!=='pending_payment'||(int)$r['expired']!==1){$db->commit();return false;}
+   $db->prepare("UPDATE rentals SET status='payment_timeout' WHERE id=?")->execute([$r['id']]);
+   $db->prepare("UPDATE batteries SET status='available' WHERE id=? AND status='reserved'")->execute([$r['battery_id']]);
+   $db->commit();
+   Audit::event('payment.reservation_timeout','rental',$reference);
+   return true;
+  }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+ }
  /** Must be called only after an authenticated Paiement Pro success notification. */
  public function confirmedPayment(string $reference):void {
   $db=App::db();$db->beginTransaction();
   try {
    $q=$db->prepare('SELECT * FROM rentals WHERE reference=? FOR UPDATE');$q->execute([$reference]);$r=$q->fetch();
-   if($r && $r['status']==='payment_failed'){
+   if($r && in_array($r['status'],['payment_failed','payment_timeout'],true)){
     $db->prepare("UPDATE rentals SET status='payment_review' WHERE id=?")->execute([$r['id']]);
     $db->commit();
     Audit::event('payment.late_success_review','rental',$reference);

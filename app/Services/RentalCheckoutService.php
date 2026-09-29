@@ -27,7 +27,7 @@ final class RentalCheckoutService {
     if((int)$q->fetchColumn()!==1||$battery['station_imei']!==$station||!$battery['slot_id']||$battery['slot_id']!==$candidate['slot_id']||$battery['serial']!==$candidate['serial'])throw new \RuntimeException('Station ou batterie indisponible');
    }
    $price=$db->query('SELECT * FROM pricing WHERE id=1')->fetch();$reference='TBP-'.strtoupper(bin2hex(random_bytes(8)));
-   $db->prepare("INSERT INTO rentals(reference,battery_id,station_code,payment_environment,customer_name,customer_email,customer_phone,payout_channel,rental_fee,deposit,late_percent,duration_minutes,status,reservation_expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,'pending_payment',DATE_ADD(UTC_TIMESTAMP(),INTERVAL 15 MINUTE))")
+   $db->prepare("INSERT INTO rentals(reference,battery_id,station_code,payment_environment,customer_name,customer_email,customer_phone,payout_channel,rental_fee,deposit,late_percent,duration_minutes,status,reservation_expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,'pending_payment',DATE_ADD(UTC_TIMESTAMP(),INTERVAL 2 MINUTE))")
       ->execute([$reference,$batteryId,$station,IntegrationSettings::all()['paiementpro'],$name,$email,$phone,$channel,(int)$price['rental_fee'],($depositEnabled?(int)($battery['deposit_override']??$price['default_deposit']):0),(int)$price['late_percent'],(int)$price['duration_minutes']]);
    $db->prepare("UPDATE batteries SET status='reserved' WHERE id=?")->execute([$batteryId]);$db->commit();
   }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}

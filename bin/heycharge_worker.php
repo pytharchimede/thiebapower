@@ -16,6 +16,11 @@ if(IntegrationSettings::all()['heycharge']!=='normal'||!(new HeyChargeOpenApi)->
 $db=App::db();
 if((int)$db->query("SELECT GET_LOCK('thiebapower_heycharge_worker',0)")->fetchColumn()!==1)exit(0);
 try {
+ $expired=$db->query("SELECT reference FROM rentals WHERE status='pending_payment' AND reservation_expires_at<=UTC_TIMESTAMP() ORDER BY reservation_expires_at LIMIT 20")->fetchAll();
+ foreach($expired as $row){
+  try {(new RentalLifecycleService)->expirePendingPayment($row['reference']);}
+  catch(\Throwable $e){error_log('Payment reservation timeout '.$row['reference'].': '.$e->getMessage());}
+ }
  $rows=array_merge(
   $db->query("SELECT id,reference FROM rentals WHERE status IN ('releasing','release_failed') AND release_command_at IS NOT NULL ORDER BY COALESCE(last_station_check_at,'1970-01-01'),id LIMIT 2")->fetchAll(),
   $db->query("SELECT r.id,r.reference FROM rentals r JOIN batteries b ON b.id=r.battery_id WHERE r.status='active' ORDER BY EXISTS(SELECT 1 FROM heycharge_events e WHERE e.event_type='return' AND e.battery_serial=b.serial AND e.received_at>COALESCE(r.last_station_check_at,'1970-01-01')) DESC,COALESCE(r.last_station_check_at,'1970-01-01'),r.id LIMIT 3")->fetchAll()
