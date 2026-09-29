@@ -67,7 +67,6 @@ final class App
             'POST /admin/stations' => [StationController::class, 'save'],
             'POST /admin/stations/toggle' => [StationController::class, 'toggle'],
             'POST /admin/stations/sync' => [StationController::class, 'sync'],
-            'POST /admin/stations/confirm-payment' => [StationController::class, 'confirmPayment'],
             'POST /admin/stations/reconcile' => [StationController::class, 'reconcile'],
             'GET /admin' => [AdminController::class, 'index'],
             'POST /admin/prices' => [AdminController::class, 'prices'],

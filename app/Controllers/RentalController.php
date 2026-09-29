@@ -14,7 +14,7 @@ final class RentalController {
   if(App::env('PUBLIC_RENTALS_ENABLED')!=='1')return false;
   $modes=\App\Services\IntegrationSettings::all();
   if($modes['heycharge']==='simulation')return App::env('SIMULATED_RENTALS_ENABLED')==='1' && ($modes['paiementpro']==='production'?App::env('PAIEMENTPRO_MERCHANT_ID')!=='' : App::env('PAIEMENTPRO_SANDBOX_MERCHANT_ID')!=='');
-  return ($modes['paiementpro']==='production' ? App::env('PAIEMENTPRO_MERCHANT_ID')!=='' : App::env('PAIEMENTPRO_SANDBOX_MERCHANT_ID')!=='') && (new \App\Services\HeyChargeOpenApi)->configured();
+  return (new \App\Services\PaymentVerification)->ready() && ($modes['paiementpro']==='production' ? App::env('PAIEMENTPRO_MERCHANT_ID')!=='' : App::env('PAIEMENTPRO_SANDBOX_MERCHANT_ID')!=='') && (new \App\Services\HeyChargeOpenApi)->configured();
  }
  public function create():void {
   if(!$this->checkoutEnabled()){
@@ -29,6 +29,6 @@ final class RentalController {
   $r=(new RentalRepository)->find($reference);
   if(!$r){http_response_code(404);return;}
   header('Content-Type: application/json');
-  echo json_encode(['reference'=>$r['reference'],'status'=>$r['status']]);
+  echo json_encode(['reference'=>$r['reference'],'status'=>$r['status'],'due_at'=>$r['due_at']]);
  }
 }

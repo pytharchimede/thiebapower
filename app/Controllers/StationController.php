@@ -27,17 +27,6 @@ final class StationController {
   catch(\Throwable $e){error_log($e);http_response_code(503);exit('Station indisponible');}
   App::redirect('/admin#stations');
  }
- public function confirmPayment():void {
-  Auth::requirePermission('rentals.manage',true);
-  $reference=(string)($_POST['reference']??'');$proof=trim((string)($_POST['provider_proof']??''));
-  if(!preg_match('/^TBP-[A-F0-9]{16}$/D',$reference)||strlen($proof)<6||strlen($proof)>120||($_POST['confirm_paid']??'')!=='1'){http_response_code(422);exit('Confirmation invalide');}
-  $q=App::db()->prepare('SELECT * FROM rentals WHERE reference=?');$q->execute([$reference]);$r=$q->fetch();
-  if(!$r||$r['status']!=='pending_payment'||!$r['payment_session_id']){http_response_code(409);exit('Location non éligible');}
-  if(\App\Services\IntegrationSettings::all()['heycharge']!=='normal'){http_response_code(409);exit('Mode matériel inactif');}
-  Audit::event('payment.manually_verified','rental',$reference,['provider_proof'=>$proof,'session'=>$r['payment_session_id']]);
-  (new RentalLifecycleService)->confirmedPayment($reference);
-  App::redirect('/admin#activity');
- }
  public function reconcile():void {
   Auth::requirePermission('rentals.manage',true);
   $reference=(string)($_POST['reference']??'');
@@ -52,10 +41,12 @@ final class StationController {
   $imei=is_array($data)?(string)($data['imei']??''):'';
   if(strlen($raw)>65536||!preg_match('/^[A-Za-z0-9_-]{1,120}$/D',$imei)){http_response_code(400);echo json_encode(['code'=>1,'message'=>'invalid']);return;}
   $q=App::db()->prepare('SELECT 1 FROM stations WHERE imei=?');$q->execute([$imei]);
-  if(!$q->fetchColumn()){http_response_code(404);echo json_encode(['code'=>1,'message'=>'unknown station']);return;}
+  if(!$q->fetchColumn()) {
+   if($type!=='register'){http_response_code(404);echo json_encode(['code'=>1,'message'=>'unknown station']);return;}
+   App::db()->prepare("INSERT IGNORE INTO stations(imei,iccid,enabled) VALUES(?,?,0)")->execute([$imei,substr((string)($data['iccid']??''),0,32)?:null]);
+  }
   App::db()->prepare('INSERT INTO heycharge_events(event_type,imei,battery_serial,payload) VALUES(?,?,?,?)')
     ->execute([$type,$imei,substr((string)($data['battery_id']??''),0,100)?:null,json_encode($data)]);
-  if($type==='status' && (string)($data['status']??'')==='0')App::db()->prepare("UPDATE stations SET status='offline' WHERE imei=?")->execute([$imei]);
   header('Content-Type: application/json');echo json_encode(['code'=>0,'message'=>'success']);
  }
  public function register():void {$this->event('register');}

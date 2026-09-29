@@ -51,7 +51,7 @@
                     <article><span>Locations</span><strong><?= array_sum(array_column($stats, 'quantity')) ?></strong><small>Tous états</small></article>
                     <article><span>Location</span><strong><?= number_format((int) $prices['rental_fee'], 0, ',', ' ') ?> F</strong><small>Pour <?= (int) $prices['duration_minutes'] ?> minutes</small></article>
                 </div>
-                <div class="admin-banner"><div><strong>Première version pilotée</strong><p>Le kiosque et les paiements réels peuvent être testés avec une station simulée. La commande physique HeyCharge est disponible sous contrôle administrateur. Un payout initié ne prouve pas que le bénéficiaire est crédité.</p></div><span>V1</span></div>
+                <div class="admin-banner"><div><strong>Première version pilotée</strong><p>Le kiosque et les paiements réels peuvent être testés avec une station simulée. La commande physique HeyCharge suit automatiquement le paiement confirmé et les stations sont rapprochées en arrière-plan. Un payout initié ne prouve pas que le bénéficiaire est crédité.</p></div><span>V1</span></div>
             </section>
 
             <?php if (App\Services\Auth::can('integrations.manage')): ?>
@@ -68,7 +68,7 @@
                         <fieldset><legend>HeyCharge</legend><p>Stations et batteries</p>
                             <label class="mode-option"><input type="radio" name="heycharge_mode" value="simulation" <?= $modes['heycharge'] === 'simulation' ? 'checked' : '' ?>><span><strong>Simulation</strong><small>Aucune batterie physique éjectée</small></span></label>
                             <label class="mode-option"><input type="radio" name="heycharge_mode" value="normal" <?= $modes['heycharge'] === 'normal' ? 'checked' : '' ?>><span><strong>Normal</strong><small>Stations synchronisées et libération contrôlée</small></span></label>
-                            <div class="provider-status">Clé Open API : <?= $ready['heycharge_normal'] ? 'renseignée' : 'à compléter' ?></div>
+                            <div class="provider-status">Clé Open API : <?= $ready['heycharge_normal'] ? 'renseignée' : 'à compléter' ?> · Notification paiement : <?= $ready['payment_callback'] ? 'configurée' : 'secret manquant' ?></div>
                         </fieldset>
                     </div>
                     <button class="admin-button">Enregistrer les modes</button>
@@ -108,7 +108,7 @@
                 <div class="admin-section-heading"><div><span class="admin-overline">PARAMÈTRES</span><h2>Tarification</h2><p>Le tarif est figé à la création de chaque location.</p></div><button class="admin-ghost" type="button" id="preset-test">Préremplir 100 F + 200 F</button></div>
                 <form action="/admin/prices" method="post" class="admin-form">
                     <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
-                    <label>Location (FCFA)<input id="rental-fee" type="number" min="0" name="rental_fee" value="<?= (int) $prices['rental_fee'] ?>" required></label>
+                    <label>Location (FCFA)<input id="rental-fee" type="number" min="1" name="rental_fee" value="<?= (int) $prices['rental_fee'] ?>" required></label>
                     <label>Caution par défaut (FCFA)<input id="default-deposit" type="number" min="0" name="default_deposit" value="<?= (int) $prices['default_deposit'] ?>" required></label>
                     <label>Durée incluse (minutes)<input type="number" min="1" name="duration_minutes" value="<?= (int) $prices['duration_minutes'] ?>" required></label>
                     <label>Retenue par heure entamée (%)<input type="number" min="0" max="100" name="late_percent" value="<?= (int) $prices['late_percent'] ?>" required></label>
@@ -141,7 +141,6 @@
                 <div class="admin-section-heading"><div><span class="admin-overline">SUIVI</span><h2>Dernières locations</h2></div></div>
                 <div class="admin-table-wrap"><table><thead><tr><th>Référence</th><th>Client</th><th>Location</th><th>Caution</th><th>État</th><th>Date</th></tr></thead><tbody><?php foreach ($rentals as $r): ?><tr><td><?= htmlspecialchars($r['reference'], ENT_QUOTES, 'UTF-8') ?></td><td><?= htmlspecialchars($r['customer_name'], ENT_QUOTES, 'UTF-8') ?></td><td><?= number_format((int) $r['rental_fee'], 0, ',', ' ') ?> F</td><td><?= number_format((int) $r['deposit'], 0, ',', ' ') ?> F</td><td><span class="status-pill"><?= htmlspecialchars($r['status'], ENT_QUOTES, 'UTF-8') ?></span>
                     <?php if (App\Services\Auth::can('rentals.manage') && $modes['heycharge']==='normal'): ?>
-                    <?php if ($r['status']==='pending_payment' && $r['payment_session_id']): ?><form method="post" action="/admin/stations/confirm-payment"><input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf,ENT_QUOTES,'UTF-8') ?>"><input type="hidden" name="reference" value="<?= htmlspecialchars($r['reference'],ENT_QUOTES,'UTF-8') ?>"><label>Preuve Paiement Pro<input name="provider_proof" required minlength="6"></label><label><input type="checkbox" name="confirm_paid" value="1" required> Paiement et montant vérifiés</label><button class="admin-ghost">Confirmer et éjecter</button></form><?php endif; ?>
                     <?php if (in_array($r['status'],['releasing','release_failed','active'],true)): ?><form method="post" action="/admin/stations/reconcile"><input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf,ENT_QUOTES,'UTF-8') ?>"><input type="hidden" name="reference" value="<?= htmlspecialchars($r['reference'],ENT_QUOTES,'UTF-8') ?>"><button class="admin-ghost">Vérifier la station</button></form><?php endif; ?>
                     <?php endif; ?></td><td><?= htmlspecialchars($r['created_at'], ENT_QUOTES, 'UTF-8') ?></td></tr><?php endforeach; ?></tbody></table></div>
             </section>
