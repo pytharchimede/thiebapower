@@ -75,8 +75,8 @@ $test('label PDF has an exact landscape A4 media box and vector QR',function()us
  $same(true,substr_count($pdf,' re f')>250);
 });
 $test('label margins validate centimetres and reject unusable print areas',function()use($same){
- $same(App\Services\StationLabelSettings::DEFAULTS,App\Services\StationLabelSettings::fromCentimetres(['left'=>5,'right'=>5,'top'=>7,'bottom'=>7]));
- foreach([['left'=>-1],['left'=>100,'right'=>100],['top'=>100,'bottom'=>100]] as $bad){
+ $same(App\Services\StationLabelSettings::DEFAULTS+App\Services\StationLabelSettings::LOGOS,App\Services\StationLabelSettings::fromCentimetres(['left'=>5,'right'=>5,'top'=>7,'bottom'=>7]));
+ foreach([['left'=>-1],['left'=>100,'right'=>100],['top'=>100,'bottom'=>100],['logo_size'=>6],['logo_gap'=>-1],['logo_size'=>5,'logo_gap'=>4]] as $bad){
   $rejected=false;try{App\Services\StationLabelSettings::validate($bad);}catch(InvalidArgumentException $e){$rejected=true;}$same(true,$rejected);
  }
 });

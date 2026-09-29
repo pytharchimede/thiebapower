@@ -3,6 +3,7 @@ namespace App\Services;
 use App\Core\App;
 final class StationLabelSettings {
  public const DEFAULTS=['left'=>50.0,'right'=>50.0,'top'=>70.0,'bottom'=>70.0];
+ public const LOGOS=['logo_size'=>4.0,'logo_gap'=>2.0];
  public static function validate(array $values):array {
   $result=[];
   foreach(self::DEFAULTS as $key=>$default){
@@ -11,19 +12,21 @@ final class StationLabelSettings {
    $result[$key]=(float)$value;
   }
   if(297-$result['left']-$result['right']<150||210-$result['top']-$result['bottom']<60)throw new \InvalidArgumentException('Conservez une zone de contenu d’au moins 15 × 6 cm.');
+  foreach(self::LOGOS as $key=>$default){$v=$values[$key]??$default;if(!is_numeric($v)||!is_finite((float)$v))throw new \InvalidArgumentException('Taille ou espacement invalide');$result[$key]=(float)$v;}
+  if($result['logo_size']<2||$result['logo_size']>5||$result['logo_gap']<0||$result['logo_gap']>4||5*$result['logo_size']+4*$result['logo_gap']>34)throw new \InvalidArgumentException('Icônes : taille de 2 à 5 mm, espacement de 0 à 4 mm, largeur totale maximale de 34 mm.');
   return $result;
  }
  public static function load():array {
-  $row=App::db()->query('SELECT margin_left,margin_right,margin_top,margin_bottom FROM station_label_settings WHERE id=1')->fetch();
-  if(!$row)return self::DEFAULTS;
-  return self::validate(['left'=>$row['margin_left'],'right'=>$row['margin_right'],'top'=>$row['margin_top'],'bottom'=>$row['margin_bottom']]);
+  $row=App::db()->query('SELECT margin_left,margin_right,margin_top,margin_bottom,logo_size,logo_gap FROM station_label_settings WHERE id=1')->fetch();
+  if(!$row)return self::DEFAULTS+self::LOGOS;
+  return self::validate(['left'=>$row['margin_left'],'right'=>$row['margin_right'],'top'=>$row['margin_top'],'bottom'=>$row['margin_bottom'],'logo_size'=>$row['logo_size'],'logo_gap'=>$row['logo_gap']]);
  }
  public static function save(array $values):void {
   $v=self::validate($values);
-  App::db()->prepare('UPDATE station_label_settings SET margin_left=?,margin_right=?,margin_top=?,margin_bottom=? WHERE id=1')->execute([$v['left'],$v['right'],$v['top'],$v['bottom']]);
+  App::db()->prepare('UPDATE station_label_settings SET margin_left=?,margin_right=?,margin_top=?,margin_bottom=?,logo_size=?,logo_gap=? WHERE id=1')->execute([$v['left'],$v['right'],$v['top'],$v['bottom'],$v['logo_size'],$v['logo_gap']]);
  }
  public static function fromCentimetres(array $input):array {
   $v=[];foreach(self::DEFAULTS as $key=>$default){if(!isset($input[$key])||!is_numeric($input[$key]))throw new \InvalidArgumentException('Renseignez les quatre marges en cm.');$v[$key]=(float)$input[$key]*10;}
-  return self::validate($v);
+  return self::validate($v+['logo_size'=>$input['logo_size']??4,'logo_gap'=>$input['logo_gap']??2]);
  }
 }

@@ -418,3 +418,8 @@ a { color: inherit; }
 .payment-method input:checked + span {border-color:#126d61;background:#eef9f4;box-shadow:0 0 0 1px #126d61;}
 .payment-method input:focus-visible + span {outline:3px solid #d89f37;outline-offset:2px;}
 @media(max-width:400px){.payment-method-options{grid-template-columns:repeat(2,minmax(0,1fr));}}
+.payment-logos {justify-content:flex-end;gap:6px;}
+.payment-logos img {width:16px;height:16px;border-radius:5px;}
+.payment-method img {width:20px;height:20px;border-radius:6px;}
+.payment-method > span {min-height:55px;padding:7px 4px;gap:4px;}
+.kiosk-qr-panel .payment-logos {margin:8px 0;}

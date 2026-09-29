@@ -49,16 +49,19 @@ final class StationLabelPdf {
    $this->text($x+1.2,123.8,$number,8,'#103d46',true);
    $this->text($x+9.5,123.5,$title,6.8,'#ffffff',true);
   }
-  foreach([57,68,79,90] as $i=>$logoX){
-   $this->commands[]='q '.self::n(self::pt(8)).' 0 0 '.self::n(self::pt(8)).' '.self::n(self::pt($logoX)).' '.self::n(self::pt(210-128-8)).' cm /Im'.$i.' Do Q';
-  }
-  $this->text(103,133.5,'VISA',11,'#ffffff',true);
   $this->rect(201,76,40,58,'#ffffff');
   $this->qr($station['url'],204,77,34);
   $this->text(204,117,'SCANNEZ POUR LOUER',7,'#103d46',true);
   $label=trim((string)($station['label']??''));
-  $this->text(204,125,self::shorten($label!==''?$label:'Station Thiebapower',22),7,'#103d46',true);
-  $this->text(204,131,self::shorten((string)$station['imei'],25),6,'#315b61');
+  $this->text(204,122,self::shorten($label!==''?$label:'Station Thiebapower',22),7,'#103d46',true);
+  $this->text(204,126,self::shorten((string)$station['imei'],25),6,'#315b61');
+  $logoSize=$this->margins['logo_size'];$gap=$this->margins['logo_gap'];
+  $start=201+(40-(5*$logoSize+4*$gap))/2;
+  for($i=0;$i<4;$i++){
+   $logoX=$start+$i*($logoSize+$gap);
+   $this->commands[]='q '.self::n(self::pt($logoSize)).' 0 0 '.self::n(self::pt($logoSize)).' '.self::n(self::pt($logoX)).' '.self::n(self::pt(210-128-$logoSize)).' cm /Im'.$i.' Do Q';
+  }
+  $this->text($start+4*($logoSize+$gap),128+$logoSize*.7,'VISA',$logoSize*1.1,'#1434cb',true);
   $this->commands[]='Q';
   return implode("\n",$this->commands)."\n";
  }
