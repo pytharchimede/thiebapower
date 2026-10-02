@@ -4,9 +4,11 @@ use App\Core\App;
 final class PaiementProPayoutService {
  private $soapFactory;
  private $clock;
- public function __construct(?callable $soapFactory=null,?callable $clock=null){
-  $this->soapFactory=$soapFactory??static fn(string $wsdl):object=>new \SoapClient($wsdl,['connection_timeout'=>10,'cache_wsdl'=>WSDL_CACHE_NONE]);
+ private $traceSink;
+ public function __construct(?callable $soapFactory=null,?callable $clock=null,?callable $traceSink=null){
+  $this->soapFactory=$soapFactory??static fn(string $wsdl):object=>new \SoapClient($wsdl,['connection_timeout'=>10,'cache_wsdl'=>WSDL_CACHE_NONE,'trace'=>true]);
   $this->clock=$clock??static fn():int=>time();
+  $this->traceSink=$traceSink??static fn(string $reference,array $trace)=>PayoutApiAudit::record($reference,$trace['method']==='initTransact'?'init':'status',$trace);
  }
  private function credentials(?string $mode=null):array {
   $mode??=IntegrationSettings::all()['paiementpro'];
@@ -36,12 +38,35 @@ final class PaiementProPayoutService {
  }
  public function initiate(array $request):object {
   $client=($this->soapFactory)($request['wsdl']);
-  return $client->initTransact($request['params']);
+  try {return $client->initTransact($request['params']);}
+  finally {$this->capture($client,$request['wsdl'],'initTransact',$request['params'],$request['params']['referenceNo']);}
  }
- public function status(string $sessionId,?string $mode=null):object {
+ public function status(string $sessionId,?string $mode=null,?string $reference=null):object {
   if($sessionId==='')throw new \InvalidArgumentException('Session absente');
   $config=$this->credentials($mode);$timestamp=($this->clock)();
   $client=($this->soapFactory)($config['wsdl']);
-  return $client->getTransStatus(['merchantId'=>$config['merchant'],'token'=>$this->token($config,$timestamp),'timestamp'=>$timestamp,'sessionid'=>$sessionId]);
+  $params=['merchantId'=>$config['merchant'],'token'=>$this->token($config,$timestamp),'timestamp'=>$timestamp,'sessionid'=>$sessionId];
+  try {return $client->getTransStatus($params);}
+  finally {$this->capture($client,$config['wsdl'],'getTransStatus',$params,$reference??$sessionId);}
+ }
+ private function capture(object $client,string $wsdl,string $method,array $params,string $reference):void {
+  // Diagnostics must never alter the financial outcome or trigger another call.
+  try {
+   $requestHeaders=method_exists($client,'__getLastRequestHeaders')?(string)$client->__getLastRequestHeaders():'';
+   $responseHeaders=method_exists($client,'__getLastResponseHeaders')?(string)$client->__getLastResponseHeaders():'';
+   $endpoint='';
+   if(preg_match('~^POST\s+(\S+)\s+HTTP/~',$requestHeaders,$match)){
+    if(str_starts_with($match[1],'https://'))$endpoint=$match[1];
+    elseif(preg_match('/^Host:\s*([^\r\n]+)/mi',$requestHeaders,$host))$endpoint='https://'.trim($host[1]).$match[1];
+   }
+   preg_match_all('~HTTP/\S+\s+(\d{3})~',$responseHeaders,$codes);
+   $http=$codes[1]?end($codes[1]):'unavailable';
+   $trace=['method'=>$method,'wsdl'=>$wsdl,'endpoint'=>$endpoint?:'unavailable','httpStatus'=>$http,'requestParameters'=>json_encode(array_replace($params,['token'=>'[HMAC SHA-256 masqué]']),JSON_INVALID_UTF8_SUBSTITUTE)];
+   foreach(['requestSoap'=>'__getLastRequest','responseSoap'=>'__getLastResponse'] as $key=>$getter){
+    $xml=method_exists($client,$getter)?(string)$client->$getter():'';
+    $trace[$key]=PayoutApiAudit::safeSoap($xml,(string)$params['token']);
+   }
+   ($this->traceSink)($reference,$trace);
+  }catch(\Throwable){error_log('Payout transport audit unavailable');}
  }
 }

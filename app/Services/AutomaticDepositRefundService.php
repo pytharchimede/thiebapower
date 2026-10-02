@@ -67,7 +67,7 @@ final class AutomaticDepositRefundService {
  public function reconcile(int $settlementId):bool {
   $db=App::db();$s=$db->prepare('SELECT s.*,r.payment_environment,r.payout_channel,r.customer_phone FROM deposit_settlements s JOIN rentals r ON r.id=s.rental_id WHERE s.id=?');$s->execute([$settlementId]);$row=$s->fetch();
   if(!$row||$row['status']!=='processing'||!$row['provider_session_id'])return false;
-  $reply=$this->payout->status($row['provider_session_id'],$row['payment_environment']);
+  $reply=$this->payout->status($row['provider_session_id'],$row['payment_environment'],$row['provider_reference']);
   PayoutApiAudit::record($row['provider_reference'],'status',$reply);
   $result=PayoutResult::finalStatus($reply,['sessionid'=>$row['provider_session_id'],'referenceNo'=>$row['provider_reference'],'amount'=>$row['refund_amount'],'currency'=>'XOF','channel'=>$row['payout_channel'],'payeeNo'=>PaiementProPayoutService::normalizePhone($row['customer_phone'])]);
   if($result==='failed'){

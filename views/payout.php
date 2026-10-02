@@ -6,6 +6,7 @@
 <title>Reversements Paiement Pro · Thiebapower</title>
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/payout.css">
+<script src="/payout-report.js" defer></script>
 </head>
 <body class="admin-body payout-page">
 <?php $adminPageTitle='Reversements API'; $adminPageOverline='PAIEMENT PRO'; $adminPageSubtitle='Suivi des appels et réponses du fournisseur'; require __DIR__.'/partials/admin_shell_start.php'; ?>
@@ -122,6 +123,11 @@ callbackURL: https://thiebapower.com/api/paiementpro/payout-callback</pre>
 <?=htmlspecialchars((string)($op['provider_message']??'—'),ENT_QUOTES,'UTF-8')?>
 </td>
 <td>
+<button type="button" class="button" data-copy-report="payout-report-<?=(int)$op['id']?>">Copier le rapport fournisseur</button>
+<details><summary>Voir le rapport</summary>
+<textarea id="payout-report-<?=(int)$op['id']?>" readonly rows="12" style="width:100%;min-width:280px"><?=htmlspecialchars($reports[$op['id']],ENT_QUOTES,'UTF-8')?></textarea>
+</details>
+<span data-copy-feedback="payout-report-<?=(int)$op['id']?>" role="status" aria-live="polite"></span>
 <?php if($op['status']==='processing'&&$op['provider_session_id']):?>
 <form method="post" action="/admin/payment-lab/reconcile">
 <input type="hidden" name="csrf" value="<?=htmlspecialchars($csrf,ENT_QUOTES,'UTF-8')?>">

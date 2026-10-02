@@ -17,6 +17,15 @@ final class PayoutConsoleController {
   $endpoint=$mode==='sandbox'?App::env('PAIEMENTPRO_SANDBOX_PAYOUT_WSDL'):'https://paiementpro.net/webservice/v2/payout/soap.php?wsdl';
   $enabled=App::env('PAYMENT_LAB_PAYOUT_ENABLED')==='1'||App::env('AUTOMATIC_REFUNDS_ENABLED')==='1';
   $canSend=Auth::can('payout.send');
-  App::view('payout',compact('csrf','operations','settlements','events','requests','labOpen','mode','endpoint','enabled','canSend'));
+  $reports=[];
+  // Fetch the complete journal for each visible test, independent of dashboard limits.
+  $rq=$db->prepare('SELECT * FROM payout_api_requests WHERE reference=? ORDER BY created_at');
+  $ev=$db->prepare('SELECT * FROM payout_api_events WHERE reference=? ORDER BY id');
+  foreach($operations as $op){
+   $rq->execute([$op['reference']]);$opRequests=$rq->fetchAll();
+   $ev->execute([$op['reference']]);
+   $reports[$op['id']]=\App\Services\PayoutTestReport::build($op,$opRequests,$ev->fetchAll());
+  }
+  App::view('payout',compact('csrf','operations','settlements','events','requests','labOpen','mode','endpoint','enabled','canSend','reports'));
  }
 }

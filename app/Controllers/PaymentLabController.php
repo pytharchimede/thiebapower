@@ -65,7 +65,7 @@ final class PaymentLabController {
   $db=App::db();$s=$db->prepare("SELECT * FROM payment_lab_operations WHERE id=? AND kind='payout'");$s->execute([$id]);$op=$s->fetch();
   if(!$op||$op['status']!=='processing'||!$op['provider_session_id']){$this->fail('Aucune session à vérifier');return;}
   try {
-   $reply=(new PaiementProPayoutService)->status($op['provider_session_id'],$op['environment']);
+   $reply=(new PaiementProPayoutService)->status($op['provider_session_id'],$op['environment'],$op['reference']);
    PayoutApiAudit::record($op['reference'],'status',$reply);
    $result=PayoutResult::finalStatus($reply,['sessionid'=>$op['provider_session_id'],'referenceNo'=>$op['reference'],'amount'=>$op['amount'],'currency'=>'XOF','channel'=>$op['recipient_channel'],'payeeNo'=>PaiementProPayoutService::normalizePhone($op['recipient_phone'])]);
    if($result==='succeeded'){
