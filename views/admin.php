@@ -4,7 +4,7 @@ $adminPageTitle = "Tableau de bord";
 $adminPageSubtitle = "Votre activité, votre parc et vos actions essentielles.";
 require __DIR__ . "/partials/admin_shell_start.php";
 ?>
-<main class="management-main">
+<main class="management-main"><p><a class="tb-link-button" href="/admin/statistics"><i class="fa-solid fa-chart-line" aria-hidden="true"></i> Ouvrir le dashboard statistique et activer le temps réel</a></p>
 <?php
 $esc = static fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, "UTF-8");
 $available = count(

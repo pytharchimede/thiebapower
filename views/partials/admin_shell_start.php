@@ -5,6 +5,7 @@ $adminPath =
 $navItems = [
     ["Système", "/admin/system", "system.manage", "system"],
     ["Tableau de bord", "/admin", "dashboard.view", "overview"],
+    ["Statistiques en direct", "/admin/statistics", "dashboard.view", "statistics"],
     ["Locations", "/admin/rentals", "rentals.view", "rentals"],
     ["Caisse et finances", "/admin/finance", "finance.view", "finance"],
     ["Terminaux", "/admin/stations", "stations.view", "stations"],
@@ -18,6 +19,7 @@ $navItems = [
 $navIcons = [
     "system" => "fa-server",
     "overview" => "fa-chart-pie",
+    "statistics" => "fa-chart-line",
     "rentals" => "fa-arrow-right-arrow-left",
     "finance" => "fa-wallet",
     "stations" => "fa-tower-broadcast",

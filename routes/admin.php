@@ -1,6 +1,8 @@
 <?php
 // Route map loaded by App\Core\App.
 return [
+    "GET /admin/statistics" => [\App\Controllers\StatisticsController::class, "index"],
+    "GET /admin/statistics/snapshot" => [\App\Controllers\StatisticsController::class, "snapshot"],
     "GET /admin/reports/qr" => [\App\Controllers\ReportController::class, "qr"],
     "GET /admin/rentals/receipt" => [\App\Controllers\RentalReceiptController::class, "admin"],
     "POST /admin/reports/pdf" => [\App\Controllers\ReportController::class, "pdf"],
