@@ -60,7 +60,11 @@ final class XPayeWalletClient
             if($this->transport){$reply=($this->transport)($path,$payload,$token);}
             else {
                 if(!function_exists('curl_init'))throw new \RuntimeException('Extension PHP cURL requise.');
+                $ca=App::env('XPAYE_CA_BUNDLE');
+                if($ca!=='' && (!is_file($ca)||!is_readable($ca)))throw new \RuntimeException('XPAYE_CA_BUNDLE doit désigner un fichier PEM lisible.');
+                $event['tls_verify']=true;$event['ca_bundle']=$ca!==''?$ca:(ini_get('curl.cainfo')?:'magasin de certificats par défaut');
                 $ch=curl_init($event['endpoint']);
+                if($ca!=='')curl_setopt($ch,CURLOPT_CAINFO,$ca);
                 $headers=['Content-Type: application/json','Accept: application/json'];if($token!==null)$headers[]='Authorization: Bearer '.$token;
                 curl_setopt_array($ch,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>json_encode($payload,JSON_THROW_ON_ERROR),CURLOPT_HTTPHEADER=>$headers,CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>30,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2]);
                 $body=curl_exec($ch);$info=curl_getinfo($ch);$errno=curl_errno($ch);$error=curl_error($ch);curl_close($ch);

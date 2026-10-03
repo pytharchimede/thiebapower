@@ -1,0 +1,10 @@
+'use strict';
+const {JSDOM}=require(process.env.TBP_JSDOM_MODULE||'jsdom');const fs=require('fs');const assert=require('node:assert/strict');
+(async()=>{let now=1800000000000;const b={paid:true,deposit:200,active:true,due:now/1000-300,end:0,rule:'prorata_grace5',fee:600,duration:60,latePercent:20};
+ const dom=new JSDOM('<body><div class="tb-rental-deposit" data-reference="TBP-TEST"></div></body>',{runScripts:'outside-only',pretendToBeVisual:true});const w=dom.window;const observers=[];const NativeObserver=w.MutationObserver;w.MutationObserver=class extends NativeObserver{constructor(fn){super(fn);observers.push(this);}};w.Date.now=()=>now;const cell=w.document.querySelector('div');cell.dataset.billing=JSON.stringify(b);
+ let reply={at:now/1000,rows:[{reference:'TBP-TEST',billing:b}]},calls=0;const ticks=[];w.setInterval=fn=>{ticks.push(fn);return ticks.length;};w.setTimeout=()=>1;w.clearTimeout=()=>{};w.fetch=async()=>{calls++;return {ok:true,json:async()=>reply};};w.eval(fs.readFileSync(__dirname+'/../public/rental-deposits.js','utf8'));await new Promise(setImmediate);
+ assert.match(cell.textContent,/200 \/ 200/);now+=6000;ticks[0]();assert.match(cell.textContent,/199 \/ 200/);assert.equal(cell.querySelector('progress').value,199);
+ now+=61000;ticks[0]();assert.match(cell.textContent,/199 \/ 200/);assert.match(cell.textContent,/Dernière estimation/);assert.equal(calls,1,'DOM updates triggered extra polling');
+ reply={at:now/1000,rows:[{reference:'TBP-TEST',billing:{...b,active:false,end:b.due+360}}]};w.document.dispatchEvent(new w.Event('visibilitychange'));await new Promise(setImmediate);assert.match(cell.textContent,/190 \/ 200/);now+=30000;ticks[0]();assert.match(cell.textContent,/190 \/ 200/);
+ assert.equal(calls,2);for(const observer of observers)observer.disconnect();dom.window.close();console.log('Rental caution DOM OK: grace, per-second deduction, progress, stale freeze, no poll feedback loop, frozen return; mocked HTTP');
+})().catch(e=>{console.error(e);process.exitCode=1;});

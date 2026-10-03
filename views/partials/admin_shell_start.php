@@ -66,6 +66,7 @@ $isActive = static function (string $name, string $href) use (
 <link rel="stylesheet" href="/admin-icons.css?v=6.7.2" referrerpolicy="no-referrer">
 <link rel="stylesheet" href="/admin-design.css?v=20261003-6">
 <script src="/admin-design.js?v=20261003-6" defer></script>
+<?php if(Auth::can('finance.view') && Auth::can('rentals.view')): ?><script src="/rental-deposits.js?v=20261003-1" defer></script><link rel="stylesheet" href="/rental-deposits.css?v=20261003-1"><?php endif; ?>
 <a class="tb-skip-link" href="#tb-page-content">Aller au contenu</a>
 <div class="admin-layout">
  <aside class="admin-sidebar" aria-label="Menu de gestion">

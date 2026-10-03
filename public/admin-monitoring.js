@@ -332,6 +332,9 @@
           timer.dataset.due = r.due_unix || 0;
           timer.dataset.running = "1";
           card.append(link, name, timer);
+          if(document.querySelector('script[src*="rental-deposits.js"]')){
+            const deposit=document.createElement('div');deposit.className='tb-rental-deposit';deposit.dataset.reference=r.reference;deposit.textContent='Caution : chargement…';card.append(deposit);
+          }
           list.append(card);
         });
       });

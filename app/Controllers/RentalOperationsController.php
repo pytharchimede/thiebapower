@@ -40,6 +40,19 @@ final class RentalOperationsController
             ->fetchAll();
         App::view("rental_operations", compact("rentals", "counts", "status"));
     }
+    public function deposits():void
+    {
+        Auth::requirePermission('rentals.view');Auth::requirePermission('finance.view');session_write_close();
+        header('Content-Type: application/json');header('Cache-Control: no-store');
+        $refs=explode(',',(string)($_GET['references']??''));
+        if(count($refs)>100){http_response_code(422);echo '{"error":"Trop de références"}';return;}
+        $refs=array_values(array_unique(array_filter($refs,static fn($ref)=>preg_match('/^TBP-[A-Za-z0-9_-]{1,100}$/D',$ref))));
+        if(!$refs){echo json_encode(['at'=>time(),'rows'=>[]]);return;}
+        try{
+            $q=App::db()->prepare('SELECT * FROM rentals WHERE reference IN ('.implode(',',array_fill(0,count($refs),'?')).')');$q->execute($refs);
+            echo json_encode(['at'=>time(),'rows'=>array_map(static fn($r)=>['reference'=>$r['reference'],'billing'=>\App\Services\RentalDepositPresenter::snapshot($r)],$q->fetchAll())],JSON_THROW_ON_ERROR);
+        }catch(\Throwable $e){http_response_code(503);echo '{"error":"Cautions temporairement indisponibles"}';}
+    }
     public function cancelPending(): void
     {
         Auth::requirePermission("rentals.cancel", true);

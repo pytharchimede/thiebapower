@@ -75,3 +75,19 @@ Pour l'essai **déjà créé** et jamais envoyé #2 : `php bin/xpaye_diagnostic.
 Les diagnostics affichent endpoint, méthode, payload, statut HTTP, réponse JSON masquée, numéro/message cURL, adresse distante, redirection éventuelle et temps DNS/connexion/requête. Les exceptions réseau sont maintenant explicites (ex. cURL 28 timeout, 6 résolution DNS, 60 certificat). TLS reste vérifié, sans suivi automatique des redirections et sans réessai financier automatique. Les diagnostics ne permettent pas d'affirmer un crédit à partir d'un simple accusé de réception.
 
 Dans l'interface, « Vérifier la connexion sans transfert » affiche son dernier diagnostic ; chaque nouveau transfert dispose d'un détail « Endpoint, payload et réponse API ». Ces détails demandent le droit `payout.view` en plus du droit de lecture finances. Les traces sont stockées sous `storage/system` avec droits privés, identifiants et tokens masqués. Les anciennes tentatives ne disposent pas rétroactivement d'une trace détaillée : ne pas les renvoyer pour en obtenir une.
+
+## Certificats HTTPS et erreur cURL 60
+
+La validation TLS reste active (`VERIFYPEER=true`, `VERIFYHOST=2`). Si PHP ne trouve pas les autorités de certification, télécharger le bundle Mozilla officiel publié par curl, via une connexion HTTPS vérifiée, et indiquer son chemin absolu privé dans `.env` :
+
+```
+XPAYE_CA_BUNDLE=/home/ifmapci/repositories/thiebapower/storage/certs/cacert.pem
+```
+
+L'option affecte seulement les appels XPaye. Un fichier absent ou illisible arrête la requête. Le diagnostic affiche le bundle utilisé. Relancer uniquement `php bin/xpaye_diagnostic.php` pour vérifier l'authentification, sans mouvement financier. Si cURL 60 persiste avec un bundle récent, faire vérifier la chaîne/intermédiaires du serveur XPaye par le fournisseur ; ne pas désactiver TLS ou utiliser `-k`.
+
+## Caution sur les cartes de location
+
+Les cartes des locations et du tableau de bord affichent le solde de caution restant, la caution déposée, la retenue et une jauge. Ces données demandent les droits `rentals.view` et `finance.view`. Seules les cautions dont le paiement est vérifié déclenchent une estimation. Les montants évoluent chaque seconde (calcul identique à RentalBilling) et un snapshot serveur léger est chargé toutes les 15 secondes, sans requêtes concurrentes. Au retour confirmé, la retenue est figée à l'heure de retour. En cas d'échec de synchronisation prolongé, l'estimation est conservée et signalée ; les onglets masqués suspendent le suivi.
+
+Copier les nouveaux fichiers `public/rental-deposits.js`, `public/rental-deposits.css` et la nouvelle version de `public/admin-monitoring.js` dans la racine publique.

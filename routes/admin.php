@@ -1,6 +1,7 @@
 <?php
 // Route map loaded by App\Core\App.
 return [
+    "GET /admin/rentals/deposits" => [\App\Controllers\RentalOperationsController::class, "deposits"],
     "GET /admin/deposit-wallet/snapshot" => [\App\Controllers\DepositWalletController::class, "snapshot"],
     "GET /admin/deposit-wallet" => [\App\Controllers\DepositWalletController::class, "index"],
     "POST /admin/deposit-wallet" => [\App\Controllers\DepositWalletController::class, "action"],
