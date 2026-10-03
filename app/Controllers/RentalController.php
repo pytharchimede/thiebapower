@@ -47,6 +47,11 @@ final class RentalController {
    http_response_code(503);header('Content-Type: text/plain; charset=utf-8');echo 'Les locations seront disponibles prochainement.';return;
   }
   try {$url=(new \App\Services\RentalCheckoutService)->begin($_POST);Audit::event('rental.checkout_started','station',(string)($_POST['station_code']??''));App::redirect($url);}
+  catch(\App\Services\CheckoutConflict $e){
+   http_response_code(409);header('Retry-After: 3');header('Content-Type: text/html; charset=utf-8');header('Cache-Control: no-store');
+   $station=trim((string)($_POST['station_code']??''));$back='/rent?station='.rawurlencode($station);
+   echo '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Location · Thiebapower</title><link rel="stylesheet" href="/style.css"></head><body class="kiosk"><main class="kiosk-shell" style="max-width:700px;margin:8vh auto;padding:32px"><a class="kiosk-logo" href="/">THIEBA<span>POWER</span></a><h1>Votre demande de location</h1><p>'.htmlspecialchars($e->getMessage(),ENT_QUOTES,'UTF-8').'</p><a class="touch-button outline" href="'.htmlspecialchars($back,ENT_QUOTES,'UTF-8').'">Actualiser les batteries disponibles</a></main></body></html>';
+  }
   catch(\InvalidArgumentException $e){http_response_code(422);echo 'Informations de location invalides';}
   catch(\Throwable $e){error_log($e);http_response_code(503);echo 'La location n’a pas pu être finalisée. Rechargez la page avant de réessayer. Référence de diagnostic : '.Audit::requestId();}
  }

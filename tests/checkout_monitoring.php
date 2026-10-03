@@ -21,6 +21,7 @@ namespace App\Services {
 }
 namespace {
     require dirname(__DIR__) . "/app/Services/StationFleetService.php";
+    require dirname(__DIR__) . "/app/Services/CheckoutConflict.php";
     require dirname(__DIR__) . "/app/Services/RentalCheckoutService.php";
     require dirname(__DIR__) . "/app/Services/SystemNotifications.php";
     final class FakeStatement
@@ -114,16 +115,14 @@ namespace {
         "Duplicate uses original session without new SOAP/payin",
     );
     $db->existing["status"] = "active";
-    try {
-        $service->begin($input);
-        throw new \LogicException("Duplicate resent");
-    } catch (\RuntimeException $e) {
-    }
+    check($service->begin($input)==='/payment/return?reference=TBP-TEST', 'Existing active rental resumes status without reissuing payment');
+    $db->existing['status']='payment_timeout';
+    check($service->begin($input)==='/payment/return?reference=TBP-TEST', 'Expired duplicate resumes status without reissuing payment');
     $db->lock = 0;
     try {
         $service->begin($input);
         throw new \LogicException("Concurrent call accepted");
-    } catch (\RuntimeException $e) {
+    } catch (\App\Services\CheckoutConflict $e) {
     }
     check(
         \App\Services\SystemNotifications::rentalAlert(

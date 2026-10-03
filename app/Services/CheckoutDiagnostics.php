@@ -12,7 +12,7 @@ final class CheckoutDiagnostics
         try {
             return $action();
         } catch (\Throwable $e) {
-            $outcome = "error";
+            $outcome = $e instanceof CheckoutConflict ? "blocked" : "error";
             $error = $e;
             throw $e;
         } finally {
@@ -41,7 +41,7 @@ final class CheckoutDiagnostics
                 "duration_ms" => (int) ((microtime(true) - $start) * 1000),
                 "outcome" => $outcome,
             ];
-            if ($error && $stage === "checkout_request") {
+            if ($error && !($error instanceof CheckoutConflict) && $stage === "checkout_request") {
                 SystemReports::record($stage, $error, [
                     "steps" => self::$steps,
                 ]);

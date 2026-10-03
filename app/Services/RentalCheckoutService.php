@@ -22,7 +22,7 @@ final class RentalCheckoutService
         $q = $db->prepare("SELECT GET_LOCK(?,0)");
         $q->execute([$lock]);
         if ((int) $q->fetchColumn() !== 1) {
-            throw new \RuntimeException("Demande déjà en cours");
+            throw new CheckoutConflict("Une demande est déjà en cours. Patientez quelques secondes, puis consultez votre suivi de paiement.");
         }
         try {
             $q = $db->prepare(
@@ -57,9 +57,7 @@ final class RentalCheckoutService
                 ) {
                     return $existing["checkout_payment_url"];
                 }
-                throw new \RuntimeException(
-                    "Demande déjà enregistrée ; aucune réémission",
-                );
+                return '/payment/return?reference='.rawurlencode($existing['reference']);
             }
             return CheckoutDiagnostics::measure(
                 "checkout",
@@ -118,22 +116,24 @@ final class RentalCheckoutService
                 $candidate["station_imei"] !== $station ||
                 !$candidate["slot_id"]
             ) {
-                throw new \RuntimeException("Station ou batterie indisponible");
+                throw new CheckoutConflict("Cette batterie n’est plus disponible sur ce terminal. Actualisez la liste et choisissez une batterie disponible.");
             }
             $remote = CheckoutDiagnostics::measure(
                 "heycharge_inventory",
                 fn() => (new HeyChargeOpenApi())->station($station),
             );
+            if (($remote["imei"] ?? "") !== $station || !isset($remote['batteries']) || !is_array($remote['batteries'])) {
+                throw new \RuntimeException('Réponse station incohérente');
+            }
             if (
-                ($remote["imei"] ?? "") !== $station ||
                 !StationFleetService::availableAt(
                     $remote,
                     $candidate["serial"],
                     $candidate["slot_id"],
                 )
             ) {
-                throw new \RuntimeException(
-                    "Batterie indisponible sur la station",
+                throw new CheckoutConflict(
+                    "La batterie choisie n’est plus louable à cet emplacement. Actualisez la liste et choisissez une autre batterie.",
                 );
             }
         }
@@ -145,7 +145,7 @@ final class RentalCheckoutService
             $q->execute([$batteryId]);
             $battery = $q->fetch();
             if (!$battery) {
-                throw new \RuntimeException("Batterie indisponible");
+                throw new CheckoutConflict("Cette batterie vient d’être réservée ou n’est plus disponible. Actualisez la liste.");
             }
             if ($physical) {
                 $q = $db->prepare("SELECT enabled FROM stations WHERE imei=?");
@@ -157,8 +157,8 @@ final class RentalCheckoutService
                     $battery["slot_id"] !== $candidate["slot_id"] ||
                     $battery["serial"] !== $candidate["serial"]
                 ) {
-                    throw new \RuntimeException(
-                        "Station ou batterie indisponible",
+                    throw new CheckoutConflict(
+                        "Le terminal ou la batterie n’est plus disponible. Actualisez la liste avant de choisir à nouveau.",
                     );
                 }
             }
