@@ -26,7 +26,7 @@ final class PayoutApiAudit {
   if(!in_array($source,['init','status','callback','error'],true))throw new \InvalidArgumentException('Source invalide');
   $fields=['status','code','description','sessionid','sessionId','referenceNo','referenceNumber','reference','merchantId','amount','currency','channel','payeeNo','tran_id','transactionId','transactionid','responsecode','message','faultcode','faultstring','exception','method','contentType','bodyHash','fieldNames','authenticated','matchedReference','matchedAmount','matchedMerchant','matchedBeneficiary'];
   $data=is_object($response)?get_object_vars($response):(is_array($response)?$response:['description'=>(string)$response]);
-  $fields=array_merge($fields,['fee','tran_dt','paymentReason','clientId','clientName','wsdl','endpoint','httpStatus','requestParameters','requestSoap','responseSoap']);
+  $fields=array_merge($fields,['Sessionid','SessionId','Url','url','fee','tran_dt','paymentReason','clientId','clientName','wsdl','endpoint','httpStatus','requestParameters','requestSoap','responseSoap']);
   $safe=[];
   foreach($fields as $key)if(array_key_exists($key,$data))$safe[$key]=substr((string)(is_scalar($data[$key])?$data[$key]:'[complexe]'),0,in_array($key,['requestSoap','responseSoap','requestParameters'],true)?65536:500);
   $json=json_encode($safe,JSON_INVALID_UTF8_SUBSTITUTE|JSON_THROW_ON_ERROR);

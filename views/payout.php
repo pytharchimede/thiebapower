@@ -91,6 +91,13 @@ callbackURL: https://thiebapower.com/api/paiementpro/payout-callback</pre>
 <section class="card">
 <div class="eyebrow">Historique des essais</div>
 <h2>Réponses et sessions</h2>
+<?php if($canSend&&$enabled):?>
+<form method="post" action="/admin/payment-lab/clear-payout-history">
+<input type="hidden" name="csrf" value="<?=htmlspecialchars($csrf,ENT_QUOTES,'UTF-8')?>">
+<button class="button">Vider l’historique local des essais</button>
+<p class="small">Clôture les essais locaux et permet un nouvel essai. Les journaux sont conservés. Une transaction déjà initiée peut encore être payée par Paiement Pro ; cette action ne l’annule pas.</p>
+</form>
+<?php endif;?>
 <div class="tablewrap">
 <table>
 <thead>
@@ -128,13 +135,17 @@ callbackURL: https://thiebapower.com/api/paiementpro/payout-callback</pre>
 <textarea id="payout-report-<?=(int)$op['id']?>" readonly rows="12" style="width:100%;min-width:280px"><?=htmlspecialchars($reports[$op['id']],ENT_QUOTES,'UTF-8')?></textarea>
 </details>
 <span data-copy-feedback="payout-report-<?=(int)$op['id']?>" role="status" aria-live="polite"></span>
-<?php if($op['status']==='processing'&&$op['provider_session_id']):?>
+<?php if($canSend&&in_array($op['status'],['initiated','processing'],true)&&($authorizationUrls[$op['id']]??'')!==''):?>
+<a class="button" href="<?=htmlspecialchars($authorizationUrls[$op['id']],ENT_QUOTES,'UTF-8')?>" target="_blank" rel="noopener noreferrer">Ouvrir l’authentification Paiement Pro</a>
+<?php endif;?>
+<?php if(($op['status']==='processing'&&$op['provider_session_id'])||$op['status']==='initiated'):?>
 <form method="post" action="/admin/payment-lab/reconcile">
 <input type="hidden" name="csrf" value="<?=htmlspecialchars($csrf,ENT_QUOTES,'UTF-8')?>">
 <input type="hidden" name="id" value="<?=(int)$op['id']?>">
-<button class="button" <?= $canSend ? '' : 'disabled' ?>>Vérifier</button>
+<button class="button" <?= $canSend ? '' : 'disabled' ?>><?=$op['status']==='initiated'?'Récupérer la session et vérifier':'Vérifier'?></button>
 </form>
-<?php elseif(in_array($op['status'],['unknown','initiated'],true)):?>
+<?php endif;?>
+<?php if(in_array($op['status'],['unknown','initiated'],true)):?>
 <form method="post" action="/admin/payment-lab/archive">
 <input type="hidden" name="csrf" value="<?=htmlspecialchars($csrf,ENT_QUOTES,'UTF-8')?>">
 <input type="hidden" name="id" value="<?=(int)$op['id']?>">

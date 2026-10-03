@@ -34,6 +34,7 @@ return [
     'POST /admin/payment-lab/payout' => [\App\Controllers\PaymentLabController::class, 'payout'],
     'POST /admin/payment-lab/reconcile' => [\App\Controllers\PaymentLabController::class, 'reconcile'],
     'POST /admin/payment-lab/archive' => [\App\Controllers\PaymentLabController::class, 'archive'],
+    'POST /admin/payment-lab/clear-payout-history' => [\App\Controllers\PaymentLabController::class, 'clearPayoutHistory'],
     'POST /admin/simulation/paid' => [\App\Controllers\SimulationController::class, 'paid'],
     'POST /admin/simulation/returned' => [\App\Controllers\SimulationController::class, 'returned'],
     'POST /admin/simulation/reconcile' => [\App\Controllers\SimulationController::class, 'reconcile'],

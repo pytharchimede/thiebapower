@@ -38,7 +38,7 @@ final class PaiementProPayoutService {
  }
  public function initiate(array $request):object {
   $client=($this->soapFactory)($request['wsdl']);
-  try {return $client->initTransact($request['params']);}
+  try {$reply=$client->initTransact($request['params']);return (object)PayoutResult::response($reply,method_exists($client,'__getLastResponse')?(string)$client->__getLastResponse():'');}
   finally {$this->capture($client,$request['wsdl'],'initTransact',$request['params'],$request['params']['referenceNo']);}
  }
  public function status(string $sessionId,?string $mode=null,?string $reference=null):object {
@@ -46,7 +46,7 @@ final class PaiementProPayoutService {
   $config=$this->credentials($mode);$timestamp=($this->clock)();
   $client=($this->soapFactory)($config['wsdl']);
   $params=['merchantId'=>$config['merchant'],'token'=>$this->token($config,$timestamp),'timestamp'=>$timestamp,'sessionid'=>$sessionId];
-  try {return $client->getTransStatus($params);}
+  try {$reply=$client->getTransStatus($params);return (object)PayoutResult::response($reply,method_exists($client,'__getLastResponse')?(string)$client->__getLastResponse():'');}
   finally {$this->capture($client,$config['wsdl'],'getTransStatus',$params,$reference??$sessionId);}
  }
  private function capture(object $client,string $wsdl,string $method,array $params,string $reference):void {

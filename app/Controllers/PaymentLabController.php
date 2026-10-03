@@ -63,6 +63,16 @@ final class PaymentLabController {
  public function reconcile():void {
   $this->guard();$this->enabled('payout');$id=filter_input(INPUT_POST,'id',FILTER_VALIDATE_INT);if(!$id){$this->fail('Opération invalide');return;}
   $db=App::db();$s=$db->prepare("SELECT * FROM payment_lab_operations WHERE id=? AND kind='payout'");$s->execute([$id]);$op=$s->fetch();
+  if($op&&$op['status']==='initiated'&&!$op['provider_session_id']){
+   $journal=$db->prepare("SELECT * FROM payout_api_events WHERE reference=? AND source='init' ORDER BY id");$journal->execute([$op['reference']]);
+   $saved=PayoutResult::recordedInitiation($op['reference'],$journal->fetchAll());
+   $outcome=PayoutResult::initiation($saved);
+   if($outcome['state']==='processing'){
+    $update=$db->prepare("UPDATE payment_lab_operations SET status='processing',provider_session_id=?,provider_message='Session récupérée depuis le journal SOAP' WHERE id=? AND status='initiated' AND (provider_session_id IS NULL OR provider_session_id='')");
+    $update->execute([$outcome['session'],$id]);
+    $s->execute([$id]);$op=$s->fetch();
+   }
+  }
   if(!$op||$op['status']!=='processing'||!$op['provider_session_id']){$this->fail('Aucune session à vérifier');return;}
   try {
    $reply=(new PaiementProPayoutService)->status($op['provider_session_id'],$op['environment'],$op['reference']);
@@ -88,6 +98,19 @@ final class PaymentLabController {
    $db->commit();
    Audit::event('payment_test.archived','payment_lab',$op['reference'],['note'=>$note]);
   }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();http_response_code(409);exit('Impossible de clore cet essai');}
+  App::redirect('/admin/payout');
+ }
+ public function clearPayoutHistory():void {
+  $this->guard();$this->enabled('payout');
+  $db=App::db();$db->beginTransaction();
+  try {
+   $q=$db->query("SELECT id,reference,status FROM payment_lab_operations WHERE kind='payout' AND status<>'archived' FOR UPDATE");
+   $rows=$q->fetchAll();
+   $update=$db->prepare("UPDATE payment_lab_operations SET status='archived',archived_at=UTC_TIMESTAMP(),archive_note=? WHERE id=? AND kind='payout'");
+   foreach($rows as $row)$update->execute(['Historique vidé localement ; statut précédent : '.$row['status'].' ; aucune annulation fournisseur',$row['id']]);
+   $db->commit();
+   foreach($rows as $row)Audit::event('payment_test.history_cleared','payment_lab',$row['reference'],['previous_status'=>$row['status'],'provider_cancelled'=>false]);
+  }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();error_log('Payout history clear: '.$e->getMessage());http_response_code(409);echo 'Impossible de vider l’historique local';return;}
   App::redirect('/admin/payout');
  }
  public function notification():void {

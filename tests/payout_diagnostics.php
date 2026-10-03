@@ -6,17 +6,20 @@ spl_autoload_register(static function(string $class):void {
 use App\Services\PaiementProPayoutService;
 use App\Services\PayoutApiAudit;
 use App\Services\PayoutTestReport;
+use App\Services\PayoutResult;
 function check(bool $ok,string $message):void {if(!$ok)throw new RuntimeException($message);}
 putenv('PAIEMENTPRO_MERCHANT_ID=PP-TEST');putenv('PAIEMENTPRO_SECRET_KEY=secret-test');putenv('APP_URL=https://thiebapower.com');
 $client=new class {
  public array $calls=[];
  public bool $fail=false;
- public function initTransact(array $params):object {$this->calls[]=$params;if($this->fail)throw new SoapFault('Server','timeout');return (object)['status'=>'SUCCEEDED','code'=>'0','sessionid'=>'S1'];}
+ public ?object $reply=null;
+ public string $responseXml='<Envelope><status>SUCCESS</status></Envelope>';
+ public function initTransact(array $params):object {$this->calls[]=$params;if($this->fail)throw new SoapFault('Server','timeout');return $this->reply??(object)['status'=>'SUCCEEDED','code'=>'0','sessionid'=>'S1'];}
  public function getTransStatus(array $params):object {$this->calls[]=$params;return (object)['status'=>'SUCCESS','sessionid'=>'S1'];}
  public function __getLastRequestHeaders():string {return "POST /webservice/v2/payout/soap.php HTTP/1.1\r\nHost: paiementpro.net\r\n";}
  public function __getLastResponseHeaders():string {return "HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\n";}
  public function __getLastRequest():string {return '<Envelope><token>'.end($this->calls)['token'].'</token><amount>200</amount></Envelope>';}
- public function __getLastResponse():string {return '<Envelope><status>SUCCESS</status></Envelope>';}
+ public function __getLastResponse():string {return $this->responseXml;}
 };
 $traces=[];
 $service=new PaiementProPayoutService(fn()=>$client,fn()=>1700000000,function($ref,$trace)use(&$traces){$traces[]=['reference'=>$ref]+$trace;});
@@ -43,4 +46,17 @@ $events=[['id'=>2,'reference'=>$op['reference'],'source'=>'init','created_at'=>'
 $report=PayoutTestReport::build($op,[['reference'=>$op['reference'],'created_at'=>'2026-10-02','endpoint'=>$request['wsdl'],'parameters'=>$traces[0]['requestParameters']]],$events);
 check(str_contains($report,'initTransact')&&str_contains($report,'getTransStatus')&&str_contains($report,'httpStatus')&&str_contains($report,'SUCCEEDED'),'complete report');
 check(!str_contains($report,'UNRELATED')&&!str_contains($report,$request['params']['token']),'isolated safe report');
-fwrite(STDOUT,"Payout diagnostics: 14 checks OK (mock SOAP, no real payment)\n");
+$xml='<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:p="https://paiementpro.net/webservice/v2/payout/soap.php"><SOAP-ENV:Body><p:initTransactResponse><return><status>INITIATED</status><code>0</code><Sessionid>S1</Sessionid><Url>webservice/v2/payout/auth/?sessionid=S1</Url></return></p:initTransactResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>';
+$client->responseXml=$xml;$client->reply=(object)['status'=>'INITIATED','code'=>'0'];
+$before=count($client->calls);$recovered=$service->initiate($request);
+check($recovered->sessionid==='S1'&&count($client->calls)===$before+1,'incomplete WSDL response recovered without retry');
+check(PayoutResult::initiation((object)['status'=>'INITIATED','code'=>0,'Sessionid'=>'S1'])['session']==='S1','provider Sessionid case');
+check(PayoutResult::authorizationUrl($recovered)==='https://paiementpro.net/webservice/v2/payout/auth/?sessionid=S1','relative authorization URL');
+foreach(['https://evil.test/webservice/v2/payout/auth/?sessionid=S1','https://paiementpro.net/webservice/v2/payout/auth/?sessionid=OTHER','javascript:alert(1)','//evil.test'] as $url)check(PayoutResult::authorizationUrl(['Sessionid'=>'S1','Url'=>$url])==='','unsafe or mismatched URL rejected');
+$journal=[['reference'=>'TBP-TEST-PAYOUT-ABC','source'=>'init','response'=>json_encode(['method'=>'initTransact','responseSoap'=>$xml])]];
+check(PayoutResult::recordedInitiation('TBP-TEST-PAYOUT-ABC',$journal)['sessionid']==='S1','existing session recovered from trusted initiation journal');
+check(PayoutResult::recordedInitiation('OTHER',$journal)===[],'other reference excluded');
+$journal[0]['source']='callback';check(PayoutResult::recordedInitiation('TBP-TEST-PAYOUT-ABC',$journal)===[],'callback cannot restore session');
+check(!isset(PayoutResult::response([],str_replace('<code>0</code>','<!DOCTYPE r>',$xml))['sessionid']),'DTD rejected during recovery');
+check(PayoutResult::finalStatus(['status'=>'SUCCESS','Sessionid'=>'S1','referenceNo'=>'R','amount'=>200,'currency'=>'XOF','channel'=>'WAVECI','payeeNo'=>'+2250748367710'],['sessionid'=>'S1','referenceNo'=>'R','amount'=>200,'currency'=>'XOF','channel'=>'WAVECI','payeeNo'=>'+2250748367710'])==='succeeded','final session case normalized while matching financial fields');
+fwrite(STDOUT,"Payout diagnostics OK (mock SOAP, no real payment)\n");
