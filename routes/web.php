@@ -1,6 +1,7 @@
 <?php
 // Route map loaded by App\Core\App.
 return [
+    'GET /rentals/receipt' => [\App\Controllers\RentalReceiptController::class, 'customer'],
     'GET /' => [\App\Controllers\RentalController::class, 'index'],
     'GET /rent' => [\App\Controllers\RentalController::class, 'index'],
     'POST /rentals' => [\App\Controllers\RentalController::class, 'create'],

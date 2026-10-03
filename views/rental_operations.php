@@ -22,8 +22,8 @@ usort($counts,fn($a,$b)=>($ranks[$a['status']]??4)<=>($ranks[$b['status']]??4));
 <td><a href="/admin/stations/detail?imei=<?= rawurlencode((string)$r['station_code']) ?>"><?= $esc($r['station_code']) ?></a><br><?= $esc($r['battery_serial']) ?></td>
 <td><?= number_format((int)$r['rental_fee']+(int)$r['deposit'],0,',',' ') ?> FCFA<br><small>Session <?= $esc($r['payment_session_id']??'—') ?></small></td>
 <td>Créée : <?= $esc($r['created_at']) ?><?php if(!empty($r['returned_at'])): ?><br><small>Retournée : <?= $esc($r['returned_at']) ?></small><?php endif; ?></td>
-<td class="tb-rental-actions"><?php if (
-    in_array($r["status"], ["releasing", "release_failed", "active"], true)
+<td class="tb-rental-actions"><?php if($r['status']==='returned' && App\Services\Auth::can('reports.export')): ?><a class="tb-link-button" href="/admin/rentals/receipt?reference=<?= rawurlencode($r['reference']) ?>">Télécharger le reçu</a><?php endif; ?><?php if (
+    App\Services\Auth::can("rentals.manage") && in_array($r["status"], ["releasing", "release_failed", "active"], true)
 ): ?><form method="post" action="/admin/stations/reconcile"><input type="hidden" name="csrf" value="<?= htmlspecialchars(
     $_SESSION["csrf"],
     ENT_QUOTES,
@@ -34,7 +34,7 @@ usort($counts,fn($a,$b)=>($ranks[$a['status']]??4)<=>($ranks[$b['status']]??4));
     "UTF-8",
 ) ?>"><button class="admin-ghost">Vérifier la station</button></form><?php endif; ?>
 <?php if (
-    $r["status"] === "pending_payment" &&
+    App\Services\Auth::can("rentals.cancel") && $r["status"] === "pending_payment" &&
     $r["reservation_expires_at"] &&
     strtotime($r["reservation_expires_at"] . " UTC") <= time()
 ): ?><details><summary>Libérer après vérification</summary><form method="post" action="/admin/rentals/cancel" class="management-stack"><input type="hidden" name="csrf" value="<?= htmlspecialchars(

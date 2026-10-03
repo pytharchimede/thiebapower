@@ -25,8 +25,11 @@ namespace {
     $batteries=renderView('batteries',$fixture);
     foreach(['serial','deposit_override','csrf'] as $field) verify(str_contains($batteries,'name="'.$field.'"'),'Battery field missing: '.$field);
     verify(str_contains($batteries,'action="/admin/batteries"')&&str_contains($batteries,'/admin/batteries/detail?id=1'),'Battery form/detail missing');
-    \App\Services\Auth::$denied=['fleet.manage','pricing.manage'];
+    \App\Services\Auth::$denied=['fleet.manage','pricing.manage','stations.view','batteries.view','labels.view','pricing.view'];
     $restricted=renderView('admin',$fixture);
     verify(!str_contains($restricted,'Aperçu des batteries')&&!str_contains($restricted,'href="/admin/pricing"')&&!str_contains($restricted,'href="/admin/batteries"'),'Permission-controlled sections leaked');
+    \App\Services\Auth::$denied=['pricing.manage','fleet.manage'];
+    $readonly=renderView('pricing',$fixture);
+    verify(!str_contains($readonly,'action="/admin/prices"')&&str_contains($readonly,'href="/admin/pricing"'),'Read access must not grant write access');
     echo "Admin presentation OK (forms, permissions, escaping; no network or DB)\n";
 }

@@ -40,12 +40,12 @@ require __DIR__ . "/partials/admin_shell_start.php";
                     <label>Durée incluse (minutes)<input type="number" min="1" name="duration_minutes" value="<?= (int) $prices[
                         "duration_minutes"
                     ] ?>" required></label>
-                    <label>Retenue par heure entamée (%)<input type="number" min="0" max="100" name="late_percent" value="<?= (int) $prices[
-                        "late_percent"
-                    ] ?>" required></label>
+                    <input type="hidden" name="late_percent" value="<?= (int)$prices['late_percent'] ?>">
+                    <div class="kiosk-notice"><strong>Comment se calcule le dépassement ?</strong><p>La durée incluse commence à la sortie physique confirmée. Les cinq premières minutes de retard sont gratuites. Ensuite : tarif de location × secondes de retard au-delà de 5 minutes ÷ durée incluse en secondes. Le montant est arrondi une seule fois au FCFA supérieur et plafonné à la caution.</p><p id="billing-example"></p><p>Sans caution : aucune retenue automatique. Les anciennes locations conservent la règle de retenue par heure entamée enregistrée à leur création.</p></div>
                     <div class="form-action"><span>Le changement ne modifie pas les locations déjà créées.</span><button class="admin-button">Enregistrer les tarifs</button></div>
                 </form>
             </section>
             <?php endif; ?>
 
+<script>(()=>{const fee=document.querySelector('[name="rental_fee"]'),duration=document.querySelector('[name="duration_minutes"]'),deposit=document.querySelector('[name="default_deposit"]'),enabled=document.querySelector('[name="deposit_enabled"]'),target=document.getElementById('billing-example');if(!target)return;const update=()=>{const f=Number(fee.value),m=Number(duration.value),d=enabled.checked?Number(deposit.value):0;if(f>0&&m>0){const c=Math.ceil(f*10/m);target.textContent=`Exemple : ${f} FCFA pour ${m} minutes. Un retour après ${m+15} minutes représente 15 minutes de retard, dont 5 gratuites : 10 minutes facturables, soit ${c} FCFA calculés. Retenue : ${Math.min(d,c)} FCFA ; caution remboursable : ${Math.max(0,d-c)} FCFA.`;}};[fee,duration,deposit,enabled].forEach(el=>el.addEventListener('input',update));update();})();</script>
 </main><?php require __DIR__ . "/partials/admin_shell_end.php"; ?></body></html>

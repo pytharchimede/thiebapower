@@ -39,13 +39,15 @@ final class AutomaticDepositRefundService
             }
             $due = new \DateTimeImmutable($r["due_at"], new \DateTimeZone("UTC"));
             $late = max(0, $returnedAt->getTimestamp() - $due->getTimestamp());
-            $deduction = Rental::due((int) $r["deposit"], (int) $r["late_percent"], $late);
+            $deduction = RentalBilling::calculate($r, $late)["deduction"];
             $refund = (int) $r["deposit"] - $deduction;
             $db->prepare(
-                "UPDATE rentals SET status='returned',returned_at=?,late_charge=? WHERE id=?",
+                "UPDATE rentals SET status='returned',returned_at=?,late_charge=?,returned_station=?,returned_slot=? WHERE id=?",
             )->execute([
                 $returnedAt->setTimezone(new \DateTimeZone("UTC"))->format("Y-m-d H:i:s"),
                 $deduction,
+                $batteryLocation["station_imei"] ?? null,
+                $batteryLocation["slot_id"] ?? null,
                 $rentalId,
             ]);
             $db->prepare(

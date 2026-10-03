@@ -58,7 +58,7 @@ foreach ($stats as $stat) {
 ) ?></span><i class="fa-solid fa-arrow-up-right-from-square tb-card-arrow" aria-hidden="true"></i></a><?php
 endforeach; ?></div></section>
 <?php if (
-    App\Services\Auth::can("fleet.manage")
+    App\Services\Auth::can("batteries.view")
 ): ?><section class="admin-card"><div class="admin-section-heading"><div><span class="tb-eyebrow">VOTRE MATÉRIEL</span><h2>Aperçu des batteries</h2><p>Les 6 premières batteries du parc.</p></div><a class="tb-link-button" href="/admin/batteries">Tout le parc <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div><div class="tb-battery-grid"><?php
 foreach (array_slice($batteries, 0, 6) as $b):
     $charge =

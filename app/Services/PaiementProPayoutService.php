@@ -36,6 +36,7 @@ final class PaiementProPayoutService
     private function credentials(?string $mode = null): array
     {
         $mode ??= IntegrationSettings::all()["paiementpro"];
+        if (!in_array($mode, ["sandbox", "production"], true)) throw new \RuntimeException("Mode Paiement Pro invalide");
         if ($mode === "sandbox") {
             $merchant = App::env("PAIEMENTPRO_SANDBOX_MERCHANT_ID");
             $secret = App::env("PAIEMENTPRO_SANDBOX_SECRET_KEY");
@@ -49,6 +50,7 @@ final class PaiementProPayoutService
         if (
             !$merchant ||
             !$secret ||
+            preg_match('/[\x00-\x1f\x7f]/', $merchant . $secret) ||
             !filter_var($wsdl, FILTER_VALIDATE_URL) ||
             parse_url($wsdl, PHP_URL_SCHEME) !== "https"
         ) {
@@ -115,7 +117,7 @@ final class PaiementProPayoutService
                 "paymentReason" =>
                     (str_starts_with($reference, "TBP-TEST-")
                         ? "Essai API payout "
-                        : "Restitution caution ") . $reference,
+                        : (str_starts_with($reference, "TBP-WD-") ? "Retrait Thiebapower " : "Restitution caution ")) . $reference,
                 "returnURL" =>
                     rtrim(App::env("APP_URL"), "/") . "/payment/return",
                 "callbackURL" =>

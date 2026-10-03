@@ -8,7 +8,7 @@ final class RentalRepository {
   return $s->fetch()?:null;
  }
  public function create(array $data):void {
-  $s=App::db()->prepare("INSERT INTO rentals(reference,battery_id,customer_name,customer_email,customer_phone,rental_fee,deposit,late_percent,duration_minutes,status) VALUES(?,?,?,?,?,?,?,?,?,'pending_payment')");
+  $s=App::db()->prepare("INSERT INTO rentals(reference,battery_id,customer_name,customer_email,customer_phone,rental_fee,deposit,late_percent,duration_minutes,billing_rule,status) VALUES(?,?,?,?,?,?,?,?,?,'prorata_grace5','pending_payment')");
   $s->execute($data);
  }
 }

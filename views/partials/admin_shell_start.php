@@ -5,12 +5,12 @@ $adminPath =
 $navItems = [
     ["Système", "/admin/system", "system.manage", "system"],
     ["Tableau de bord", "/admin", "dashboard.view", "overview"],
-    ["Locations", "/admin/rentals", "rentals.manage", "rentals"],
+    ["Locations", "/admin/rentals", "rentals.view", "rentals"],
     ["Caisse et finances", "/admin/finance", "finance.view", "finance"],
-    ["Terminaux", "/admin/stations", "fleet.manage", "stations"],
-    ["Étiquettes QR", "/admin/stations/labels", "fleet.manage", "labels"],
-    ["Tarification", "/admin/pricing", "pricing.manage", "pricing"],
-    ["Batteries", "/admin/batteries", "fleet.manage", "fleet"],
+    ["Terminaux", "/admin/stations", "stations.view", "stations"],
+    ["Étiquettes QR", "/admin/stations/labels", "labels.view", "labels"],
+    ["Tarification", "/admin/pricing", "pricing.view", "pricing"],
+    ["Batteries", "/admin/batteries", "batteries.view", "fleet"],
     ["Reversements API", "/admin/payout", "payout.view", "payout"],
     ["Journal et visites", "/admin/audit", "audit.view", "audit"],
     ["Comptes et droits", "/admin/users", "users.manage", "users"],
@@ -58,6 +58,8 @@ $isActive = static function (string $name, string $href) use (
     };
 };
 ?>
+<meta name="tb-csrf" content="<?= htmlspecialchars($adminCsrf,ENT_QUOTES,'UTF-8') ?>">
+<script>window.TB_CAN_EXPORT=<?= Auth::can("reports.export") ? "true" : "false" ?>;</script>
 <link rel="stylesheet" href="/admin-icons.css?v=6.7.2" referrerpolicy="no-referrer">
 <link rel="stylesheet" href="/admin-design.css?v=20261003-6">
 <script src="/admin-design.js?v=20261003-6" defer></script>

@@ -411,6 +411,10 @@ final class PaymentLabController
                 $q->execute([$ref]);
                 $expected = $q->fetch();
             }
+            if (!$expected && str_starts_with($ref, 'TBP-WD-')) {
+                $q = $db->prepare("SELECT amount,'production' environment,recipient_channel channel,recipient_phone phone FROM finance_withdrawals WHERE reference=?");
+                $q->execute([$ref]);$expected=$q->fetch();
+            }
             $known = (bool) $expected;
         }
         if (!$known) {

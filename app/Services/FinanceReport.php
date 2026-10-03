@@ -21,19 +21,22 @@ final class FinanceReport {
   $q->execute([$from,$until]);$cash=$q->fetchAll();
   $q=$db->prepare("SELECT COALESCE(SUM(CASE WHEN direction='in' THEN amount ELSE -amount END),0) FROM cash_entries WHERE occurred_at<?");
   $q->execute([$from]);$openingCash=(int)$q->fetchColumn();
+  $q=$db->prepare("SELECT amount,confirmed_at FROM finance_withdrawals WHERE status='succeeded' AND confirmed_at>=? AND confirmed_at<?");
+  $q->execute([$from,$until]);$withdrawalRows=$q->fetchAll();$withdrawn=array_sum(array_map(static fn($r)=>(int)$r['amount'],$withdrawalRows));
   $sum=static fn(array $rows,string $key):int=>array_sum(array_map(static fn($r)=>(int)$r[$key],$rows));
   $cashIn=0;$cashOut=0;foreach($cash as $entry){if($entry['direction']==='in')$cashIn+=(int)$entry['amount'];else $cashOut+=(int)$entry['amount'];}
   $daily=[];
-  $day=static function(string $date)use(&$daily):array { $key=substr($date,0,10);return $daily[$key]??['date'=>$key,'collected'=>0,'refunded'=>0,'cashIn'=>0,'cashOut'=>0]; };
+  $day=static function(string $date)use(&$daily):array { $key=substr($date,0,10);return $daily[$key]??['date'=>$key,'collected'=>0,'refunded'=>0,'cashIn'=>0,'cashOut'=>0,'withdrawn'=>0]; };
   foreach($payments as $row){$entry=$day($row['paid_at']);$entry['collected']+=(int)$row['rental_fee']+(int)$row['deposit'];$daily[$entry['date']]=$entry;}
   foreach($refunds as $row){$entry=$day($row['confirmed_at']);$entry['refunded']+=(int)$row['refund_amount'];$daily[$entry['date']]=$entry;}
   foreach($cash as $row){$entry=$day($row['occurred_at']);$entry[$row['direction']==='in'?'cashIn':'cashOut']+=(int)$row['amount'];$daily[$entry['date']]=$entry;}
+  foreach($withdrawalRows as $row){$entry=$day($row['confirmed_at']);$entry['withdrawn']+=(int)$row['amount'];$daily[$entry['date']]=$entry;}
   krsort($daily);
   return compact('payments','refunds','cash','cashIn','cashOut','daily')+[
    'rentalRevenue'=>$sum($payments,'rental_fee'),'depositsCollected'=>$sum($payments,'deposit'),
    'collected'=>$sum($payments,'rental_fee')+$sum($payments,'deposit'),
    'refunded'=>$sum($refunds,'refund_amount'),'deductions'=>$sum($refunds,'deduction'),
-   'providerNet'=>$sum($payments,'rental_fee')+$sum($payments,'deposit')-$sum($refunds,'refund_amount'),
+   'withdrawn'=>$withdrawn,'providerNet'=>$sum($payments,'rental_fee')+$sum($payments,'deposit')-$sum($refunds,'refund_amount')-$withdrawn,
    'openingCash'=>$openingCash,'cashBalance'=>$openingCash+$cashIn-$cashOut,
   ];
  }

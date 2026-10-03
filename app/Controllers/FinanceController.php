@@ -14,7 +14,10 @@ final class FinanceController {
   $last=\DateTimeImmutable::createFromFormat('!Y-m-d',$end,new \DateTimeZone('UTC'));
   if(!$first||!$last||$first->format('Y-m-d')!==$start||$last->format('Y-m-d')!==$end||$first>$last||$first->diff($last)->days>366){http_response_code(422);echo 'Période invalide (maximum 366 jours)';return;}
   $report=(new FinanceReport)->forPeriod($start,$end);
-  App::view('finance',compact('report','start','end'));
+  $withdrawals=App::db()->query('SELECT * FROM finance_withdrawals ORDER BY id DESC LIMIT 100')->fetchAll();
+  $withdrawalUrls=[];
+  foreach($withdrawals as $op){if(in_array($op['status'],['unknown','initiated','processing'],true)){$q=App::db()->prepare('SELECT * FROM payout_api_events WHERE reference=? ORDER BY id');$q->execute([$op['reference']]);$withdrawalUrls[$op['reference']]=\App\Services\PayoutResult::authorizationUrl(\App\Services\PayoutResult::recordedInitiation($op['reference'],$q->fetchAll()));}}
+  App::view('finance',compact('report','start','end','withdrawals','withdrawalUrls'));
  }
  public function addCash():void {
   $user=Auth::requirePermission('finance.manage',true);

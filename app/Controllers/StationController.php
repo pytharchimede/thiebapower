@@ -18,7 +18,7 @@ final class StationController {
   echo json_encode(['code'=>($_SERVER['REQUEST_METHOD']??'GET')==='GET'?0:1,'message'=>($_SERVER['REQUEST_METHOD']??'GET')==='GET'?'HeyCharge callback ready':'Use /register, /return or /status']);
  }
  public function index():void {
-  Auth::requirePermission('fleet.manage');
+  Auth::requirePermission('stations.view');
   $db=App::db();
   $stations=$db->query("SELECT s.*,COUNT(b.id) batteries_count,SUM(b.status='available') available_count,MIN(b.battery_capacity) minimum_capacity FROM stations s LEFT JOIN batteries b ON b.station_imei=s.imei GROUP BY s.imei ORDER BY s.imei")->fetchAll();
   $totals=$db->query('SELECT status,COUNT(*) quantity FROM batteries GROUP BY status')->fetchAll();
@@ -33,13 +33,14 @@ final class StationController {
   App::redirect('/admin/stations/detail?imei='.rawurlencode($imei));
  }
  public function labels():void {
-  Auth::requirePermission('fleet.manage');
+  Auth::requirePermission('labels.view');
   $labels=$this->labelData();
   $margins=StationLabelSettings::load();
   App::view('station_labels',compact('labels','margins'));
  }
  public function labelsPdf():void {
-  Auth::requirePermission('fleet.manage');
+  Auth::requirePermission('reports.export');
+  Auth::requirePermission('labels.view');
   $labels=$this->labelData();
   if(!$labels){http_response_code(404);echo 'Aucune station à imprimer';return;}
   try {$margins=isset($_GET['left'])?StationLabelSettings::fromCentimetres($_GET):StationLabelSettings::load();}
@@ -73,7 +74,7 @@ final class StationController {
   return $labels;
  }
  public function detail():void {
-  Auth::requirePermission('fleet.manage');
+  Auth::requirePermission('stations.view');
   $imei=(string)($_GET['imei']??'');
   if(!preg_match('/^[A-Za-z0-9_-]{1,120}$/D',$imei)){http_response_code(404);return;}
   $db=App::db();$q=$db->prepare('SELECT * FROM stations WHERE imei=?');$q->execute([$imei]);$station=$q->fetch();
@@ -108,7 +109,7 @@ final class StationController {
   App::redirect('/admin/stations/detail?imei='.rawurlencode($imei));
  }
  public function releaseBattery():void {
-  Auth::requirePermission('fleet.manage',true);
+  Auth::requirePermission('fleet.release',true);
   $imei=(string)($_POST['imei']??'');$batteryId=filter_var($_POST['battery_id']??null,FILTER_VALIDATE_INT);
   $serial=(string)($_POST['confirm_serial']??'');
   if(!preg_match('/^[A-Za-z0-9_-]{1,120}$/D',$imei)||!$batteryId||!preg_match('/^[A-Za-z0-9_-]{1,100}$/D',$serial)||IntegrationSettings::all()['heycharge']!=='normal'){http_response_code(422);exit('Commande invalide');}

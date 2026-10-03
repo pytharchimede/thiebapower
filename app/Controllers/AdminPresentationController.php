@@ -8,14 +8,14 @@ final class AdminPresentationController
 {
     public function pricing(): void
     {
-        Auth::requirePermission("pricing.manage");
+        Auth::requirePermission("pricing.view");
         $csrf = $_SESSION["csrf"];
         $prices = App::db()->query("SELECT * FROM pricing WHERE id=1")->fetch();
         App::view("pricing", compact("prices", "csrf"));
     }
     public function batteries(): void
     {
-        Auth::requirePermission("fleet.manage");
+        Auth::requirePermission("batteries.view");
         $csrf = $_SESSION["csrf"];
         $batteries = App::db()
             ->query("SELECT * FROM batteries ORDER BY id")
@@ -24,7 +24,7 @@ final class AdminPresentationController
     }
     public function batteryDetail(): void
     {
-        Auth::requirePermission("fleet.manage");
+        Auth::requirePermission("batteries.view");
         $id = filter_var($_GET["id"] ?? "", FILTER_VALIDATE_INT);
         if (!$id || $id < 1) {
             http_response_code(404);
@@ -74,7 +74,7 @@ final class AdminPresentationController
     }
     public function rentalDetail(): void
     {
-        Auth::requirePermission("rentals.manage");
+        Auth::requirePermission("rentals.view");
         $reference = (string) ($_GET["reference"] ?? "");
         if (strlen($reference) > 120 || $reference === "") {
             http_response_code(404);
@@ -115,7 +115,7 @@ final class AdminPresentationController
         $usage = $r;
         App::view(
             "record_detail",
-            compact("title", "back", "fields", "stationLink", "usage"),
+            compact("title", "back", "fields", "stationLink", "usage", "r"),
         );
     }
 }

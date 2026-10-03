@@ -27,6 +27,6 @@
 (() => {
  const form=document.getElementById('rental-checkout');if(!form)return;
  let submitted=false;
- form.addEventListener('submit',event=>{if(submitted){event.preventDefault();return;}submitted=true;form.querySelectorAll('button[type=submit],button:not([type])').forEach(button=>{button.disabled=true;button.dataset.originalLabel=button.textContent;button.textContent='Préparation du paiement…';});});
+ form.addEventListener('submit',event=>{if(submitted){event.preventDefault();return;}submitted=true;try{localStorage.setItem('tbp_last_receipt_token',form.elements.checkout_token.value);}catch(e){}form.querySelectorAll('button[type=submit],button:not([type])').forEach(button=>{button.disabled=true;button.dataset.originalLabel=button.textContent;button.textContent='Préparation du paiement…';});});
  window.addEventListener('pageshow',()=>{submitted=false;form.querySelectorAll('button[data-original-label]').forEach(button=>{button.disabled=false;button.textContent=button.dataset.originalLabel;});});
 })();

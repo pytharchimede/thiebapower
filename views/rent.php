@@ -56,7 +56,7 @@
                     <div <?= $depositEnabled ? '' : 'hidden' ?>><span>Caution restituable</span><strong id="summary-deposit">—</strong></div>
                     <div class="total"><span>Total à payer</span><strong id="summary-total">—</strong></div>
                 </div>
-                <p class="deposit-info" <?= $depositEnabled ? '' : 'hidden' ?>>Retour dans le délai : caution intégralement restituable. Après le délai : <?= (int) $prices['late_percent'] ?> % de la caution retenus par heure supplémentaire entamée, dans la limite de la caution.</p>
+                <p class="deposit-info"><?= (int)$prices['duration_minutes'] ?> minutes incluses, puis 5 minutes gratuites. Ensuite, le dépassement est calculé au prorata du tarif payé, arrondi au FCFA supérieur. <?= $depositEnabled ? 'Il est retenu sur la caution, sans jamais la dépasser. Le reste est remboursable.' : 'Sans caution, aucune retenue automatique ; merci de respecter le délai de retour.' ?></p>
                 <?php if ($checkoutEnabled): ?>
                     <form method="post" action="/rentals" id="rental-checkout">
                         <input type="hidden" name="checkout_token" value="<?= bin2hex(random_bytes(16)) ?>"><input type="hidden" name="station_code" id="checkout-station" value="<?= htmlspecialchars($station['imei'],ENT_QUOTES,'UTF-8') ?>">

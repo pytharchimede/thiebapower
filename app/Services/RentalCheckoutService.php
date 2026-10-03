@@ -165,7 +165,7 @@ final class RentalCheckoutService
             $price = $db->query("SELECT * FROM pricing WHERE id=1")->fetch();
             $reference = "TBP-" . strtoupper(bin2hex(random_bytes(8)));
             $db->prepare(
-                "INSERT INTO rentals(checkout_token,reference,battery_id,station_code,payment_environment,customer_name,customer_email,customer_phone,payout_channel,rental_fee,deposit,late_percent,duration_minutes,status,reservation_expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'pending_payment',DATE_ADD(UTC_TIMESTAMP(),INTERVAL 2 MINUTE))",
+                "INSERT INTO rentals(checkout_token,reference,battery_id,station_code,payment_environment,customer_name,customer_email,customer_phone,payout_channel,rental_fee,deposit,late_percent,duration_minutes,billing_rule,status,reservation_expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'prorata_grace5','pending_payment',DATE_ADD(UTC_TIMESTAMP(),INTERVAL 2 MINUTE))",
             )->execute([
                 $input["checkout_token"],
                 $reference,

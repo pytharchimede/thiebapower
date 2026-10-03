@@ -8,7 +8,7 @@ final class RentalOperationsController
 {
     public function index(): void
     {
-        Auth::requirePermission("rentals.manage");
+        Auth::requirePermission("rentals.view");
         $status = (string) ($_GET["status"] ?? "");
         $allowed = [
             "pending_payment",
@@ -42,7 +42,7 @@ final class RentalOperationsController
     }
     public function cancelPending(): void
     {
-        Auth::requirePermission("rentals.manage", true);
+        Auth::requirePermission("rentals.cancel", true);
         $reference = (string) ($_POST["reference"] ?? "");
         $confirmation = (string) ($_POST["confirm_reference"] ?? "");
         $proof = trim((string) ($_POST["provider_proof"] ?? ""));
