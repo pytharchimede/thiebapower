@@ -47,7 +47,7 @@
     return Uint8Array.from(output,c=>c.charCodeAt(0));
   };
   const makeButton = (text,icon) => {const b=document.createElement('button');b.type='button';b.className='tb-export-button';const i=document.createElement('i');i.className='fa-solid '+icon;i.setAttribute('aria-hidden','true');b.append(i,document.createTextNode(text));return b;};
-  document.querySelectorAll('.status-pill').forEach(el=>{const state=el.textContent.trim();el.dataset.state=state;if(states[state])el.textContent=states[state];});
+  document.querySelectorAll('.status-pill').forEach(el=>{const state=el.dataset.state||el.textContent.trim();el.dataset.state=state;if(states[state]&&!el.classList.contains('tb-rental-state'))el.textContent=states[state];});
   let listingId=0;
   const detailViews=new Map();
   const showRecord = () => {
@@ -92,6 +92,12 @@
         detailViews.set(hash,{main:table.closest('main'),title,head,values:data[index]});
       }
       cell.append(link);row.append(cell);
+    });
+    if(table.classList.contains('tb-rental-table'))document.addEventListener('tb-list-update',()=>{
+      const order=Array.from(body.rows);rows.sort((a,b)=>order.indexOf(a)-order.indexOf(b));
+      data.splice(0,data.length,...rows.map(row=>Array.from(row.cells).slice(0,head.length).map(clean)));
+      if(select){const current=select.value;select.replaceChildren();const all=document.createElement('option');all.value='';all.textContent='Tous les états';select.append(all);[...new Set(data.map(r=>r[statusIndex]))].sort().forEach(state=>{const option=document.createElement('option');option.value=state;option.textContent=state;select.append(option);});select.value=current;if(select.selectedIndex<0)select.value='';}
+      filter();
     });
     input.addEventListener('input',filter);select?.addEventListener('change',filter);filter();
     const selected=()=>rows.filter(r=>!r.hidden).map(r=>Array.from(r.cells).slice(0,head.length).map(clean));const filename=normalize(title).replace(/[^a-z0-9]+/g,'-').slice(0,65)+'-'+new Date().toISOString().slice(0,10);

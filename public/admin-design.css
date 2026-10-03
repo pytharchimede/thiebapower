@@ -83,3 +83,25 @@
 @media(max-width:560px){.admin-body .tb-module-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-body .tb-battery-grid,.admin-body .tb-card-list tbody{grid-template-columns:1fr}.admin-body .tb-module-card{padding:16px 13px}.admin-body .tb-search-form{flex-wrap:wrap}.admin-body .tb-search-form label{flex:1 1 100%}.admin-body .tb-export-actions{width:100%}.admin-body .tb-export-actions>*{flex:1}.admin-body .tb-notification-panel{left:12px;right:12px;max-height:65dvh;overflow-y:auto}.admin-body .admin-mobile-menu nav a{min-height:86px}}
 @media(prefers-reduced-motion:reduce){.admin-body :is(input,select,textarea,button,.tb-module-card){transition:none}.admin-body .tb-module-card:hover{transform:none}}
 @media(forced-colors:active){.admin-body input[type=checkbox],.admin-body input[type=radio]{appearance:auto;background-image:none}.admin-body select{appearance:auto;background-image:none}}
+
+/* Rental cards: active use first, readable history below. */
+.admin-body .tb-rental-filters{display:flex;flex-wrap:wrap;gap:9px;margin:16px 0}
+.admin-body .tb-rental-filters a{display:inline-flex;align-items:center;gap:9px;min-height:46px;padding:10px 14px;background:#f4f7f2;border:1px solid #d9e3d8;border-radius:14px;text-decoration:none;color:#365b48;font-size:13px;font-weight:650}
+.admin-body .tb-rental-filters a[aria-current=page]{background:#145449;border-color:#145449;color:#fff}
+.tb-rental-filters a span{padding:2px 7px;border-radius:7px;background:#0000000b;font-variant-numeric:tabular-nums}
+.tb-rental-legend{display:flex;flex-wrap:wrap;gap:12px 20px;color:#61796c;font-size:12px}.tb-rental-legend span{display:flex;align-items:center;gap:7px}
+.admin-body .tb-card-list .tb-rental-card.is-active{background:#fff;border:2px solid #91bba0;border-inline-start:5px solid #26765d;box-shadow:0 5px 18px #215f4910}
+.admin-body .tb-card-list .tb-rental-card.is-incident{background:#fffcf6;border-color:#d7b27c;border-inline-start:5px solid #b17836}
+.admin-body .tb-card-list .tb-rental-card.is-waiting{background:#fbfcfa;border-inline-start:5px solid #a8b69e}
+.admin-body .tb-card-list .tb-rental-card.is-finished{background:#f0f2f1;border-color:#d9dfdb;box-shadow:none;color:#5e6b64}
+.admin-body .tb-card-list .tb-rental-card.is-finished td,.admin-body .tb-card-list .tb-rental-card.is-finished td a{color:#56685d}
+.admin-body .tb-card-list .tb-rental-card.is-finished .tb-row-action>a{background:#e9ede9;color:#526958;border-color:#d1dad1}
+.admin-body .tb-card-list .tb-rental-card.is-finished:hover,.admin-body .tb-card-list .tb-rental-card.is-finished:focus-within{background:#fafcf9;border-color:#a9bca8}
+.admin-body .tb-card-list .tb-rental-card.is-overdue{border-color:#d0a666;border-inline-start-color:#ad742f}
+.admin-body .tb-card-list .tb-rental-usage{grid-column:1/-1;border:1px solid #deeadc;background:#f2f8ed;border-radius:13px;padding:12px 15px}
+.admin-body .tb-rental-card .tb-use-timer{margin:4px 0;gap:6px}.admin-body .tb-rental-card.is-active .tb-use-timer strong{font-size:clamp(20px,1.8vw,25px);color:#1c614a;font-variant-numeric:tabular-nums}.admin-body .tb-rental-card .tb-use-timer>span{font-size:13px}
+.admin-body .tb-card-list .is-finished .tb-rental-usage{background:#e7ece7;border-color:#d9e0d9}.admin-body .is-finished .tb-use-timer strong{font-size:16px;color:#56685d}
+.admin-body .tb-rental-state{white-space:normal;line-height:1.4}.admin-body .is-active .tb-rental-state{background:#e4f3df;color:#245a37}.admin-body .is-incident .tb-rental-state{background:#f9ecd6;color:#825b23}.admin-body .is-finished .tb-rental-state{background:#e0e6e0;color:#516457}
+@media(max-width:560px){.admin-body .tb-rental-filters a{flex:1 1 140px;justify-content:space-between}.tb-rental-legend{gap:10px;font-size:11px}}
+
+.admin-body.tb-counters-off .tb-rental-usage,.tb-counters-off .admin-body .tb-rental-usage{display:none}

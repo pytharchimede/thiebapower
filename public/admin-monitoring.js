@@ -51,6 +51,15 @@
   };
   const tick = () => {
     if (document.hidden || !countersAllowed()) return;
+    document
+      .querySelectorAll('.tb-rental-card[data-rental-status="active"]')
+      .forEach((row) => {
+        const due = Number(row.querySelector(".tb-use-timer")?.dataset.due);
+        row.classList.toggle(
+          "is-overdue",
+          !!due && due <= Date.now() / 1000 + offset,
+        );
+      });
     const now = Date.now() / 1000 + offset;
     document.querySelectorAll(".tb-use-timer").forEach((el) => {
       const start = Number(el.dataset.start),
@@ -72,8 +81,10 @@
           sub = document.createElement("span");
         sub.textContent =
           remaining >= 0
-            ? "Durée restante : " + duration(remaining)
-            : "Dépassement : " + duration(-remaining);
+            ? (running ? "Durée restante : " : "Restant au retour : ") +
+              duration(remaining)
+            : (running ? "Dépassement : " : "Dépassement au retour : ") +
+              duration(-remaining);
         sub.className = remaining < 0 ? "tb-overdue" : "";
         el.append(sub);
       }
@@ -120,6 +131,72 @@
       clearTimeout(timeout);
     }
   };
+  const updateRentalRow = (row, r, now) => {
+    const changed = row.dataset.rentalStatus !== r.status;
+    row.dataset.rentalStatus = r.status;
+    const rank =
+      r.status === "active"
+        ? 0
+        : ["release_failed", "payment_review"].includes(r.status)
+          ? 1
+          : ["releasing", "pending_payment"].includes(r.status)
+            ? 2
+            : 3;
+    ["is-active", "is-incident", "is-waiting", "is-finished"].forEach(
+      (state, i) => row.classList.toggle(state, i === rank),
+    );
+    row.classList.toggle(
+      "is-overdue",
+      r.status === "active" && !!r.due_unix && r.due_unix <= now,
+    );
+    if (r.returned_unix || r.started_unix)
+      row.dataset.sortTime = r.returned_unix || r.started_unix;
+    const badge = row.querySelector(".tb-rental-state");
+    const labels = {
+      active: "En cours",
+      release_failed: "Sortie à vérifier",
+      payment_review: "Paiement à rapprocher",
+      releasing: "Sortie en cours",
+      pending_payment: "Paiement en attente",
+      returned: "Terminée · batterie retournée",
+      payment_failed: "Paiement échoué",
+      payment_timeout: "Paiement expiré",
+    };
+    if (badge) {
+      badge.textContent = labels[r.status] || r.status;
+      badge.dataset.state = r.status;
+    }
+    if (rank === 3) {
+      const actions = row.querySelector(".tb-rental-actions");
+      if (actions) actions.hidden = true;
+    }
+
+    if (changed) {
+      const actions = row.querySelector(".tb-rental-actions");
+      if (actions) {
+        actions
+          .querySelectorAll("form,details")
+          .forEach((el) => (el.hidden = true));
+        if (!actions.querySelector(".tb-state-refresh")) {
+          const note = document.createElement("span");
+          note.className = "tb-state-refresh tb-muted";
+          note.textContent =
+            "État actualisé. Rechargez la page pour les actions disponibles.";
+          actions.append(note);
+        }
+      }
+    }
+    if (r.started_unix && !row.querySelector(".tb-use-timer")) {
+      const cell = row.querySelector(".tb-rental-usage");
+      if (cell) {
+        cell.querySelectorAll(".tb-muted").forEach((el) => el.remove());
+        const timer = document.createElement("div");
+        timer.className = "tb-use-timer";
+        timer.dataset.reference = r.reference;
+        cell.append(timer);
+      }
+    }
+  };
   const render = (data) => {
     if (
       typeof data.countersEnabled === "boolean" &&
@@ -129,6 +206,12 @@
       configureCounters();
     }
     offset = data.serverTime - Date.now() / 1000;
+    (data.trackedRentals || []).forEach((r) =>
+      document.querySelectorAll(".tb-rental-card").forEach((row) => {
+        if (row.dataset.rentalReference === r.reference)
+          updateRentalRow(row, r, data.serverTime);
+      }),
+    );
     (data.trackedRentals || []).forEach((r) =>
       document
         .querySelectorAll(".tb-use-timer[data-reference]")
@@ -140,6 +223,35 @@
           el.dataset.running = r.status === "active" ? "1" : "0";
         }),
     );
+    document.querySelectorAll(".tb-rental-table tbody").forEach((body) => {
+      const rows = Array.from(body.querySelectorAll(".tb-rental-card"));
+      const rank = (row) =>
+        row.classList.contains("is-active")
+          ? 0
+          : row.classList.contains("is-incident")
+            ? 1
+            : row.classList.contains("is-waiting")
+              ? 2
+              : 3;
+      rows.sort(
+        (a, b) =>
+          rank(a) - rank(b) ||
+          (a.classList.contains("is-overdue") !==
+          b.classList.contains("is-overdue")
+            ? a.classList.contains("is-overdue")
+              ? -1
+              : 1
+            : 0) ||
+          (a.classList.contains("is-overdue")
+            ? Number(a.querySelector(".tb-use-timer")?.dataset.due) -
+              Number(b.querySelector(".tb-use-timer")?.dataset.due)
+            : 0) ||
+          Number(b.dataset.sortTime) - Number(a.dataset.sortTime),
+      );
+      if (rows.some((row, i) => body.children[i] !== row))
+        rows.forEach((row) => body.append(row));
+    });
+    document.dispatchEvent(new CustomEvent("tb-list-update"));
     lastSuccess = new Date();
     status(
       "Dernière vérification à " +
@@ -240,8 +352,10 @@
       const refs = [
         ...new Set(
           Array.from(
-            document.querySelectorAll(".tb-use-timer[data-reference]"),
-            (el) => el.dataset.reference,
+            document.querySelectorAll(
+              ".tb-use-timer[data-reference],.tb-rental-card[data-rental-reference]",
+            ),
+            (el) => el.dataset.reference || el.dataset.rentalReference,
           ),
         ),
       ].slice(0, 100);
