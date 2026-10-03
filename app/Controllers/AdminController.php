@@ -44,7 +44,7 @@ final class AdminController {
   if(!is_int($fee)||$fee<1||!is_int($deposit)||$deposit<0||!is_int($minutes)||$minutes<1||!is_int($percent)||$percent<0||$percent>100){http_response_code(422);exit('Tarifs invalides');}
   App::db()->prepare('UPDATE pricing SET rental_fee=?,default_deposit=?,duration_minutes=?,late_percent=?,deposit_enabled=? WHERE id=1')->execute([$fee,$deposit,$minutes,$percent,$depositEnabled]);
   Audit::event('pricing.updated','pricing','1',['rental_fee'=>$fee,'default_deposit'=>$deposit,'duration_minutes'=>$minutes,'late_percent'=>$percent,'deposit_enabled'=>$depositEnabled]);
-  App::redirect('/admin');
+  App::redirect('/admin/pricing?saved=1');
  }
  public function battery():void {
   Auth::requirePermission('fleet.manage',true);
@@ -53,6 +53,6 @@ final class AdminController {
   if($serial===''||strlen($serial)>100||($deposit!==null&&($deposit===false||$deposit<0))){http_response_code(422);exit('Batterie invalide');}
   App::db()->prepare("INSERT INTO batteries(serial,deposit_override,status) VALUES(?,?,'available') ON DUPLICATE KEY UPDATE deposit_override=VALUES(deposit_override)")->execute([$serial,$deposit]);
   Audit::event('battery.saved','battery',$serial,['deposit_override'=>$deposit]);
-  App::redirect('/admin');
+  App::redirect('/admin/batteries?saved=1');
  }
 }
