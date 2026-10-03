@@ -3,6 +3,7 @@ use App\Services\Auth;
 $adminPath =
     parse_url($_SERVER["REQUEST_URI"] ?? "/admin", PHP_URL_PATH) ?: "/admin";
 $navItems = [
+    ["Système", "/admin/system", "system.manage", "system"],
     ["Tableau de bord", "/admin", "dashboard.view", "overview"],
     ["Locations", "/admin/rentals", "rentals.manage", "rentals"],
     ["Caisse et finances", "/admin/finance", "finance.view", "finance"],
@@ -15,6 +16,7 @@ $navItems = [
     ["Comptes et droits", "/admin/users", "users.manage", "users"],
 ];
 $navIcons = [
+    "system" => "fa-server",
     "overview" => "fa-chart-pie",
     "rentals" => "fa-arrow-right-arrow-left",
     "finance" => "fa-wallet",
@@ -57,8 +59,8 @@ $isActive = static function (string $name, string $href) use (
 };
 ?>
 <link rel="stylesheet" href="/admin-icons.css?v=6.7.2" referrerpolicy="no-referrer">
-<link rel="stylesheet" href="/admin-design.css?v=20261003-2">
-<script src="/admin-design.js?v=20261003-2" defer></script>
+<link rel="stylesheet" href="/admin-design.css?v=20261003-3">
+<script src="/admin-design.js?v=20261003-3" defer></script>
 <a class="tb-skip-link" href="#tb-page-content">Aller au contenu</a>
 <div class="admin-layout">
  <aside class="admin-sidebar" aria-label="Menu de gestion">
@@ -104,7 +106,7 @@ $isActive = static function (string $name, string $href) use (
     "UTF-8",
 ) ?></p><?php endif; ?></div>
    <div class="admin-top-actions">
-<?php if(Auth::can('dashboard.view',$adminUser)): ?><details class="tb-notifications" data-csrf="<?= htmlspecialchars($adminCsrf,ENT_QUOTES,'UTF-8') ?>"><summary aria-label="Notifications système"><i class="fa-solid fa-bell" aria-hidden="true"></i><span class="tb-notification-count" hidden>0</span></summary><div class="tb-notification-panel"><h2>Notifications</h2><p class="tb-monitor-status" role="status">Chargement du suivi…</p><div class="tb-notification-list"></div></div></details><?php endif; ?><script src="/admin-monitoring.js?v=20261003-1" defer></script><a class="admin-site-link" href="/">Kiosque</a><span class="admin-user-name"><?= htmlspecialchars(
+<?php if(Auth::can('dashboard.view',$adminUser)): ?><details class="tb-notifications" data-csrf="<?= htmlspecialchars($adminCsrf,ENT_QUOTES,'UTF-8') ?>"><summary aria-label="Notifications système"><i class="fa-solid fa-bell" aria-hidden="true"></i><span class="tb-notification-count" hidden>0</span></summary><div class="tb-notification-panel"><h2>Notifications</h2><p class="tb-monitor-status" role="status">Chargement du suivi…</p><div class="tb-notification-list"></div></div></details><?php endif; ?><script src="/admin-monitoring.js?v=20261003-4" data-counters-enabled="<?= !class_exists(\App\Services\SystemStorage::class)||\App\Services\SystemStorage::countersEnabled()?'1':'0' ?>" defer></script><a class="admin-site-link" href="/">Kiosque</a><span class="admin-user-name"><?= htmlspecialchars(
        $adminUser["display_name"] ?? "",
        ENT_QUOTES,
        "UTF-8",

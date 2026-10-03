@@ -3,6 +3,7 @@ namespace App\Services;
 use App\Core\App;
 final class CheckoutDiagnostics
 {
+    private static array $steps = [];
     public static function measure(string $stage, callable $action): mixed
     {
         $start = microtime(true);
@@ -35,6 +36,16 @@ final class CheckoutDiagnostics
                 '$1[masqué]',
                 $message,
             );
+            self::$steps[] = [
+                "stage" => $stage,
+                "duration_ms" => (int) ((microtime(true) - $start) * 1000),
+                "outcome" => $outcome,
+            ];
+            if ($error && $stage === "checkout_request") {
+                SystemReports::record($stage, $error, [
+                    "steps" => self::$steps,
+                ]);
+            }
             error_log(
                 "TBP_CHECKOUT " .
                     json_encode(

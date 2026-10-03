@@ -70,6 +70,20 @@ final class App
             $path,
             $started,
         ): void {
+            $last = error_get_last();
+            if (
+                $last &&
+                in_array(
+                    $last["type"],
+                    [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR],
+                    true,
+                )
+            ) {
+                \App\Services\SystemReports::record(
+                    "php.fatal",
+                    new \Error($last["message"]),
+                );
+            }
             Audit::visit($method, $path, (int) http_response_code(), $started);
         });
         $routes = array_merge(
@@ -86,6 +100,7 @@ final class App
             }
             (new ($handler[0])())->{$handler[1]}();
         } catch (\Throwable $e) {
+            \App\Services\SystemReports::record("application.error", $e);
             error_log($e);
             Audit::event("application.error", "route", $path, [
                 "exception" => get_class($e),

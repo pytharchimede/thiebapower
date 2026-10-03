@@ -167,18 +167,17 @@ final class SystemNotifications
             implode(",", array_fill(0, count($permissions), "?")) .
             ")";
         $q = App::db()->prepare(
-            "SELECT n.id,n.title,n.message,n.link,n.created_at,(r.notification_id IS NULL) unread FROM system_notifications n LEFT JOIN system_notification_reads r ON r.notification_id=n.id AND r.user_id=? WHERE " .
+            "SELECT n.id,n.title,n.message,n.link,n.created_at,(r.notification_id IS NULL) unread,SUM(r.notification_id IS NULL) OVER () unread_total FROM system_notifications n LEFT JOIN system_notification_reads r ON r.notification_id=n.id AND r.user_id=? WHERE " .
                 $where .
                 " ORDER BY n.created_at DESC,n.id DESC LIMIT 50",
         );
         $q->execute(array_merge([$user["id"]], $permissions));
         $items = $q->fetchAll();
-        $q = App::db()->prepare(
-            "SELECT COUNT(*) FROM system_notifications n LEFT JOIN system_notification_reads r ON r.notification_id=n.id AND r.user_id=? WHERE " .
-                $where .
-                " AND r.notification_id IS NULL",
-        );
-        $q->execute(array_merge([$user["id"]], $permissions));
-        return ["items" => $items, "unread" => (int) $q->fetchColumn()];
+        $unread = (int) ($items[0]["unread_total"] ?? 0);
+        foreach ($items as &$item) {
+            unset($item["unread_total"]);
+        }
+        unset($item);
+        return ["items" => $items, "unread" => $unread];
     }
 }
