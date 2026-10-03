@@ -45,7 +45,7 @@ final class DepositWalletController
                 Audit::event('wallet.settings','wallet','1',['enabled'=>$enabled,'fees'=>$rules]);DepositWallet::prepareMissingFees();
                 $message='Paramètres enregistrés. Les cautions se règlent dans Tarification ; les reversements automatiques doivent aussi être activés sur le serveur.';
             }elseif($action==='auth'){
-                (new XPayeWalletClient())->authenticate();$message='Authentification XPaye réussie. Aucun transfert effectué.';
+                (new XPayeWalletClient(null,'auth'))->authenticate();$message='Authentification XPaye réussie. Aucun transfert effectué.';
             }elseif($action==='test'){
                 if(($_POST['confirm_real']??'')!=='1')throw new \LogicException('Confirmez le transfert réel entre vos soldes.');
                 $amount=filter_var($_POST['amount']??null,FILTER_VALIDATE_INT);

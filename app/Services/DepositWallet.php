@@ -59,7 +59,7 @@ final class DepositWallet
     public static function send(int $id,?XPayeWalletClient $client=null):void
     {
         $check=App::db()->prepare('SELECT status FROM deposit_wallet_transfers WHERE id=?');$check->execute([$id]);if($check->fetchColumn()!=='pending')return;
-        $client??=new XPayeWalletClient();
+        $client??=new XPayeWalletClient(null,'wallet-transfer-'.$id);
         // Auth has no monetary side effect: failure leaves the request pending.
         $token=$client->authenticate();$db=App::db();$db->beginTransaction();
         try {

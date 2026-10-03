@@ -65,3 +65,13 @@ Appliquer `database/migrations/20261003_refund_payment_channel.sql` une seule fo
 Après notification de succès authentifiée, le canal fourni par Paiement Pro est prioritaire (`OMCIV2` est normalisé en `OMCIV` pour le payout). Si la notification ne fournit pas de canal, seule une nouvelle session explicitement initialisée avec ce canal sert de référence ; la documentation de notification ne garantit pas de champ `channel`. Les anciennes préférences de restitution ne sont jamais considérées comme une preuve du paiement. Un canal absent ou incompatible (ex. carte bancaire) bloque le remboursement automatique et produit un incident à rapprocher. Les anciennes locations dont le canal n’est pas connu nécessitent une confirmation du fournisseur ; une nouvelle notification vérifiée avec canal peut les rapprocher tant que le payout n’a pas été tenté.
 
 Les callbacks répétés ne changent pas un canal déjà enregistré et aucune destination n’est modifiée après une tentative de payout. Le numéro bénéficiaire reste le numéro renseigné lors de la location ; la notification documentée ne garantit pas un numéro de compte payeur distinct.
+
+## Diagnostic détaillé XPaye
+
+Sans transfert : `php bin/xpaye_diagnostic.php`. La commande utilise les identifiants du `.env`, affiche le POST d'authentification et sa réponse masquée. Elle ne demande pas de login/mot de passe dans le terminal.
+
+Pour l'essai **déjà créé** et jamais envoyé #2 : `php bin/xpaye_diagnostic.php --send-test=2`. Cette commande déclenche un transfert réel du montant de cette ligne uniquement ; elle refuse les cautions et les essais déjà tentés ou incertains. Ne pas créer un nouvel essai pour contourner un résultat incertain.
+
+Les diagnostics affichent endpoint, méthode, payload, statut HTTP, réponse JSON masquée, numéro/message cURL, adresse distante, redirection éventuelle et temps DNS/connexion/requête. Les exceptions réseau sont maintenant explicites (ex. cURL 28 timeout, 6 résolution DNS, 60 certificat). TLS reste vérifié, sans suivi automatique des redirections et sans réessai financier automatique. Les diagnostics ne permettent pas d'affirmer un crédit à partir d'un simple accusé de réception.
+
+Dans l'interface, « Vérifier la connexion sans transfert » affiche son dernier diagnostic ; chaque nouveau transfert dispose d'un détail « Endpoint, payload et réponse API ». Ces détails demandent le droit `payout.view` en plus du droit de lecture finances. Les traces sont stockées sous `storage/system` avec droits privés, identifiants et tokens masqués. Les anciennes tentatives ne disposent pas rétroactivement d'une trace détaillée : ne pas les renvoyer pour en obtenir une.
