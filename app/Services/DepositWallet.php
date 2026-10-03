@@ -43,7 +43,7 @@ final class DepositWallet
             $settings=self::settings();
             // Missing fees produce a visible queue item; they never silently assume zero.
             $fee=0;$state='needs_fees';
-            try {$fee=self::fee((int)$r['deposit'],$r['payout_channel'],json_decode($settings['fee_rules'],true)??[]);$state='pending';}catch(\LogicException $e){}
+            try {$fee=self::fee((int)$r['deposit'],(string)$r['payout_channel'],json_decode($settings['fee_rules'],true)??[]);$state='pending';}catch(\LogicException $e){}
             $db->prepare('INSERT INTO deposit_wallet_transfers(rental_id,request_key,purpose,deposit_amount,fee_reserve,amount,status) VALUES(?,?,?,?,?,?,?)')->execute([$rentalId,'rental-'.$rentalId,'deposit',$r['deposit'],$fee,(int)$r['deposit']+$fee,$state]);
             $db->commit();
         }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
@@ -97,11 +97,17 @@ final class DepositWallet
         // Never sweep historical rentals when deploying this feature.
         $db=App::db();
         $rows=$db->query("SELECT DISTINCT r.id FROM rentals r JOIN payment_notifications n ON n.rental_id=r.id JOIN deposit_wallet_settings cfg ON cfg.id=1 LEFT JOIN deposit_wallet_transfers w ON w.rental_id=r.id WHERE r.payment_environment='production' AND r.deposit>0 AND w.id IS NULL AND n.received_at>=cfg.created_at AND JSON_VALID(n.payload) AND JSON_UNQUOTE(JSON_EXTRACT(n.payload,'$.responsecode'))='0' ORDER BY r.id LIMIT 100")->fetchAll();
-        foreach($rows as $row)self::verifiedPayment((int)$row['id']);
+        foreach($rows as $row){
+            $q=$db->prepare("SELECT payload FROM payment_notifications WHERE rental_id=? AND JSON_VALID(payload) AND JSON_UNQUOTE(JSON_EXTRACT(payload,'$.responsecode'))='0' ORDER BY id DESC LIMIT 1");$q->execute([$row['id']]);
+            RentalPaymentChannel::record((int)$row['id'],json_decode($q->fetchColumn(),true)??[]);
+            self::verifiedPayment((int)$row['id']);
+        }
     }
     public static function funded(array $rental):bool
     {
         if($rental['payment_environment']!=='production')return false;
+        $channel=App::db()->prepare('SELECT payment_channel,payout_channel,payment_channel_source FROM rentals WHERE id=?');$channel->execute([$rental['rental_id']]);$paid=$channel->fetch();
+        if(!$paid || empty($paid['payment_channel_source']) || $paid['payment_channel']!==$paid['payout_channel'] || $paid['payout_channel']!==$rental['payout_channel'])return false;
         $q=App::db()->prepare("SELECT fee_reserve FROM deposit_wallet_transfers WHERE rental_id=? AND purpose='deposit' AND status='confirmed' AND deposit_amount>=?");$q->execute([$rental['rental_id'],$rental['refund_amount']]);$reserve=$q->fetchColumn();
         if($reserve===false)return false;
         try {$fee=self::fee((int)$rental['refund_amount'],$rental['payout_channel'],json_decode(self::settings()['fee_rules'],true)??[]);}catch(\LogicException $e){return false;}
@@ -112,7 +118,7 @@ final class DepositWallet
     {
         $db=App::db();$rules=json_decode(self::settings()['fee_rules'],true)??[];
         $rows=$db->query("SELECT w.id,w.deposit_amount,r.payout_channel FROM deposit_wallet_transfers w JOIN rentals r ON r.id=w.rental_id WHERE w.status IN ('needs_fees','pending') AND w.sent_at IS NULL ORDER BY w.id LIMIT 100")->fetchAll();
-        foreach($rows as $r){try{$fee=self::fee((int)$r['deposit_amount'],$r['payout_channel'],$rules);}catch(\LogicException $e){continue;}
+        foreach($rows as $r){try{$fee=self::fee((int)$r['deposit_amount'],(string)$r['payout_channel'],$rules);}catch(\LogicException $e){continue;}
             $db->prepare("UPDATE deposit_wallet_transfers SET fee_reserve=?,amount=deposit_amount+?,status='pending' WHERE id=? AND status IN ('needs_fees','pending') AND sent_at IS NULL")->execute([$fee,$fee,$r['id']]);}
     }
 }

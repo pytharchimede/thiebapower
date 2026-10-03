@@ -74,7 +74,7 @@ final class RentalCheckoutService
         $email = "";
         $phone = preg_replace("/\s+/", "", (string) ($input["phone"] ?? ""));
         $station = trim((string) ($input["station_code"] ?? ""));
-        $channel = (string) ($input["payout_channel"] ?? "");
+        $channel = (string) ($input["payment_channel"] ?? "");
         $depositEnabled =
             (int) App::db()
                 ->query("SELECT deposit_enabled FROM pricing WHERE id=1")
@@ -165,7 +165,7 @@ final class RentalCheckoutService
             $price = $db->query("SELECT * FROM pricing WHERE id=1")->fetch();
             $reference = "TBP-" . strtoupper(bin2hex(random_bytes(8)));
             $db->prepare(
-                "INSERT INTO rentals(checkout_token,reference,battery_id,station_code,payment_environment,customer_name,customer_email,customer_phone,payout_channel,rental_fee,deposit,late_percent,duration_minutes,billing_rule,status,reservation_expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'prorata_grace5','pending_payment',DATE_ADD(UTC_TIMESTAMP(),INTERVAL 2 MINUTE))",
+                "INSERT INTO rentals(checkout_token,reference,battery_id,station_code,payment_environment,customer_name,customer_email,customer_phone,payment_channel,payout_channel,rental_fee,deposit,late_percent,duration_minutes,billing_rule,status,reservation_expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,'prorata_grace5','pending_payment',DATE_ADD(UTC_TIMESTAMP(),INTERVAL 2 MINUTE))",
             )->execute([
                 $input["checkout_token"],
                 $reference,
@@ -175,7 +175,8 @@ final class RentalCheckoutService
                 $name,
                 $email,
                 $phone,
-                $channel,
+                $depositEnabled ? $channel : null,
+                null, // Filled automatically after a verified payment; no separate refund choice.
                 (int) $price["rental_fee"],
                 $depositEnabled
                     ? (int) ($battery["deposit_override"] ??

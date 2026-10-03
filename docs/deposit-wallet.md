@@ -57,3 +57,11 @@ Les simulations et le sandbox n'alimentent pas le wallet production et ne décle
 En cas de crash ou timeout, consulter le wallet fournisseur et rapprocher l'opération exacte. Ne pas relancer un transfert incertain. La confirmation manuelle certifie le crédit, et ne certifie pas la réception du remboursement par le client : celle-ci suit la vérification Paiement Pro existante. Une initiation SOAP acceptée ou une autorisation encore requise ne clôture pas la restitution.
 
 Les identifiants/token ne sont pas enregistrés dans le ledger. Seuls le statut HTTP et quelques champs neutres de la réponse sont conservés. Les changements de paramètres et rapprochements sont audités. Chaque location et chaque clé d'essai n'ont qu'un seul transfert.
+
+## Même canal pour le paiement et le remboursement
+
+Appliquer `database/migrations/20261003_refund_payment_channel.sql` une seule fois après les migrations wallet. Le formulaire de location avec caution demande un **moyen de paiement unique** ; ce canal est envoyé à Paiement Pro dans le paramètre `channel`. Il n’existe plus de choix indépendant du canal de restitution.
+
+Après notification de succès authentifiée, le canal fourni par Paiement Pro est prioritaire (`OMCIV2` est normalisé en `OMCIV` pour le payout). Si la notification ne fournit pas de canal, seule une nouvelle session explicitement initialisée avec ce canal sert de référence ; la documentation de notification ne garantit pas de champ `channel`. Les anciennes préférences de restitution ne sont jamais considérées comme une preuve du paiement. Un canal absent ou incompatible (ex. carte bancaire) bloque le remboursement automatique et produit un incident à rapprocher. Les anciennes locations dont le canal n’est pas connu nécessitent une confirmation du fournisseur ; une nouvelle notification vérifiée avec canal peut les rapprocher tant que le payout n’a pas été tenté.
+
+Les callbacks répétés ne changent pas un canal déjà enregistré et aucune destination n’est modifiée après une tentative de payout. Le numéro bénéficiaire reste le numéro renseigné lors de la location ; la notification documentée ne garantit pas un numéro de compte payeur distinct.

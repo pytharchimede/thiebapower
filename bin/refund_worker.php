@@ -19,7 +19,7 @@ if(App::env('AUTOMATIC_REFUNDS_ENABLED')!=='1'){fwrite(STDERR,"Reversements auto
 $db=App::db();$service=new AutomaticDepositRefundService();
 // Unfunded pending refunds must not starve already sent payouts or funded returns.
 $processing=$db->query("SELECT id,status FROM deposit_settlements WHERE status='processing' ORDER BY id LIMIT 25")->fetchAll();
-$pending=$db->query("SELECT s.id,s.status FROM deposit_settlements s JOIN rentals r ON r.id=s.rental_id JOIN deposit_wallet_transfers w ON w.rental_id=r.id JOIN deposit_wallet_settings cfg ON cfg.id=1 WHERE s.status='pending' AND r.payment_environment='production' AND w.status='confirmed' AND w.deposit_amount>=s.refund_amount AND w.fee_reserve>=CAST(JSON_UNQUOTE(JSON_EXTRACT(cfg.fee_rules,CONCAT('$.',r.payout_channel,'.fixed'))) AS UNSIGNED)+CEIL(s.refund_amount*CAST(JSON_UNQUOTE(JSON_EXTRACT(cfg.fee_rules,CONCAT('$.',r.payout_channel,'.basis_points'))) AS UNSIGNED)/10000) ORDER BY s.id LIMIT 25")->fetchAll();
+$pending=$db->query("SELECT s.id,s.status FROM deposit_settlements s JOIN rentals r ON r.id=s.rental_id JOIN deposit_wallet_transfers w ON w.rental_id=r.id JOIN deposit_wallet_settings cfg ON cfg.id=1 WHERE s.status='pending' AND r.payment_environment='production' AND r.payment_channel_source IS NOT NULL AND r.payment_channel=r.payout_channel AND w.status='confirmed' AND w.deposit_amount>=s.refund_amount AND w.fee_reserve>=CAST(JSON_UNQUOTE(JSON_EXTRACT(cfg.fee_rules,CONCAT('$.',r.payout_channel,'.fixed'))) AS UNSIGNED)+CEIL(s.refund_amount*CAST(JSON_UNQUOTE(JSON_EXTRACT(cfg.fee_rules,CONCAT('$.',r.payout_channel,'.basis_points'))) AS UNSIGNED)/10000) ORDER BY s.id LIMIT 25")->fetchAll();
 $rows=array_merge($processing,$pending);
 foreach($rows as $row){
  try {

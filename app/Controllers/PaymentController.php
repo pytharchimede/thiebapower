@@ -16,6 +16,7 @@ final class PaymentController {
   $db=App::db();$db->prepare('INSERT INTO payment_notifications(rental_id,payload,received_at) VALUES(?,?,UTC_TIMESTAMP())')->execute([$r['id'],json_encode($p)]);
   Audit::event('payment.notification_verified','rental',$reference,['amount'=>$p['amount'],'outcome'=>$outcome]);
   if($outcome==='failed'){(new RentalLifecycleService)->failedPayment($reference);echo 'failure recorded';return;}
+  try {\App\Services\RentalPaymentChannel::record((int)$r['id'],$p);} catch(\Throwable $e) {\App\Services\SystemReports::record('payment.refund_channel',$e,['reference'=>$reference]);http_response_code(503);echo 'payment channel reconciliation required';return;}
   try {\App\Services\DepositWallet::verifiedPayment((int)$r['id']);} catch(\Throwable $e) {\App\Services\SystemReports::record('wallet.queue',$e,['reference'=>$reference]);}
   (new RentalLifecycleService)->confirmedPayment($reference);
   http_response_code(202);echo 'release pending';

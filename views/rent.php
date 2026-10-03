@@ -63,7 +63,7 @@
                         <input type="hidden" name="battery_id" id="checkout-battery">
                         <label class="input-label">Votre nom<input name="name" required maxlength="160"></label>
                         <label class="input-label">Votre téléphone<input name="phone" type="tel" required placeholder="+225..."></label>
-                        <?php if ($depositEnabled): $paymentField='payout_channel';$paymentLegend='Canal de restitution';require __DIR__.'/partials/payment_channels.php';endif; ?>
+                        <?php if ($depositEnabled): $paymentField='payment_channel';$paymentLegend='Moyen de paiement';require __DIR__.'/partials/payment_channels.php'; ?><p class="tb-muted">La caution restante sera remboursée automatiquement par le même moyen de paiement, au numéro renseigné, après le retour confirmé de la batterie.</p><?php endif; ?>
                         <?php require __DIR__.'/partials/payment_logos.php'; ?>
                         <button class="touch-button primary">Procéder au paiement <span aria-hidden="true">→</span></button>
                     </form>

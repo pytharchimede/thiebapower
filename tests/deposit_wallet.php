@@ -21,6 +21,15 @@ namespace {
  CREATE TABLE deposit_wallet_transfers(id INTEGER PRIMARY KEY AUTOINCREMENT,rental_id INTEGER UNIQUE,request_key TEXT UNIQUE,purpose TEXT,deposit_amount INTEGER DEFAULT 0,fee_reserve INTEGER DEFAULT 0,amount INTEGER,status TEXT DEFAULT 'pending',http_status INTEGER,response_summary TEXT,confirmation_proof TEXT,created_by INTEGER,confirmed_by INTEGER,sent_at TEXT,confirmed_at TEXT);
  INSERT INTO deposit_wallet_settings VALUES(1,1,'{}');
  INSERT INTO rentals VALUES(1,'TBP-TEST','production',5000,'WAVECI',NULL),(2,'TBP-SANDBOX','sandbox',5000,'WAVECI',NULL),(3,'TBP-ZERO','production',0,'WAVECI',NULL);");
+ $db->exec(str_replace(",\n ADD COLUMN",";\nALTER TABLE rentals ADD COLUMN",file_get_contents(dirname(__DIR__).'/database/migrations/20261003_refund_payment_channel.sql')));
+ $db->exec('CREATE TABLE deposit_settlements(rental_id INTEGER,status TEXT)');
+ $db->exec("UPDATE rentals SET payment_channel='WAVECI' WHERE id=1");\App\Services\RentalPaymentChannel::record(1,[]);
+ same('requested_session',$db->query('SELECT payment_channel_source FROM rentals WHERE id=1')->fetchColumn());
+ \App\Services\RentalPaymentChannel::record(1,['channel'=>'WAVECI']);
+ try{\App\Services\RentalPaymentChannel::record(1,['channel'=>'MOMOCI']);throw new \RuntimeException('Duplicate rerouted channel');}catch(\LogicException $e){}
+ same('WAVECI',$db->query('SELECT payout_channel FROM rentals WHERE id=1')->fetchColumn());
+ \App\Services\RentalPaymentChannel::record(2,[]);same(null,$db->query('SELECT payout_channel FROM rentals WHERE id=2')->fetchColumn());
+ \App\Services\RentalPaymentChannel::record(3,['channel'=>'OMCIV2']);same('OMCIV',$db->query('SELECT payout_channel FROM rentals WHERE id=3')->fetchColumn());
  same(200,DepositWallet::percentageBasisPoints('2'));same(250,DepositWallet::percentageBasisPoints('2,5'));same(1,DepositWallet::percentageBasisPoints('0.01'));same(10000,DepositWallet::percentageBasisPoints('100'));same(20,DepositWallet::percentageBasisPoints('0.2'));
  foreach(['1.002','-1','100.01','2e0',[],null] as $bad){try{DepositWallet::percentageBasisPoints($bad);throw new \RuntimeException('Invalid percentage accepted');}catch(\InvalidArgumentException $e){}}
  $default=['WAVECI'=>['fixed'=>0,'basis_points'=>DepositWallet::DEFAULT_FEE_BASIS_POINTS]];
