@@ -1,0 +1,3 @@
+ALTER TABLE station_label_settings
+ ADD COLUMN logo_size DECIMAL(4,2) NOT NULL DEFAULT 4,
+ ADD COLUMN logo_gap DECIMAL(4,2) NOT NULL DEFAULT 2;

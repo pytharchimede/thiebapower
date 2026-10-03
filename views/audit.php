@@ -6,17 +6,8 @@
 <title>Traçabilité · Thiebapower</title>
 <link rel="stylesheet" href="/style.css">
 </head>
-<body class="management-page">
-<header class="management-header">
-<a class="kiosk-logo" href="/admin">THIEBA<span>POWER</span>
-</a>
-<nav>
-<a href="/admin">Tableau de bord</a>
-<?php if (App\Services\Auth::can('users.manage')): ?>
-<a href="/admin/users">Comptes</a>
-<?php endif; ?>
-</nav>
-</header>
+<body class="admin-body">
+<?php $adminPageTitle='Journal et visites'; $adminPageOverline='TRAÇABILITÉ'; $adminPageSubtitle='Historique des opérations'; require __DIR__.'/partials/admin_shell_start.php'; ?>
 <main class="management-main">
 <p class="admin-overline">CONTRÔLE</p>
 <h1>Journal et visites</h1>
@@ -144,5 +135,6 @@
 </div>
 </section>
 </main>
+<?php require __DIR__.'/partials/admin_shell_end.php'; ?>
 </body>
 </html>

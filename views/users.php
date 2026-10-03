@@ -6,15 +6,8 @@
 <title>Comptes et permissions · Thiebapower</title>
 <link rel="stylesheet" href="/style.css">
 </head>
-<body class="management-page">
-<header class="management-header">
-<a class="kiosk-logo" href="/admin">THIEBA<span>POWER</span>
-</a>
-<nav>
-<a href="/admin">Tableau de bord</a>
-<a href="/admin/audit">Journal</a>
-</nav>
-</header>
+<body class="admin-body">
+<?php $adminPageTitle='Comptes et droits'; $adminPageOverline='SÉCURITÉ'; $adminPageSubtitle='Utilisateurs et permissions'; require __DIR__.'/partials/admin_shell_start.php'; ?>
 <main class="management-main">
 <p class="admin-overline">ADMINISTRATION</p>
 <h1>Comptes et permissions</h1>
@@ -23,7 +16,8 @@
 <h2>Créer un compte</h2>
 <form action="/admin/users" method="post" class="management-grid">
 <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
-<label>Identifiant<input name="username" required minlength="3" maxlength="80" pattern="[a-z0-9._-]+">
+<label>Identifiant<input name="username" required maxlength="80" autocomplete="username">
+<small>1 à 80 caractères. Nom, adresse e-mail, espaces et accents acceptés.</small>
 </label>
 <label>Nom affiché<input name="display_name" required maxlength="160">
 </label>
@@ -35,7 +29,7 @@
 <?php endforeach; ?>
 </select>
 </label>
-<label>Mot de passe provisoire<input name="password" type="password" autocomplete="new-password" required minlength="12">
+<label>Mot de passe provisoire<input name="password" type="password" autocomplete="new-password" required>
 </label>
 <button class="admin-button">Créer le compte</button>
 </form>
@@ -93,7 +87,7 @@
 <option value="0" <?= !$user['is_active'] ? 'selected' : '' ?>>Suspendu</option>
 </select>
 </label>
-<label>Nouveau mot de passe (laisser vide pour conserver)<input type="password" name="password" minlength="12" autocomplete="new-password">
+<label>Nouveau mot de passe (laisser vide pour conserver)<input type="password" name="password" autocomplete="new-password">
 </label>
 <button class="admin-button">Enregistrer</button>
 </form>
@@ -129,5 +123,6 @@
 </div>
 </section>
 </main>
+<?php require __DIR__.'/partials/admin_shell_end.php'; ?>
 </body>
 </html>

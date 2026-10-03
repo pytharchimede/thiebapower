@@ -9,11 +9,26 @@ use App\Services\PaiementProPayoutService;
 use App\Services\PayoutCallbackAssessment;
 use App\Services\PayoutResult;
 use App\Services\PaymentVerification;
+use App\Services\StationFleetService;
+use App\Services\StationQr;
 
 $tests=[];
 $test=function(string $name,callable $fn)use(&$tests):void{$fn();$tests[]=$name;};
 $same=static function(mixed $expected,mixed $actual,string $message=''):void{if($expected!==$actual)throw new RuntimeException(($message?$message.': ':'').'expected '.var_export($expected,true).', got '.var_export($actual,true));};
+$test('rentals without client email use configured merchant mailbox',function()use($same){
+ putenv('PAIEMENTPRO_CUSTOMER_EMAIL_FALLBACK=receipts@example.com');
+ $same('receipts@example.com',App\Services\PaiementProService::customerEmail(['customer_email'=>'']));
+ $same('client@example.com',App\Services\PaiementProService::customerEmail(['customer_email'=>'client@example.com']));
+ putenv('PAIEMENTPRO_CUSTOMER_EMAIL_FALLBACK=invalid');
+ $rejected=false;try{App\Services\PaiementProService::customerEmail([]);}catch(RuntimeException){$rejected=true;}
+ $same(true,$rejected);
+ putenv('PAIEMENTPRO_CUSTOMER_EMAIL_FALLBACK');
+});
 
+$test('account identifiers support emails accents spaces and short names',function()use($same){
+ foreach(['a','ab','ulrich@example.ci','Amani Yao Ulrich','Équipe Réseau',str_repeat('é',80)] as $value)$same(true,App\Services\Auth::validUsername($value));
+ foreach(['','   ',str_repeat('é',81),"nom\ncompte", "nom\0compte"] as $value)$same(false,App\Services\Auth::validUsername($value));
+});
 $test('initiation with session stays processing',fn()=>$same('processing',PayoutResult::initiation((object)['status'=>'INITIATED','code'=>0,'sessionid'=>'S1'])['state']));
 $test('initiation without session is initiated, not paid',fn()=>$same('initiated',PayoutResult::initiation((object)['status'=>'INITIATED','code'=>0])['state']));
 $test('ambiguous response is unknown',fn()=>$same('unknown',PayoutResult::initiation((object)['status'=>'OK'])['state']));
@@ -40,9 +55,57 @@ $rental=['reference'=>'TBP-0123456789ABCDEF','payment_environment'=>'production'
 $notification=['merchantId'=>'PP-TEST','referenceNumber'=>$rental['reference'],'countryCurrencyCode'=>'952','amount'=>'100','responsecode'=>'0'];
 $token=$verification->token($rental['reference']);
 $test('valid payment notification is accepted',fn()=>$same(true,$verification->verified($notification,$rental,$token)));
+$test('provider failure is classified without authorizing release',fn()=>$same('failed',$verification->outcome(array_replace($notification,['responsecode'=>'-1']),$rental,$token)));
+$test('wrong amount has no authenticated outcome',fn()=>$same('invalid',$verification->outcome(array_replace($notification,['amount'=>'999']),$rental,$token)));
 $test('callback without token is rejected',fn()=>$same(false,$verification->verified($notification,$rental,null)));
 $test('wrong amount is rejected',fn()=>$same(false,$verification->verified(array_replace($notification,['amount'=>'999']),$rental,$token)));
 $test('failure is rejected',fn()=>$same(false,$verification->verified(array_replace($notification,['responsecode'=>'-1']),$rental,$token)));
 $test('wrong callback token is rejected',fn()=>$same(false,$verification->verified($notification,$rental,str_repeat('b',64))));
+$test('payment and hardware callbacks have separate routes',function()use($same){
+ $routes=require dirname(__DIR__).'/routes/api.php';
+ $payment=file_get_contents(dirname(__DIR__).'/app/Services/PaiementProService.php');
+ $same([App\Controllers\PaymentController::class,'callback'],$routes['POST /api/paiementpro/rental-callback']);
+ $same([App\Controllers\StationController::class,'callbackStatus'],$routes['GET /api/heycharge/callback']);
+ $same(true,str_contains($payment,'/api/paiementpro/rental-callback?token='));
+ $same(false,str_contains($payment,'/api/heycharge/callback?token='));
+});
+$test('route files expose protected finance and downloadable label PDF',function()use($same){
+ $routes=require dirname(__DIR__).'/routes/admin.php';
+ $same([App\Controllers\StationController::class,'labelsPdf'],$routes['GET /admin/stations/labels.pdf']);
+ $same([App\Controllers\FinanceController::class,'index'],$routes['GET /admin/finance']);
+});
+$test('label PDF has an exact landscape A4 media box and vector QR',function()use($same){
+ $pdf=(new App\Services\StationLabelPdf)->render([['imei'=>'DCHEY02603000938','label'=>'Station test','url'=>'https://thiebapower.com/rent?station=DCHEY02603000938']]);
+ $same(true,str_contains($pdf,'/MediaBox [0 0 841.89 595.28]'));
+ $same(true,str_contains($pdf,'141.73 198.43 558.43 198.43 re f'), '197 x 70 mm artwork centered with 50/70 mm margins');
+ $same(true,str_contains($pdf,'/Count 1'));
+ $same(4,substr_count($pdf,'/Subtype /Image'));
+ $same(true,str_contains($pdf,'/Im3 '));
+ $same(true,substr_count($pdf,' re f')>250);
+});
+$test('label margins validate centimetres and reject unusable print areas',function()use($same){
+ $same(App\Services\StationLabelSettings::DEFAULTS+App\Services\StationLabelSettings::LOGOS,App\Services\StationLabelSettings::fromCentimetres(['left'=>5,'right'=>5,'top'=>7,'bottom'=>7]));
+ foreach([['left'=>-1],['left'=>100,'right'=>100],['top'=>100,'bottom'=>100],['logo_size'=>6],['logo_gap'=>-1],['logo_size'=>5,'logo_gap'=>4]] as $bad){
+  $rejected=false;try{App\Services\StationLabelSettings::validate($bad);}catch(InvalidArgumentException $e){$rejected=true;}$same(true,$rejected);
+ }
+});
+$test('label PDF scales uniformly within custom margins',function()use($same){
+ $pdf=(new App\Services\StationLabelPdf)->render([['imei'=>'DCHEY02603000938','label'=>'Station test','url'=>'https://thiebapower.com/rent?station=DCHEY02603000938']],['left'=>40,'right'=>40,'top'=>60,'bottom'=>60]);
+ $scale=min(217/197,90/70);$matrix=number_format($scale,6,'.','').' 0 0 '.number_format($scale,6,'.','');
+ $same(true,str_contains($pdf,'q '.$matrix));$same(true,str_contains($pdf,'/MediaBox [0 0 841.89 595.28]'));
+});
 putenv('PAYMENT_CALLBACK_SECRET');putenv('PAIEMENTPRO_MERCHANT_ID');
+$bank=['battery_id'=>'B1','slot_id'=>'2','lock_status'=>'1','battery_capacity'=>'70','battery_abnormal'=>'0','cable_abnormal'=>'0'];
+$test('inserted power bank at 70 percent is rentable',fn()=>$same(true,StationFleetService::availableAt(['batteries'=>[$bank]],'B1','2')));
+$test('wrong slot is not rentable',fn()=>$same(false,StationFleetService::availableAt(['batteries'=>[$bank]],'B1','3')));
+$test('cable indicator does not hide inserted battery',fn()=>$same(true,StationFleetService::rentable(array_replace($bank,['cable_abnormal'=>'1']))));
+$test('inserted battery below 70 percent remains charging',fn()=>$same(false,StationFleetService::rentable(array_replace($bank,['battery_capacity'=>'69']))));
+$test('missing slot is not rentable',fn()=>$same(false,StationFleetService::rentable(array_replace($bank,['slot_id'=>'']))));
+$test('station label QR matches independently encoded reference',function()use($same){
+ $svg=StationQr::svg('https://thiebapower.com/rent?station=DCHEY02603000938');
+ preg_match_all('/M(\d+) (\d+)h1v1h-1z/',$svg,$matches,PREG_SET_ORDER);
+ $cells=[];foreach($matches as $match)$cells[((int)$match[2]-4).','.((int)$match[1]-4)]=true;
+ $bits='';for($y=0;$y<37;$y++)for($x=0;$x<37;$x++)$bits.=isset($cells[$y.','.$x])?'1':'0';
+ $same('0364ce9d6b3a907bcfa3c7837a574eb9e4494d274113b40cb25cd95da80fa5de',hash('sha256',$bits));
+});
 fwrite(STDOUT,count($tests)." tests OK\n");

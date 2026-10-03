@@ -2,6 +2,12 @@
 namespace App\Services;
 use App\Core\App;
 final class PaiementProService {
+ public static function customerEmail(array $r):string {
+  $email=trim((string)($r['customer_email']??''));
+  if($email==='')$email=trim(App::env('PAIEMENTPRO_CUSTOMER_EMAIL_FALLBACK'));
+  if(!filter_var($email,FILTER_VALIDATE_EMAIL)||strlen($email)>190)throw new \RuntimeException('Configurer PAIEMENTPRO_CUSTOMER_EMAIL_FALLBACK avec une adresse de réception Thiebapower valide');
+  return $email;
+ }
  public function initiateTest(array $r):string {
   return $this->createSession($r,'/api/paiementpro/test-callback','/payment/test-return?reference='.rawurlencode($r['reference']))['url'];
  }
@@ -9,7 +15,7 @@ final class PaiementProService {
   return $this->initiateSession($r)['url'];
  }
  public function initiateSession(array $r):array {
-  return $this->createSession($r,'/api/heycharge/callback?token='.(new PaymentVerification)->token($r['reference']),'/payment/return?reference='.rawurlencode($r['reference']));
+  return $this->createSession($r,'/api/paiementpro/rental-callback?token='.(new PaymentVerification)->token($r['reference']),'/payment/return?reference='.rawurlencode($r['reference']));
  }
  private function createSession(array $r,string $notificationPath,string $returnPath):array {
   $mode=$r['payment_environment']??IntegrationSettings::all()['paiementpro'];
@@ -19,7 +25,7 @@ final class PaiementProService {
   if(!filter_var($base,FILTER_VALIDATE_URL)||parse_url($base,PHP_URL_SCHEME)!=='https')throw new \RuntimeException('APP_URL HTTPS requise');
   $name=preg_split('/\s+/',trim($r['customer_name']),2);
   $payload=['merchantId'=>$merchant,'countryCurrencyCode'=>'952','referenceNumber'=>$r['reference'],
-   'amount'=>(int)$r['rental_fee']+(int)$r['deposit'],'customerEmail'=>$r['customer_email'],
+   'amount'=>(int)$r['rental_fee']+(int)$r['deposit'],'customerEmail'=>self::customerEmail($r),
    'customerFirstName'=>$name[0]??'Client','customerLastname'=>$name[1]??'Client',
    'customerPhoneNumber'=>$r['customer_phone'],'description'=>'Location powerbank '.$r['reference'],
    'notificationURL'=>$base.$notificationPath,'returnURL'=>$base.$returnPath];

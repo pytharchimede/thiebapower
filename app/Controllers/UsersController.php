@@ -26,16 +26,33 @@ final class UsersController
         $name = trim((string) ($_POST['display_name'] ?? ''));
         $password = (string) ($_POST['password'] ?? '');
         $role = (string) ($_POST['role'] ?? '');
-        if (!preg_match('/^[a-z0-9._-]{3,80}$/D', $username) || $name === '' || strlen($name) > 160 ||
-            strlen($password) < 12 || strlen($password) > 256 || !isset(Auth::ROLES[$role])) {
+        $errors = [];
+        if (!Auth::validUsername($username)) {
+            $errors[] = 'Identifiant : renseignez de 1 à 80 caractères, sans caractère de contrôle.';
+        }
+        if ($name === '' || strlen($name) > 160) {
+            $errors[] = 'Nom affiché : renseignez un nom (160 octets maximum).';
+        }
+        if ($password === '') {
+            $errors[] = 'Mot de passe : ce champ est vide.';
+        } elseif (strlen($password) > 256 || str_contains($password, "\0")) {
+            $errors[] = 'Mot de passe : valeur trop longue ou caractère nul non autorisé.';
+        }
+        if (!isset(Auth::ROLES[$role])) {
+            $errors[] = 'Rôle : choisissez un rôle dans la liste.';
+        }
+        if ($errors) {
             http_response_code(422);
-            exit('Compte invalide : mot de passe de 12 caractères minimum');
+            exit(htmlspecialchars(implode(' ', $errors), ENT_QUOTES, 'UTF-8'));
         }
         try {
             App::db()->prepare('INSERT INTO users(username,display_name,password_hash,role) VALUES(?,?,?,?)')
                 ->execute([$username, $name, password_hash($password, PASSWORD_DEFAULT), $role]);
             Audit::event('user.created', 'user', (string) App::db()->lastInsertId(), ['username' => $username, 'role' => $role]);
         } catch (\PDOException $e) {
+            if (($e->errorInfo[1] ?? 0) !== 1062) {
+                throw $e;
+            }
             http_response_code(409);
             exit('Identifiant déjà utilisé');
         }
@@ -49,7 +66,7 @@ final class UsersController
         $role = (string) ($_POST['role'] ?? '');
         $active = ($_POST['is_active'] ?? '') === '1' ? 1 : 0;
         $password = (string) ($_POST['password'] ?? '');
-        if (!$id || !isset(Auth::ROLES[$role]) || ($password !== '' && (strlen($password) < 12 || strlen($password) > 256))) {
+        if (!$id || !isset(Auth::ROLES[$role]) || strlen($password) > 256) {
             http_response_code(422);
             exit('Modification invalide');
         }

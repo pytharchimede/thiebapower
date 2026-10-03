@@ -15,3 +15,4 @@ jobs:
         run: |
           php tests/run.php
           php tests/v1_smoke.php
+          php tests/payout_diagnostics.php
