@@ -11,19 +11,29 @@ final class DepositWalletController
     {
         Auth::requirePermission('finance.view');header('Cache-Control: no-store');
         $settings=DepositWallet::settings();
-        $rows=App::db()->query("SELECT w.*,r.reference,r.customer_name,r.customer_phone,r.payout_channel,r.deposit,r.deposit_payment_verified_at,r.status rental_status,r.due_at,r.returned_at,r.rental_fee,r.duration_minutes,r.billing_rule,r.late_percent,b.serial,s.refund_amount,s.status refund_status FROM deposit_wallet_transfers w LEFT JOIN rentals r ON r.id=w.rental_id LEFT JOIN batteries b ON b.id=r.battery_id LEFT JOIN deposit_settlements s ON s.rental_id=r.id ORDER BY w.id DESC LIMIT 100")->fetchAll();
-        $totals=App::db()->query("SELECT status,SUM(amount) amount,COUNT(*) count FROM deposit_wallet_transfers GROUP BY status")->fetchAll();
+        ['rows'=>$rows,'totals'=>$totals,'signature'=>$signature]=$this->data();
         $flash=$_SESSION['wallet_flash']??null;unset($_SESSION['wallet_flash']);
-        App::view('deposit_wallet',compact('settings','rows','totals','flash'));
+        App::view('deposit_wallet',compact('settings','rows','totals','signature','flash'));
     }
     public function snapshot():void
     {
         Auth::requirePermission('finance.view');session_write_close();
         header('Content-Type: application/json');header('Cache-Control: no-store');
         try {
-            $rows=App::db()->query("SELECT r.* FROM rentals r JOIN deposit_wallet_transfers w ON w.rental_id=r.id ORDER BY w.id DESC LIMIT 100")->fetchAll();
-            echo json_encode(['rows'=>array_map(static fn($r)=>['id'=>(int)$r['id'],'caution'=>DepositWallet::remaining($r)],$rows)],JSON_THROW_ON_ERROR);
+            $data=$this->data();
+            echo json_encode(['signature'=>$data['signature'],'totals_html'=>$this->fragment('deposit_wallet_totals',$data),'rows_html'=>$this->fragment('deposit_wallet_rows',$data),'rows'=>array_map(static fn($r)=>['id'=>(int)$r['id'],'caution'=>$r['rental_id']?DepositWallet::remaining($r):['paid'=>false]],$data['rows'])],JSON_THROW_ON_ERROR);
         }catch(\Throwable $e){http_response_code(503);echo json_encode(['error'=>'Suivi temporairement indisponible']);}
+    }
+    private function data():array
+    {
+        $rows=App::db()->query("SELECT w.*,r.reference,r.customer_name,r.customer_phone,r.payout_channel,r.deposit,r.deposit_payment_verified_at,r.status rental_status,r.due_at,r.returned_at,r.rental_fee,r.duration_minutes,r.billing_rule,r.late_percent,b.serial,s.refund_amount,s.status refund_status FROM deposit_wallet_transfers w LEFT JOIN rentals r ON r.id=w.rental_id LEFT JOIN batteries b ON b.id=r.battery_id LEFT JOIN deposit_settlements s ON s.rental_id=r.id ORDER BY w.id DESC LIMIT 100")->fetchAll();
+        $totals=App::db()->query("SELECT purpose,status,SUM(amount) amount,COUNT(*) count FROM deposit_wallet_transfers GROUP BY purpose,status ORDER BY purpose,status")->fetchAll();
+        return ['rows'=>$rows,'totals'=>$totals,'signature'=>hash('sha256',json_encode($rows,JSON_THROW_ON_ERROR))];
+    }
+    private function fragment(string $name,array $data):string
+    {
+        extract($data,EXTR_SKIP);ob_start();
+        try{require dirname(__DIR__,2).'/views/partials/'.$name.'.php';return ob_get_contents();}finally{ob_end_clean();}
     }
     public function action():void
     {
