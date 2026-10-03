@@ -42,3 +42,44 @@
 .tb-notifications{position:relative}.admin-body .tb-notifications>summary{display:flex;justify-content:center;align-items:center;list-style:none;border:1px solid #dce5d6;border-radius:12px;background:#f5f8ee;padding:12px;min-width:45px;font-size:18px;color:#245444}.tb-notifications summary::-webkit-details-marker{display:none}.tb-notification-count{position:absolute;top:-4px;right:-4px;min-width:20px;border-radius:20px;padding:1px 5px;background:#c75736;color:white;font-size:10px;text-align:center}.tb-notification-panel{position:absolute;right:0;top:55px;width:min(370px,calc(100vw - 32px));background:#fff;padding:20px;border:1px solid #dce5d6;border-radius:18px;box-shadow:0 16px 45px #173f3729;z-index:40;max-height:70vh;overflow:auto}.tb-notification-item{padding:15px 8px;border-top:1px solid #e3eadf}.tb-notification-item>a{font-size:13px;font-weight:750;color:#275943}.tb-notification-item p{font-size:11px;overflow-wrap:anywhere}.tb-notification-item.is-unread{border-left:3px solid #9cbd63;padding-left:12px}.tb-monitor-status{font-size:11px;color:#73846d}.tb-use-timer{display:flex;flex-direction:column;gap:7px;margin:10px 0;color:#315b45}.tb-use-timer strong{font-variant-numeric:tabular-nums;font-size:17px}.tb-use-timer>span{font-size:11px}.tb-use-timer .tb-overdue{color:#ac5536;font-weight:700}.tb-active-rentals{margin-top:18px}@media(max-width:560px){.tb-notification-panel{position:fixed;top:115px;left:16px;right:16px;width:auto}.tb-use-timer strong{font-size:16px}}
 
 .tb-counters-off .tb-use-timer,.tb-counters-off .tb-active-rentals{display:none}.tb-counter-toggle{margin:0 0 1rem}.tb-battery-card code{overflow-wrap:anywhere}
+
+/* Fluid admin surfaces and native, accessible form controls. */
+.admin-body .admin-layout{width:100%;max-width:none}
+.admin-body .admin-content{width:100%;min-width:0}
+.admin-body .admin-main,.admin-body .management-main,.admin-body.payout-page .payout-main{width:100%;max-width:none;margin:0;padding:clamp(18px,2.2vw,38px) clamp(16px,2.4vw,42px) max(64px,env(safe-area-inset-bottom));box-sizing:border-box}
+.admin-body .admin-global-top{padding-inline:clamp(16px,2.4vw,42px)}
+.admin-body .tb-module-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
+.admin-body .tb-battery-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}
+.admin-body .tb-card-list tbody{grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}
+.admin-body :is(form,fieldset,label,.management-grid,.integration-grid,.lab-grid,.grid)>*{min-width:0}
+.admin-body :is(input,select,textarea,button){font:inherit}
+.admin-body input:not([type=checkbox]):not([type=radio]):not([type=hidden]),.admin-body select,.admin-body textarea{min-width:0;min-height:52px;margin-top:8px;padding:13px 16px;border:1.5px solid #aebfb6;border-radius:14px;background-color:#fff;color:#173c3a;font-size:16px;line-height:1.4;box-shadow:0 2px 5px #173c3a06;transition:border-color .18s,box-shadow .18s,background-color .18s}
+.admin-body label{font-size:14px;line-height:1.5;font-weight:650;color:#36574b}
+.admin-body input::placeholder,.admin-body textarea::placeholder{color:#6b8077;opacity:1}
+.admin-body input:not([type=checkbox]):not([type=radio]):focus,.admin-body select:focus,.admin-body textarea:focus{border-color:#26765d;background-color:#fcfffc;box-shadow:0 0 0 4px #26765d20;outline:none}
+.admin-body select{appearance:none;padding-right:44px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2336574b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 15px center}
+.admin-body select[multiple]{appearance:auto;background-image:none;padding-right:16px;min-height:140px}
+.admin-body textarea{min-height:120px;resize:vertical}
+.admin-body input[type=file]::file-selector-button{border:0;border-radius:9px;background:#e9f3eb;color:#245b47;padding:9px 13px;margin-right:12px;font:inherit;font-weight:650;cursor:pointer}
+.admin-body input[readonly],.admin-body :is(input,select,textarea):disabled{background-color:#eef2ee;color:#66766e;box-shadow:none}
+.admin-body :is(input,select,textarea)[aria-invalid=true]{border-color:#b84439}
+.admin-body input[type=checkbox],.admin-body input[type=radio]{appearance:none;-webkit-appearance:none;display:inline-block;vertical-align:middle;flex:0 0 24px;width:24px;height:24px;min-height:24px;max-height:24px;margin:0;padding:0;border:2px solid #7e9d8e;background:#fff;box-shadow:0 1px 3px #173c3a12;cursor:pointer;transition:background-color .16s,border-color .16s,box-shadow .16s}
+.admin-body input[type=checkbox]{border-radius:7px}
+.admin-body input[type=checkbox]:checked{border-color:#145449;background-color:#145449;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4 10-10'/%3E%3C/svg%3E");background-size:20px;background-position:center;background-repeat:no-repeat}
+.admin-body input[type=checkbox]:indeterminate{border-color:#145449;background:#145449 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke='white' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M6 12h12'/%3E%3C/svg%3E") center/20px no-repeat}
+.admin-body input[type=radio]{border-radius:50%}
+.admin-body input[type=radio]:checked{border-color:#145449;background:radial-gradient(circle,#fff 0 4px,#145449 5px)}
+.admin-body :is(input[type=checkbox],input[type=radio]):focus-visible{outline:3px solid #639c77;outline-offset:3px;box-shadow:0 0 0 5px #26765d16}
+.admin-body :is(input[type=checkbox],input[type=radio]):disabled{opacity:.5;cursor:not-allowed}
+.admin-body label:has(>input[type=checkbox]),.admin-body label:has(>input[type=radio]){display:flex;align-items:center;gap:12px;min-height:48px;margin:8px 0;padding:11px 13px;border:1px solid #d6e1d8;border-radius:13px;background:#f8faf7;cursor:pointer;overflow-wrap:anywhere}
+.admin-body label:has(>input:checked){background:#eff7e9;border-color:#9cbd95;color:#244b3b}
+.admin-body :is(button,.admin-ghost,.admin-button,.tb-export-button,.tb-link-button){min-height:46px;touch-action:manipulation}
+.admin-body :is(button,a,summary):focus-visible{outline:3px solid #639c77;outline-offset:3px}
+.admin-body .tb-toolbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-block:18px}
+.admin-body .tb-toolbar>label{flex:1 1 260px;min-width:0}
+.admin-body .tb-card-list td .management-stack{min-width:0}
+@media(min-width:1800px){.admin-body .admin-layout{grid-template-columns:264px minmax(0,1fr)}}
+@media(max-width:800px){.admin-body .admin-main,.admin-body .management-main,.admin-body.payout-page .payout-main{padding:18px max(14px,env(safe-area-inset-left)) max(64px,env(safe-area-inset-bottom));}.admin-body :is(.management-grid,.integration-grid,.lab-grid,.admin-form){grid-template-columns:1fr}.admin-body .form-action{align-items:stretch;flex-direction:column;gap:12px}.admin-body .form-action button{width:100%}.admin-body .admin-card,.admin-body .management-card{border-radius:18px}.admin-body .admin-global-top{padding:18px 16px}}
+@media(max-width:560px){.admin-body .tb-module-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-body .tb-battery-grid,.admin-body .tb-card-list tbody{grid-template-columns:1fr}.admin-body .tb-module-card{padding:16px 13px}.admin-body .tb-search-form{flex-wrap:wrap}.admin-body .tb-search-form label{flex:1 1 100%}.admin-body .tb-export-actions{width:100%}.admin-body .tb-export-actions>*{flex:1}.admin-body .tb-notification-panel{left:12px;right:12px;max-height:65dvh;overflow-y:auto}.admin-body .admin-mobile-menu nav a{min-height:86px}}
+@media(prefers-reduced-motion:reduce){.admin-body :is(input,select,textarea,button,.tb-module-card){transition:none}.admin-body .tb-module-card:hover{transform:none}}
+@media(forced-colors:active){.admin-body input[type=checkbox],.admin-body input[type=radio]{appearance:auto;background-image:none}.admin-body select{appearance:auto;background-image:none}}

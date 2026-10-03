@@ -59,7 +59,7 @@ $isActive = static function (string $name, string $href) use (
 };
 ?>
 <link rel="stylesheet" href="/admin-icons.css?v=6.7.2" referrerpolicy="no-referrer">
-<link rel="stylesheet" href="/admin-design.css?v=20261003-3">
+<link rel="stylesheet" href="/admin-design.css?v=20261003-5">
 <script src="/admin-design.js?v=20261003-3" defer></script>
 <a class="tb-skip-link" href="#tb-page-content">Aller au contenu</a>
 <div class="admin-layout">
