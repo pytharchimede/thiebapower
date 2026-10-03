@@ -4,7 +4,7 @@ Interface : `/admin/deposit-wallet` (lecture `finance.view`, mouvements réels e
 
 ## Installation
 
-Appliquer une seule fois `database/migrations/20261003_deposit_wallet.sql`, après les migrations existantes. Copier `public/deposit-wallet.js`, `public/deposit-wallet.css` et la nouvelle version de `public/statistics.js` dans le répertoire public réellement servi.
+Appliquer une seule fois `database/migrations/20261003_deposit_wallet.sql`, après les migrations existantes. Appliquer ensuite `database/migrations/20261003_deposit_wallet_fee_defaults.sql` : frais fixes nuls et taux payout de 2 % sur les canaux encore sans barème. Cette seconde migration est rejouable ; elle conserve les barèmes déjà enregistrés et ne change pas l’activation. Copier `public/deposit-wallet.js`, `public/deposit-wallet.css` et la nouvelle version de `public/statistics.js` dans le répertoire public réellement servi.
 
 Ajouter dans le `.env` privé du dépôt, sans publier les valeurs :
 
@@ -27,16 +27,16 @@ Créer au préalable le dossier de journal hors de la racine publique, avec droi
 ## Mise en service
 
 1. Vérifier la connexion dans l'interface : aucune transaction financière.
-2. Renseigner le barème **contractuel du remboursement**, par canal : frais fixes et points de base (100 = 1 %). Cocher « confirmé » même si le barème est nul. Les commissions d'encaissement ne constituent pas ce barème.
+2. Renseigner le barème **contractuel du remboursement**, par canal : frais fixes et pourcentage directement saisi (2 = 2 % ; 2,5 = 2,5 %). Le défaut est 0 FCFA de frais fixes et 2 % par canal. Cocher « confirmé » même si le barème est nul. Les commissions d'encaissement ne constituent pas ce barème.
 3. Envoyer un essai réel de 100 FCFA ; vérifier le montant exact crédité dans le compte XPaye et rapprocher sa référence. Un essai ne finance aucune location.
 4. Activer les transferts dans cet écran et activer la caution dans Tarification. Activer les remboursements dans le `.env` et programmer le worker.
 5. Tester une location production payée puis un retour dans une autre station. Rapprocher son crédit payout dans l'écran ; le worker rembourse le montant restant. Vérifier la livraison et le débit réel des frais chez le fournisseur.
 
-**Limite connue :** le contrat communiqué décrit les deux requêtes XPaye, mais pas leur réponse de confirmation, un identifiant d'idempotence ni un endpoint de statut. L'automatisation de la demande fonctionne ; le rapprochement de crédit reste manuel. Ne pas assimiler HTTP 200 à un mouvement exécuté. Il faut obtenir la documentation de confirmation/statut pour automatiser cette étape. Le format token accepté est `token` ou `access_token`, au premier niveau ou sous `data` ; si le compte utilise un autre format, l'authentification s'arrête sans transfert.
+**Limite connue :** le contrat communiqué décrit les deux requêtes XPaye, mais pas leur réponse de confirmation, un identifiant d'idempotence ni un endpoint de statut. L'automatisation de la demande fonctionne ; le rapprochement de crédit reste manuel. Ne pas assimiler HTTP 200 à un mouvement exécuté. Il faut obtenir la documentation de confirmation/statut pour automatiser cette étape. Les identifiants sont lus dans `.env` via `XPAYE_LOGIN` et `XPAYE_PASSWORD` : un POST JSON sur `/auth/token` récupère le token, puis le POST JSON `{ "montant": ... }` sur `/wallet/request` envoie ce token dans `Authorization: Bearer ...`, conformément aux requêtes fournies. Le token n’est pas un paramètre JSON supplémentaire et n’est pas enregistré. Le format token accepté est `token` ou `access_token`, au premier niveau ou sous `data` ; si le compte utilise un autre format, l'authentification s'arrête sans transfert.
 
 ## Montants et états
 
-Encaissement vérifié = tarif de base + caution. Réserve transférée = caution + frais fixes + plafond(caution × points de base / 10 000). Les frais restent à la charge de Thieba Power. Prévoir également les commissions d'encaissement : le solde net collecté doit suffire au transfert ; une caution n'est pas un budget pour payer ses frais.
+Encaissement vérifié = tarif de base + caution. Réserve transférée = caution + frais fixes + plafond(caution × points de base / 10 000). Le transfert interne est gratuit. Par défaut, les frais du payout sont de 2 % : le transfert interne est donc **1,02 × la caution**, arrondi au FCFA supérieur (1,002 correspondrait à 0,2 %). Exemple : caution 5 000 → transfert 5 100 ; après une retenue de 200, le client reçoit 4 800 et les frais de payout sont 96. Les frais restent à la charge de Thieba Power. Prévoir également les commissions d'encaissement : le solde net collecté doit suffire au transfert ; une caution n'est pas un budget pour payer ses frais.
 
 Le calcul de retenue reste celui figé sur la location : prorata du tarif de base après cinq minutes gratuites, arrondi au FCFA supérieur, plafonné à la caution. Les anciennes locations conservent leur ancien calcul. Le retour physique fige la retenue, indépendamment de l'heure du remboursement. Le payout envoie **exactement** le montant restant au client ; on ne lui retire pas les frais et on n'ajoute pas les frais au montant qu'il reçoit. Leur débit effectif dépend du contrat fournisseur.
 
@@ -45,6 +45,8 @@ Le calcul de retenue reste celui figé sur la location : prorata du tarif de bas
 - `unknown` : tentative engagée, résultat ambigu ; aucun renvoi automatique, y compris après timeout ou réponse HTTP d'erreur.
 - `submitted` : réponse HTTP 2xx, crédit encore non prouvé.
 - `confirmed` : crédit exact vérifié par un utilisateur autorisé, preuve et auteur conservés.
+
+Une modification du barème recalcule les demandes encore jamais envoyées (`pending` ou `needs_fees`, sans date d’envoi). Elle conserve les montants des demandes déjà tentées ou confirmées.
 
 Le remboursement attend un crédit confirmé lié à **sa** location et une réserve de frais suffisante au barème courant. Un transfert d'essai ne suffit jamais. Si le barème augmente au-delà de la réserve déjà transférée, le remboursement reste en attente : rapprocher le financement avec le fournisseur et faire évoluer le circuit avec un complément auditable plutôt que réémettre la même demande.
 

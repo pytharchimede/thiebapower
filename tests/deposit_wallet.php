@@ -21,12 +21,26 @@ namespace {
  CREATE TABLE deposit_wallet_transfers(id INTEGER PRIMARY KEY AUTOINCREMENT,rental_id INTEGER UNIQUE,request_key TEXT UNIQUE,purpose TEXT,deposit_amount INTEGER DEFAULT 0,fee_reserve INTEGER DEFAULT 0,amount INTEGER,status TEXT DEFAULT 'pending',http_status INTEGER,response_summary TEXT,confirmation_proof TEXT,created_by INTEGER,confirmed_by INTEGER,sent_at TEXT,confirmed_at TEXT);
  INSERT INTO deposit_wallet_settings VALUES(1,1,'{}');
  INSERT INTO rentals VALUES(1,'TBP-TEST','production',5000,'WAVECI',NULL),(2,'TBP-SANDBOX','sandbox',5000,'WAVECI',NULL),(3,'TBP-ZERO','production',0,'WAVECI',NULL);");
+ same(200,DepositWallet::percentageBasisPoints('2'));same(250,DepositWallet::percentageBasisPoints('2,5'));same(1,DepositWallet::percentageBasisPoints('0.01'));same(10000,DepositWallet::percentageBasisPoints('100'));same(20,DepositWallet::percentageBasisPoints('0.2'));
+ foreach(['1.002','-1','100.01','2e0',[],null] as $bad){try{DepositWallet::percentageBasisPoints($bad);throw new \RuntimeException('Invalid percentage accepted');}catch(\InvalidArgumentException $e){}}
+ $default=['WAVECI'=>['fixed'=>0,'basis_points'=>DepositWallet::DEFAULT_FEE_BASIS_POINTS]];
+ same(100,DepositWallet::fee(5000,'WAVECI',$default));same(96,DepositWallet::fee(4800,'WAVECI',$default));same(3,DepositWallet::fee(101,'WAVECI',$default));
+ // The new migration fills missing channels, preserves explicit custom fees and is replay-safe.
+ $migration=file_get_contents(dirname(__DIR__).'/database/migrations/20261003_deposit_wallet_fee_defaults.sql');
+ $db->prepare('UPDATE deposit_wallet_settings SET fee_rules=?')->execute([json_encode(['WAVECI'=>['fixed'=>7,'basis_points'=>150]])]);
+ $db->exec($migration);$after=json_decode($db->query('SELECT fee_rules FROM deposit_wallet_settings')->fetchColumn(),true);
+ same(['fixed'=>7,'basis_points'=>150],$after['WAVECI']);same(['fixed'=>0,'basis_points'=>200],$after['MOMOCI']);same(4,count($after));
+ $db->exec($migration);same($after,json_decode($db->query('SELECT fee_rules FROM deposit_wallet_settings')->fetchColumn(),true));same(1,(int)$db->query('SELECT enabled FROM deposit_wallet_settings')->fetchColumn());
+ $db->exec("UPDATE deposit_wallet_settings SET fee_rules='{}'");
  $rules=['WAVECI'=>['fixed'=>100,'basis_points'=>100]];
  same(150,DepositWallet::fee(5000,'WAVECI',$rules));same(0,DepositWallet::fee(0,'WAVECI',$rules));same(101,DepositWallet::fee(1,'WAVECI',$rules));
  foreach([[],['WAVECI'=>['fixed'=>-1,'basis_points'=>0]],['WAVECI'=>['fixed'=>0,'basis_points'=>10001]]] as $bad){try{DepositWallet::fee(5000,'WAVECI',$bad);throw new \RuntimeException('Invalid fee accepted');}catch(\LogicException $e){}}
  DepositWallet::verifiedPayment(2);DepositWallet::verifiedPayment(3);same(0,(int)$db->query('SELECT COUNT(*) FROM deposit_wallet_transfers')->fetchColumn());
  DepositWallet::verifiedPayment(1);DepositWallet::verifiedPayment(1);same(1,(int)$db->query('SELECT COUNT(*) FROM deposit_wallet_transfers')->fetchColumn());same('needs_fees',$db->query('SELECT status FROM deposit_wallet_transfers')->fetchColumn());
  $db->prepare('UPDATE deposit_wallet_settings SET fee_rules=?')->execute([json_encode($rules)]);DepositWallet::prepareMissingFees();same(5150,(int)$db->query('SELECT amount FROM deposit_wallet_transfers')->fetchColumn());
+ // Unsent requests follow a rate change; a later change must not rewrite sent transfers.
+ $db->prepare('UPDATE deposit_wallet_settings SET fee_rules=?')->execute([json_encode($default)]);DepositWallet::prepareMissingFees();same(5100,(int)$db->query('SELECT amount FROM deposit_wallet_transfers WHERE id=1')->fetchColumn());
+ $db->prepare('UPDATE deposit_wallet_settings SET fee_rules=?')->execute([json_encode($rules)]);DepositWallet::prepareMissingFees();same(5150,(int)$db->query('SELECT amount FROM deposit_wallet_transfers WHERE id=1')->fetchColumn());
  putenv('XPAYE_LOGIN=private@example.test');putenv('XPAYE_PASSWORD=private-secret');$walletCalls=0;
  $client=new XPayeWalletClient(function($path,$payload,$token)use(&$walletCalls,$db){
   if($path==='/auth/token'){same(['login'=>'private@example.test','password'=>'private-secret'],$payload);return ['http'=>200,'body'=>'{"token":"private-token"}'];}
@@ -34,6 +48,7 @@ namespace {
   return ['http'=>200,'body'=>'{"status":"accepted","reference":"private-token","access_token":"should-not-persist","password":"private-secret"}'];
  });
  DepositWallet::send(1,$client);DepositWallet::send(1,$client);same(1,$walletCalls);same('submitted',$db->query('SELECT status FROM deposit_wallet_transfers')->fetchColumn());
+ $db->prepare('UPDATE deposit_wallet_settings SET fee_rules=?')->execute([json_encode($default)]);DepositWallet::prepareMissingFees();same(5150,(int)$db->query('SELECT amount FROM deposit_wallet_transfers WHERE id=1')->fetchColumn());
  $saved=$db->query('SELECT response_summary FROM deposit_wallet_transfers')->fetchColumn();if(str_contains($saved,'private-')||str_contains($saved,'should-not-persist'))throw new \RuntimeException('Secret persisted');
  $r=['payment_environment'=>'production','rental_id'=>1,'refund_amount'=>4800,'payout_channel'=>'WAVECI'];same(false,DepositWallet::funded($r));
  DepositWallet::confirm(1,'XPAYE-CREDIT-001',9);same(true,DepositWallet::funded($r));same(false,DepositWallet::funded(array_replace($r,['payment_environment'=>'sandbox'])));

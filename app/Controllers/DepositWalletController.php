@@ -35,8 +35,8 @@ final class DepositWalletController
                 $rules=[];
                 foreach(['WAVECI','MOMOCI','OMCIV','FLOOZ'] as $channel){
                     if(($_POST['configured'][$channel]??'')!=='1')continue;
-                    $fixed=filter_var($_POST['fixed'][$channel]??null,FILTER_VALIDATE_INT);$bps=filter_var($_POST['bps'][$channel]??null,FILTER_VALIDATE_INT);
-                    if($fixed===false || $bps===false)throw new \InvalidArgumentException('Frais invalides.');
+                    $fixed=filter_var($_POST['fixed'][$channel]??null,FILTER_VALIDATE_INT);$bps=DepositWallet::percentageBasisPoints($_POST['percent'][$channel]??null);
+                    if($fixed===false)throw new \InvalidArgumentException('Frais invalides.');
                     $rules[$channel]=['fixed'=>$fixed,'basis_points'=>$bps];DepositWallet::fee(100,$channel,$rules);
                 }
                 $enabled=($_POST['enabled']??'')==='1';

@@ -3,6 +3,17 @@ namespace App\Services;
 use App\Core\App;
 final class DepositWallet
 {
+    public const DEFAULT_FEE_BASIS_POINTS = 200; // 2%, not 0.2%; internal wallet transfer is free.
+    /** Parse the percentage typed in the interface without floating point rounding. */
+    public static function percentageBasisPoints(mixed $value):int
+    {
+        if(!is_string($value) && !is_int($value))throw new \InvalidArgumentException('Taux invalide. Saisissez un pourcentage entre 0 et 100, avec deux décimales maximum.');
+        $value=str_replace(',', '.',trim((string)$value));
+        if(!preg_match('/^(0|[1-9][0-9]{0,2})(?:\.([0-9]{1,2}))?$/D',$value,$parts))throw new \InvalidArgumentException('Taux invalide. Saisissez un pourcentage entre 0 et 100, avec deux décimales maximum.');
+        $bps=(int)$parts[1]*100+(int)str_pad($parts[2]??'',2,'0');
+        if($bps>10000)throw new \InvalidArgumentException('Le taux ne doit pas dépasser 100 %.');
+        return $bps;
+    }
     public static function settings():array {return App::db()->query('SELECT * FROM deposit_wallet_settings WHERE id=1')->fetch();}
     /** Fees are paid by the company, never subtracted from the customer's refund. */
     public static function fee(int $amount,string $channel,array $rules):int
@@ -54,7 +65,14 @@ final class DepositWallet
         try {
             $q=$db->prepare('SELECT * FROM deposit_wallet_transfers WHERE id=? FOR UPDATE');$q->execute([$id]);$r=$q->fetch();
             if(!$r || $r['status']!=='pending'){$db->commit();return;}
-            if($r['purpose']==='deposit' && (int)self::settings()['enabled']!==1)throw new \LogicException('Les transferts de cautions sont désactivés.');
+            if($r['purpose']==='deposit'){
+                $settings=self::settings();
+                if((int)$settings['enabled']!==1)throw new \LogicException('Les transferts de cautions sont désactivés.');
+                $q=$db->prepare('SELECT payout_channel FROM rentals WHERE id=?');$q->execute([$r['rental_id']]);$channel=$q->fetchColumn();
+                $fee=self::fee((int)$r['deposit_amount'],(string)$channel,json_decode($settings['fee_rules'],true)??[]);
+                $r['amount']=(int)$r['deposit_amount']+$fee;
+                $db->prepare("UPDATE deposit_wallet_transfers SET fee_reserve=?,amount=? WHERE id=? AND status='pending'")->execute([$fee,$r['amount'],$id]);
+            }
             // Commit before the financial request; concurrent workers and retries cannot resend.
             $db->prepare("UPDATE deposit_wallet_transfers SET status='unknown',sent_at=UTC_TIMESTAMP() WHERE id=? AND status='pending'")->execute([$id]);$db->commit();
         }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
@@ -89,11 +107,12 @@ final class DepositWallet
         try {$fee=self::fee((int)$rental['refund_amount'],$rental['payout_channel'],json_decode(self::settings()['fee_rules'],true)??[]);}catch(\LogicException $e){return false;}
         return $fee<=(int)$reserve;
     }
+    /** Recalculate only requests never attempted; sent amounts remain immutable. */
     public static function prepareMissingFees():void
     {
         $db=App::db();$rules=json_decode(self::settings()['fee_rules'],true)??[];
-        $rows=$db->query("SELECT w.id,w.deposit_amount,r.payout_channel FROM deposit_wallet_transfers w JOIN rentals r ON r.id=w.rental_id WHERE w.status='needs_fees' ORDER BY w.id LIMIT 100")->fetchAll();
+        $rows=$db->query("SELECT w.id,w.deposit_amount,r.payout_channel FROM deposit_wallet_transfers w JOIN rentals r ON r.id=w.rental_id WHERE w.status IN ('needs_fees','pending') AND w.sent_at IS NULL ORDER BY w.id LIMIT 100")->fetchAll();
         foreach($rows as $r){try{$fee=self::fee((int)$r['deposit_amount'],$r['payout_channel'],$rules);}catch(\LogicException $e){continue;}
-            $db->prepare("UPDATE deposit_wallet_transfers SET fee_reserve=?,amount=deposit_amount+?,status='pending' WHERE id=? AND status='needs_fees'")->execute([$fee,$fee,$r['id']]);}
+            $db->prepare("UPDATE deposit_wallet_transfers SET fee_reserve=?,amount=deposit_amount+?,status='pending' WHERE id=? AND status IN ('needs_fees','pending') AND sent_at IS NULL")->execute([$fee,$fee,$r['id']]);}
     }
 }
