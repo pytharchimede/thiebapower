@@ -94,7 +94,7 @@
       cell.append(link);row.append(cell);
     });
     input.addEventListener('input',filter);select?.addEventListener('change',filter);filter();
-    const selected=()=>data.filter((_,i)=>!rows[i].hidden);const filename=normalize(title).replace(/[^a-z0-9]+/g,'-').slice(0,65)+'-'+new Date().toISOString().slice(0,10);
+    const selected=()=>rows.filter(r=>!r.hidden).map(r=>Array.from(r.cells).slice(0,head.length).map(clean));const filename=normalize(title).replace(/[^a-z0-9]+/g,'-').slice(0,65)+'-'+new Date().toISOString().slice(0,10);
     excelButton.addEventListener('click',()=>download(workbook([head,...selected()]),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',filename+'.xlsx'));
     pdfButton.addEventListener('click',()=>download(pdf(title,head,selected()),'application/pdf',filename+'.pdf'));
   });

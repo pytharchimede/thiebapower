@@ -27,7 +27,7 @@ final class RentalController {
   $inventoryError=false;
   $fresh=$station['last_seen_at']&&strtotime($station['last_seen_at'].' UTC')>=time()-20&&$station['status']==='online';
   if(\App\Services\IntegrationSettings::all()['heycharge']==='normal'&&!$fresh){
-   try {(new \App\Services\StationFleetService)->sync($imei);}
+   try {$inventoryError=!(new \App\Services\StationFleetService)->syncPublic($imei);}
    catch(\Throwable $e){error_log('Public station inventory '.$imei.': '.$e->getMessage());$inventoryError=true;}
   }
   $prices=App::db()->query('SELECT * FROM pricing WHERE id=1')->fetch();
@@ -48,7 +48,7 @@ final class RentalController {
   }
   try {$url=(new \App\Services\RentalCheckoutService)->begin($_POST);Audit::event('rental.checkout_started','station',(string)($_POST['station_code']??''));App::redirect($url);}
   catch(\InvalidArgumentException $e){http_response_code(422);echo 'Informations de location invalides';}
-  catch(\Throwable $e){error_log($e);http_response_code(503);echo 'Location momentanément indisponible';}
+  catch(\Throwable $e){error_log($e);http_response_code(503);echo 'La location n’a pas pu être finalisée. Rechargez la page avant de réessayer. Référence de diagnostic : '.Audit::requestId();}
  }
  public function status():void {
   $reference=$_GET['reference']??'';

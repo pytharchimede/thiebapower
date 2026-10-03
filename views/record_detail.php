@@ -18,5 +18,6 @@ $esc = static fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, "UTF-8");
     as $label => $value
 ): ?><div><dt><?= $esc($label) ?></dt><dd><?= $esc(
     $value,
-) ?></dd></div><?php endforeach; ?></dl></section></main><?php require __DIR__ .
+) ?></dd></div><?php endforeach; ?></dl>
+<?php if(!empty($usage['started_at'])): ?><div class="tb-use-timer" data-reference="<?= htmlspecialchars($usage['reference'],ENT_QUOTES,'UTF-8') ?>" data-start="<?= strtotime($usage['started_at'].' UTC') ?>" data-due="<?= !empty($usage['due_at'])?strtotime($usage['due_at'].' UTC'):0 ?>" data-end="<?= !empty($usage['returned_at'])?strtotime($usage['returned_at'].' UTC'):0 ?>" data-running="<?= $usage['status']==='active'?'1':'0' ?>"></div><p class="tb-muted">Depuis la sortie confirmée · <?= $esc($usage['reference']) ?></p><?php endif; ?></section></main><?php require __DIR__ .
     "/partials/admin_shell_end.php"; ?></body></html>

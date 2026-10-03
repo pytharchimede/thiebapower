@@ -20,7 +20,7 @@ require __DIR__ . "/partials/admin_shell_start.php";
 ) ?> (<?= (int) $count["quantity"] ?>)</a><?php endforeach; ?></div></section>
 <section class="management-card"><h2><?= $status
     ? htmlspecialchars($status, ENT_QUOTES, "UTF-8")
-    : "Dernières locations" ?></h2><div class="management-table-wrap"><table><thead><tr><th>Référence</th><th>Station / batterie</th><th>Paiement</th><th>État</th><th>Création</th><th>Action</th></tr></thead><tbody>
+    : "Dernières locations" ?></h2><div class="management-table-wrap"><table><thead><tr><th>Référence</th><th>Station / batterie</th><th>Paiement</th><th>État</th><th>Création</th><th>Action</th><th>Utilisation</th></tr></thead><tbody>
 <?php foreach (
     $rentals
     as $r
@@ -90,5 +90,5 @@ require __DIR__ . "/partials/admin_shell_start.php";
 <?php if (
     $r["status"] === "payment_review"
 ): ?><strong>Paiement à rapprocher ou rembourser</strong><?php endif; ?>
-</td></tr><?php endforeach; ?></tbody></table></div></section></main><?php require __DIR__ .
+</td><td><?php if(!empty($r['started_at'])): ?><div class="tb-use-timer" data-reference="<?= htmlspecialchars($r['reference'],ENT_QUOTES,'UTF-8') ?>" data-start="<?= strtotime($r['started_at'].' UTC') ?>" data-due="<?= !empty($r['due_at'])?strtotime($r['due_at'].' UTC'):0 ?>" data-end="<?= !empty($r['returned_at'])?strtotime($r['returned_at'].' UTC'):0 ?>" data-running="<?= $r['status']==='active'?'1':'0' ?>"></div><?php else: ?>Non démarrée<?php endif; ?></td></tr><?php endforeach; ?></tbody></table></div></section></main><?php require __DIR__ .
     "/partials/admin_shell_end.php"; ?></body></html>

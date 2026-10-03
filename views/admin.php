@@ -85,6 +85,7 @@ if (
     !$batteries
 ): ?><p class="tb-empty">Aucune batterie enregistrée. Retrouvez les options d’ajout dans Batteries.</p><?php endif;
 ?></div></section><?php endif; ?>
+<?php if(App\Services\Auth::can('rentals.manage')): ?><section class="admin-card"><span class="tb-eyebrow">UTILISATION EN DIRECT</span><h2>Locations en cours</h2><p>Temps écoulé depuis la sortie confirmée · Durée restante et dépassement.</p><p class="tb-monitor-status" role="status">Chargement du suivi…</p><div class="tb-active-rentals tb-battery-grid"></div></section><?php endif; ?>
 <section id="activity" class="admin-card"><div class="admin-section-heading"><div><span class="tb-eyebrow">ACTIVITÉ RÉCENTE</span><h2>Dernières locations</h2><p>Les 10 dernières locations enregistrées.</p></div><?php if (
     App\Services\Auth::can("rentals.manage")
 ): ?><a class="tb-link-button" href="/admin/rentals">Toutes les locations <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a><?php endif; ?></div><div class="admin-table-wrap"><table><thead><tr><th>Référence</th><th>Client</th><th>Tarif</th><th>Caution</th><th>État</th><th>Création</th></tr></thead><tbody><?php foreach (

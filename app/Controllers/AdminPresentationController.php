@@ -62,9 +62,14 @@ final class AdminPresentationController
             ? "/admin/stations/detail?imei=" .
                 rawurlencode($battery["station_imei"])
             : "";
+        $q = App::db()->prepare(
+            "SELECT reference,status,started_at,due_at,returned_at FROM rentals WHERE battery_id=? ORDER BY (status='active') DESC,id DESC LIMIT 1",
+        );
+        $q->execute([$id]);
+        $usage = $q->fetch() ?: null;
         App::view(
             "record_detail",
-            compact("title", "back", "fields", "stationLink"),
+            compact("title", "back", "fields", "stationLink", "usage"),
         );
     }
     public function rentalDetail(): void
@@ -107,9 +112,10 @@ final class AdminPresentationController
         $stationLink = !empty($r["station_code"])
             ? "/admin/stations/detail?imei=" . rawurlencode($r["station_code"])
             : "";
+        $usage = $r;
         App::view(
             "record_detail",
-            compact("title", "back", "fields", "stationLink"),
+            compact("title", "back", "fields", "stationLink", "usage"),
         );
     }
 }

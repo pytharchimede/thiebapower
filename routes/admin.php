@@ -1,6 +1,8 @@
 <?php
 // Route map loaded by App\Core\App.
 return [
+ 'GET /admin/monitoring' => [\App\Controllers\MonitoringController::class,'snapshot'],
+ 'POST /admin/notifications/read' => [\App\Controllers\MonitoringController::class,'markRead'],
     "GET /admin/pricing" => [
         \App\Controllers\AdminPresentationController::class,
         "pricing",

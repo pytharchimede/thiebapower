@@ -59,7 +59,7 @@
                 <p class="deposit-info" <?= $depositEnabled ? '' : 'hidden' ?>>Retour dans le délai : caution intégralement restituable. Après le délai : <?= (int) $prices['late_percent'] ?> % de la caution retenus par heure supplémentaire entamée, dans la limite de la caution.</p>
                 <?php if ($checkoutEnabled): ?>
                     <form method="post" action="/rentals" id="rental-checkout">
-                        <input type="hidden" name="station_code" id="checkout-station" value="<?= htmlspecialchars($station['imei'],ENT_QUOTES,'UTF-8') ?>">
+                        <input type="hidden" name="checkout_token" value="<?= bin2hex(random_bytes(16)) ?>"><input type="hidden" name="station_code" id="checkout-station" value="<?= htmlspecialchars($station['imei'],ENT_QUOTES,'UTF-8') ?>">
                         <input type="hidden" name="battery_id" id="checkout-battery">
                         <label class="input-label">Votre nom<input name="name" required maxlength="160"></label>
                         <label class="input-label">Votre téléphone<input name="phone" type="tel" required placeholder="+225..."></label>
