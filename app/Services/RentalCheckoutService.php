@@ -4,12 +4,14 @@ use App\Core\App;
 use App\Repositories\RentalRepository;
 final class RentalCheckoutService {
  public function begin(array $input):string {
-  $name=trim((string)($input['name']??''));$email=(string)($input['email']??'');
+  $name=trim((string)($input['name']??''));$email='';
   $phone=preg_replace('/\s+/', '',(string)($input['phone']??''));
   $station=trim((string)($input['station_code']??''));$channel=(string)($input['payout_channel']??'');
   $depositEnabled=(int)(App::db()->query('SELECT deposit_enabled FROM pricing WHERE id=1')->fetchColumn())===1;
   $batteryId=filter_var($input['battery_id']??null,FILTER_VALIDATE_INT);
-  if($name===''||strlen($name)>160||!filter_var($email,FILTER_VALIDATE_EMAIL)||!preg_match('/^\+?[0-9]{10,16}$/',$phone)||$station===''||strlen($station)>120||!$batteryId||($depositEnabled&&!in_array($channel,['WAVECI','MOMOCI','OMCIV','FLOOZ'],true)))throw new \InvalidArgumentException('Informations de location invalides');
+  if($name===''||strlen($name)>160||!preg_match('/^\+?[0-9]{10,16}$/',$phone)||$station===''||strlen($station)>120||!$batteryId||($depositEnabled&&!in_array($channel,['WAVECI','MOMOCI','OMCIV','FLOOZ'],true)))throw new \InvalidArgumentException('Informations de location invalides');
+  // Validate the required provider contact before reserving a battery.
+  PaiementProService::customerEmail(['customer_email'=>'']);
   $db=App::db();
   $physical=IntegrationSettings::all()['heycharge']==='normal';
   if($physical){

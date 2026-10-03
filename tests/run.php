@@ -15,6 +15,15 @@ use App\Services\StationQr;
 $tests=[];
 $test=function(string $name,callable $fn)use(&$tests):void{$fn();$tests[]=$name;};
 $same=static function(mixed $expected,mixed $actual,string $message=''):void{if($expected!==$actual)throw new RuntimeException(($message?$message.': ':'').'expected '.var_export($expected,true).', got '.var_export($actual,true));};
+$test('rentals without client email use configured merchant mailbox',function()use($same){
+ putenv('PAIEMENTPRO_CUSTOMER_EMAIL_FALLBACK=receipts@example.com');
+ $same('receipts@example.com',App\Services\PaiementProService::customerEmail(['customer_email'=>'']));
+ $same('client@example.com',App\Services\PaiementProService::customerEmail(['customer_email'=>'client@example.com']));
+ putenv('PAIEMENTPRO_CUSTOMER_EMAIL_FALLBACK=invalid');
+ $rejected=false;try{App\Services\PaiementProService::customerEmail([]);}catch(RuntimeException){$rejected=true;}
+ $same(true,$rejected);
+ putenv('PAIEMENTPRO_CUSTOMER_EMAIL_FALLBACK');
+});
 
 $test('account identifiers support emails accents spaces and short names',function()use($same){
  foreach(['a','ab','ulrich@example.ci','Amani Yao Ulrich','Équipe Réseau',str_repeat('é',80)] as $value)$same(true,App\Services\Auth::validUsername($value));

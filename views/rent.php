@@ -62,7 +62,6 @@
                         <input type="hidden" name="station_code" id="checkout-station" value="<?= htmlspecialchars($station['imei'],ENT_QUOTES,'UTF-8') ?>">
                         <input type="hidden" name="battery_id" id="checkout-battery">
                         <label class="input-label">Votre nom<input name="name" required maxlength="160"></label>
-                        <label class="input-label">Votre email<input name="email" type="email" required></label>
                         <label class="input-label">Votre téléphone<input name="phone" type="tel" required placeholder="+225..."></label>
                         <?php if ($depositEnabled): $paymentField='payout_channel';$paymentLegend='Canal de restitution';require __DIR__.'/partials/payment_channels.php';endif; ?>
                         <?php require __DIR__.'/partials/payment_logos.php'; ?>
