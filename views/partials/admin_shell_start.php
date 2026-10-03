@@ -12,6 +12,7 @@ $navItems = [
     ["Étiquettes QR", "/admin/stations/labels", "labels.view", "labels"],
     ["Tarification", "/admin/pricing", "pricing.view", "pricing"],
     ["Batteries", "/admin/batteries", "batteries.view", "fleet"],
+    ["Cautions et solde payout", "/admin/deposit-wallet", "finance.view", "wallet"],
     ["Reversements API", "/admin/payout", "payout.view", "payout"],
     ["Journal et visites", "/admin/audit", "audit.view", "audit"],
     ["Comptes et droits", "/admin/users", "users.manage", "users"],

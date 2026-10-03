@@ -60,6 +60,13 @@ final class RentalController {
   $r=(new RentalRepository)->find($reference);
   if(!$r){http_response_code(404);return;}
   header('Content-Type: application/json');
-  echo json_encode(['reference'=>$r['reference'],'status'=>$r['status'],'due_at'=>$r['due_at']]);
+  header('Cache-Control: no-store');
+  $data=['reference'=>$r['reference'],'status'=>$r['status'],'due_at'=>$r['due_at']];
+  $token=(string)($_GET['token']??'');
+  if($token!=='' && !empty($r['checkout_token']) && hash_equals($r['checkout_token'],$token)) {
+   $data['caution']=\App\Services\DepositWallet::remaining($r);
+   if($r['status']==='returned'){ $q=App::db()->prepare('SELECT status,refund_amount FROM deposit_settlements WHERE rental_id=?');$q->execute([$r['id']]);$data['settlement']=$q->fetch()?:null;}
+  }
+  echo json_encode($data);
  }
 }

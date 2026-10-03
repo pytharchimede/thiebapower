@@ -109,12 +109,16 @@ final class AutomaticDepositRefundService
                 $db->commit();
                 return;
             }
+            if (!DepositWallet::funded($row)) {
+                $db->commit();
+                return; // Remains pending until collection/deposit and payout credit are verified.
+            }
             if (!$row["payout_channel"]) {
                 throw new \RuntimeException("Canal de restitution manquant");
             }
             $reference = "TBP-REFUND-" . $settlementId;
             $db->prepare(
-                "UPDATE deposit_settlements SET status='processing',provider_reference=?,sent_at=UTC_TIMESTAMP() WHERE id=? AND status='pending'",
+                "UPDATE deposit_settlements SET status='processing',provider_reference=?,payout_fee_reserve=(SELECT fee_reserve FROM deposit_wallet_transfers WHERE rental_id=deposit_settlements.rental_id AND status='confirmed'),sent_at=UTC_TIMESTAMP() WHERE id=? AND status='pending'",
             )->execute([$reference, $settlementId]);
             $db->commit();
             Audit::event("payout.dispatch_started", "settlement", (string) $settlementId, [

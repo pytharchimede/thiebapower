@@ -9,6 +9,8 @@ final class SystemReports
         foreach (
             [
                 "DB_PASSWORD",
+                "XPAYE_LOGIN",
+                "XPAYE_PASSWORD",
                 "PAIEMENTPRO_SECRET_KEY",
                 "PAIEMENTPRO_SANDBOX_SECRET_KEY",
                 "HEYCHARGE_API_KEY",
