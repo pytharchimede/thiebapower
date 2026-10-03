@@ -41,7 +41,7 @@ final class StationLabelPdf {
   $this->text(57,80,'THIEBA',14,'#ffffff',true);
   $this->text(76,80,'POWER',14,'#ffba5e',true);
   $this->text(57,88,'BATTERIES EXTERNES EN LIBRE SERVICE',7,'#b8ded4',true);
-  $this->text(57,99,'Louez une batterie externe.',20,'#ffffff',true);
+  $this->text(57,99,'Votre énergie, partout.',20,'#ffffff',true);
   $this->text(57,107,'Scannez le QR code, payez et récupérez votre batterie.',8,'#e5f3f1');
   $this->rect(57,113,136,.35,'#629da1');
   foreach ([['01','SCANNEZ',57],['02','CHOISISSEZ',91],['03','PAYEZ',125],['04','RÉCUPÉREZ',159]] as [$number,$title,$x]) {
