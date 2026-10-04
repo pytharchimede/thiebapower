@@ -97,10 +97,19 @@ final class Auth
         return $user ? (int) $user["id"] : null;
     }
 
+    public static function isTechnicalAdmin(array $user): bool
+    {
+        $username=App::env('TECHNICAL_ADMIN_USERNAME',App::env('ADMIN_USERNAME','admin'));
+        return $username!=='' && hash_equals($username,(string)($user['username']??''));
+    }
+
     public static function can(string $permission, ?array $user = null): bool
     {
         $user ??= self::user();
         if (!$user || !isset(self::PERMISSIONS[$permission])) {
+            return false;
+        }
+        if (in_array($permission,['sms.manage','sms.test','integrations.manage','payout.send'],true) && !self::isTechnicalAdmin($user)) {
             return false;
         }
         if ($user["role"] === "owner") {

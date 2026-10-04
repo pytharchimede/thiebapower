@@ -66,6 +66,7 @@ final class OrangeSmsClient
     }
     public function send(string $phone,string $message): array
     {
+        if (!OrangeSmsSettings::serverEnabled()) throw new \InvalidArgumentException('Envois SMS bloqués par ORANGE_SMS_ENABLED dans le .env.');
         $body=self::payload($this->settings,$phone,$message);
         if (!$this->settings['enabled']) throw new \InvalidArgumentException('Activez l’intégration SMS pour envoyer.');
         if ($this->settings['mode']==='simulation') return ['http_status'=>null,'state'=>'simulated','resource_id'=>null];
@@ -74,6 +75,8 @@ final class OrangeSmsClient
         $r=$this->authorized('POST','/smsmessaging/v1/outbound/'.rawurlencode($this->settings['sender_address']).'/requests',$body);
         $state=$r['http_status']===201?'accepted':($r['http_status']>=500?'unknown':'rejected');
         $url=$r['data']['outboundSMSMessageRequest']['resourceURL']??$r['data']['resourceURL']??'';
-        return ['http_status'=>$r['http_status'],'state'=>$state,'resource_id'=>$url!==''?substr(basename((string)parse_url($url,PHP_URL_PATH)),0,190):null];
+        $code=$r['data']['requestError']['serviceException']['messageId']??$r['data']['requestError']['policyException']['messageId']??$r['data']['code']??null;
+        $code=is_scalar($code) && preg_match('/^[A-Za-z0-9_.-]{1,80}$/D',(string)$code)?(string)$code:null;
+        return ['provider_code'=>$code,'http_status'=>$r['http_status'],'state'=>$state,'resource_id'=>$url!==''?substr(basename((string)parse_url($url,PHP_URL_PATH)),0,190):null];
     }
 }

@@ -28,3 +28,11 @@ Sources : collection Postman fournie ; https://developer.orange.com/apis/sms/get
 ## Vérification
 
 `php tests/orange_sms.php` (transport simulé, aucun SMS réel) et `php tests/run.php`. En production, vérifier accès propriétaire, absence d’accès opérateur par défaut, simulation, refus sans confirmation et contrôle du solde avant un SMS réel.
+
+## Arrêt serveur et accès techniques
+
+`ORANGE_SMS_ENABLED=0` bloque tout appel au service d’envoi avant le réseau, y compris les simulations, sans empêcher l’authentification et la consultation du compte. `1` lève ce blocage ; l’activation administrative reste nécessaire. Variable absente : comportement existant conservé.
+
+`TECHNICAL_ADMIN_USERNAME` désigne le login exact autorisé pour `sms.manage`, `sms.test`, `integrations.manage`, `payout.send`. À défaut, `ADMIN_USERNAME` puis `admin` est utilisé. Cette restriction est vérifiée avant le rôle propriétaire et ne peut pas être contournée par les permissions de rôle. Le compte désigné doit aussi disposer des permissions ordinaires (le propriétaire les possède). Les autres fonctions métier gardent leurs droits habituels.
+
+Le résultat d’envoi affiche la référence Orange et, en cas de refus, un identifiant d’erreur fournisseur filtré. Aucun statut de livraison n’est déduit d’un HTTP 201.

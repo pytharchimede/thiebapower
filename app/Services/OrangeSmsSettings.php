@@ -3,6 +3,10 @@ namespace App\Services;
 use App\Core\App;
 final class OrangeSmsSettings
 {
+    public static function serverEnabled(): bool
+    {
+        return in_array(strtolower(trim(App::env('ORANGE_SMS_ENABLED','1'))),['1','true','yes','on'],true);
+    }
     public static function defaults(): array
     {
         return ['enabled'=>false, 'mode'=>'simulation', 'client_id'=>'', 'secret_cipher'=>'',
