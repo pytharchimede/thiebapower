@@ -4,7 +4,7 @@ ConnectionError=urllib.error.URLError
 class NoRedirect(urllib.request.HTTPRedirectHandler):
  def redirect_request(self,*args): return None
 class Response:
- def __init__(self,r): self.status_code=r.code;self.text=r.read().decode()
+ def __init__(self,r): self.status_code=r.code;self.text=r.read().decode(errors='replace')
  def json(self): return jsonlib.loads(self.text)
 class Session:
  def __init__(self): self.jar=http.cookiejar.CookieJar()
@@ -70,3 +70,17 @@ params={'csrf':csrf};params.update({'visible['+key+']':'on' for key in ['logo','
 assert owner.post(base+'/admin/public-settings',data=params,allow_redirects=False).status_code==303
 assert '<details class="public-support">' not in requests.get(base+'/stations/map').text
 print('Public support HTTP: permission, CSRF, saved WhatsApp channel, hidden manager fields and disabled widget OK')
+
+page=owner.get(base+'/admin/training');assert page.status_code==200 and '20' in page.text,page.text
+csrf=re.search(r'name="csrf" value="([^"]+)"',page.text).group(1)
+assert reader.get(base+'/admin/training').status_code==200
+assert reader.post(base+'/admin/training/proposals',data={'csrf':csrf,'title':'Interdit'}).status_code==403
+assert owner.post(base+'/admin/training/proposals',data={'title':'Test'}).status_code==403
+payload={'csrf':csrf,'title':'Chat <script>test</script>','description':'Échanges clients liés aux locations','benefit':'Suivi des échanges','scope':'Boîte opérateur et historique','status':'proposed','priority':'high','budget':'120000','timeframe':'À étudier'}
+r=owner.post(base+'/admin/training/proposals',data=payload,allow_redirects=False);assert r.status_code==303,r.text
+page=owner.get(base+'/admin/training');assert '&lt;script&gt;test&lt;/script&gt;' in page.text and '<script>test</script>' not in page.text
+assert owner.get(base+'/admin/training/pdf?kind=guide').text.startswith('%PDF-1.4')
+assert owner.get(base+'/admin/training/pdf?kind=proposals&id=1').text.startswith('%PDF-1.4')
+assert owner.get(base+'/admin/training/pdf?kind=proposals&id=9999').status_code==404
+payload.update({'id':'1','status':'approved'});assert owner.post(base+'/admin/training/proposals',data=payload,allow_redirects=False).status_code==303
+print('Training HTTP: access, CSRF, proposal create/edit, escaping and guide/proposal PDF exports OK')

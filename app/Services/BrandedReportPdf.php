@@ -50,6 +50,7 @@ final class BrandedReportPdf
         $this->pages=[];$this->stream='';$this->title=$title;$this->headers=$headers;$this->subtitle=$subtitle?:gmdate('d/m/Y H:i').' UTC · '.count($rows).' lignes';$this->qr=StationQr::svg($qrUrl);
         $weights=[];foreach($headers as $i=>$header){$weight=strlen($header);foreach($rows as $row)$weight=max($weight,min(52,strlen((string)($row[$i]??''))));$weights[]=max(14,$weight);}
         $sum=array_sum($weights);$this->widths=array_map(static fn($n)=>785.89*$n/$sum,$weights);
+        if($headers===['Module','Objectif et procédure','Mise en pratique']||$headers===['Proposition','Besoin, bénéfice et périmètre','Suivi et estimation'])$this->widths=[150,420,215.89];
         if($headers===['Étape','Détail','Valeur'])$this->widths=[85,170,530.89];
         $this->newPage();
         $cards=array_slice($cards,0,4);$cw=($cards?785.89/count($cards):0);

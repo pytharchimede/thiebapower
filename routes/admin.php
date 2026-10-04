@@ -1,6 +1,9 @@
 <?php
 // Route map loaded by App\Core\App.
 return [
+ "GET /admin/training" => [\App\Controllers\ClientTrainingController::class,"index"],
+ "POST /admin/training/proposals" => [\App\Controllers\ClientTrainingController::class,"save"],
+ "GET /admin/training/pdf" => [\App\Controllers\ClientTrainingController::class,"export"],
  "GET /admin/public-settings" => [\App\Controllers\PublicExperienceSettingsController::class,"index"],
  "POST /admin/public-settings" => [\App\Controllers\PublicExperienceSettingsController::class,"save"],
     "POST /admin/promotions/visibility" => [\App\Controllers\PromotionController::class, "visibility"],
