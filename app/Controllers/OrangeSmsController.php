@@ -61,6 +61,19 @@ final class OrangeSmsController
             if ($id!==null) App::db()->prepare('UPDATE orange_sms_logs SET state=? WHERE id=?')->execute([$op==='send'?'unknown':'failed',$id]);
             $_SESSION['orange_sms_result']=['error'=>$e instanceof \PDOException?'Stockage SMS indisponible. Appliquez la migration et vérifiez la base de données.':$e->getMessage()];
         }
+        $this->respond();
+    }
+    private function respond(): void
+    {
+        if (str_contains((string)($_SERVER['HTTP_ACCEPT']??''),'application/json')) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store');
+            $result=$_SESSION['orange_sms_result']??['error'=>'Aucun résultat disponible.'];
+            unset($_SESSION['orange_sms_result']);
+            $_SESSION['orange_sms_nonce']=bin2hex(random_bytes(24));
+            echo json_encode($result+['next_nonce'=>$_SESSION['orange_sms_nonce']],JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE);
+            return;
+        }
         App::redirect('/admin/sms#sms-result');
     }
 }

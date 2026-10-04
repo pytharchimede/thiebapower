@@ -17,7 +17,7 @@ namespace {
   ob_start();try{require dirname(__DIR__).'/views/orange_sms.php';return ob_get_clean();}catch(\Throwable $e){ob_end_clean();throw $e;}
  }
  $html=render(['sms.view','sms.manage','sms.test']);
- foreach(['name="client_id"','name="client_secret"','name="sender_mode"','action="/admin/sms/test"','name="csrf"','</html>'] as $marker)if(!str_contains($html,$marker))throw new \RuntimeException('Missing view marker '.$marker);
+ foreach(['name="client_id"','name="client_secret"','id="sms-live-result"','data-sms-test','/orange-sms.js?v=1','name="sender_mode"','action="/admin/sms/test"','name="csrf"','</html>'] as $marker)if(!str_contains($html,$marker))throw new \RuntimeException('Missing view marker '.$marker);
  $html=render(['sms.view']);
  foreach(['name="client_id"','name="client_secret"','action="/admin/sms/test"'] as $marker)if(str_contains($html,$marker))throw new \RuntimeException('Unauthorized form rendered');
  $html=render(['sms.view','sms.manage','sms.test'],['http_status'=>200,'state'=>'authenticated','expires_in'=>3600,'operation'=>'auth']);
