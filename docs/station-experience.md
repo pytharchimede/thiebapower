@@ -58,3 +58,7 @@ Le test HTTP `python3 tests/integration/station_experience_http.py` vise exclusi
 ## Refonte de la carte publique
 
 Recherche sur toute la largeur, présentation adaptée aux mobiles, fiches détaillées dans la liste et les bulles de carte, liens d’appel au gérant et actualisation manuelle. Marqueur vert : locations activées et lecture récente ; orange : locations activées mais connexion à vérifier ; gris : locations suspendues. Le filtrage ignore la casse et les accents. Cette refonte ne nécessite pas de nouvelle migration. Copier `station-experience.css` et `station-directory.js` dans la racine publique.
+
+## Refonte de Mes locations
+
+Fiches responsive avec statut, tarif, étapes et reçu. Le formulaire d’incident propose quatre catégories, un compteur et un retour après envoi. Les actualisations conservent le brouillon, le focus et le résultat du signalement ; un échec permet de réessayer. Les routes et règles de location restent identiques. Aucune migration supplémentaire. Copier `my-rentals.js` et `my-rentals.css` dans la racine publique après mise à jour du code. Test DOM : `node tests/my_rentals_dom.js` avec jsdom.
