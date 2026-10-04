@@ -9,7 +9,7 @@ function rejects(callable $fn): void {try{$fn();}catch(InvalidArgumentException|
 $s=Settings::defaults(); same(false,$s['enabled']); same('simulation',$s['mode']);
 foreach(['07 00 00 00 00','2250700000000','002250700000000','+2250700000000'] as $p)same('+2250700000000',Client::phone($p));
 foreach(['+33700000000','070000000','07000000000',"+2250700000000\n<script>"] as $p)rejects(fn()=>Client::phone($p));
-rejects(fn()=>Client::payload($s,'0700000000',''));rejects(fn()=>Client::payload($s,'0700000000',str_repeat('é',161)));
+rejects(fn()=>Client::payload($s,'0700000000',''));rejects(fn()=>Client::payload($s,'0700000000',str_repeat('é',481)));
 $body=Client::payload($s,'0700000000','Bonjour'); same('tel:+2250700000000',$body['outboundSMSMessageRequest']['address']);same('tel:+2250000',$body['outboundSMSMessageRequest']['senderAddress']);
 rejects(fn()=>(new Client($s))->send('0700000000','Bonjour'));
 $s['enabled']=true;$calls=[];

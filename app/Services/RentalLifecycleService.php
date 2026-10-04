@@ -29,6 +29,7 @@ final class RentalLifecycleService
             }
             $db->commit();
             if ($changed) {
+                SmsProcessService::queue('payment_failed',(int)$r['id']);
                 SystemReports::record(
                     "payment.failed",
                     new \RuntimeException(
@@ -142,6 +143,7 @@ final class RentalLifecycleService
             }
             throw $e;
         }
+        SmsProcessService::queue('payment_confirmed',(int)$r['id']);
         // A committed releasing state prevents duplicate commands on duplicate callbacks.
         // Reconcile an uncertain command with the station; never issue it twice blindly.
         try {
@@ -187,6 +189,7 @@ final class RentalLifecycleService
             $db->prepare(
                 "UPDATE rentals SET status='release_failed' WHERE id=? AND status='releasing'",
             )->execute([$r["id"]]);
+            SmsProcessService::queue('release_failed',(int)$r['id']);
         }
     }
     public function reconcileStation(string $reference): void
@@ -306,6 +309,7 @@ final class RentalLifecycleService
             }
             throw $e;
         }
+        SmsProcessService::queue('rental_started',(int)$r['id']);
     }
     /** Must be called only after a verified physical return event from HeyCharge. */
     public function confirmedReturn(

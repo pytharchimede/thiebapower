@@ -1,6 +1,8 @@
 <?php
 // Route map loaded by App\Core\App.
 return [
+ "GET /admin/sms/templates" => [\App\Controllers\SmsTemplatesController::class,"index"],
+ "POST /admin/sms/templates" => [\App\Controllers\SmsTemplatesController::class,"save"],
  "GET /admin/sms" => [\App\Controllers\OrangeSmsController::class,"index"],
  "POST /admin/sms/settings" => [\App\Controllers\OrangeSmsController::class,"save"],
  "POST /admin/sms/test" => [\App\Controllers\OrangeSmsController::class,"test"],

@@ -1,7 +1,7 @@
 <?php
 namespace App\Controllers;
 use App\Core\App;
-use App\Services\{Auth,Audit,OrangeSmsSettings,OrangeSmsClient};
+use App\Services\{Auth,Audit,OrangeSmsSettings,OrangeSmsClient,SmsTemplates};
 final class OrangeSmsController
 {
     public function index(): void
@@ -15,7 +15,8 @@ final class OrangeSmsController
         try { $authInfo=OrangeSmsSettings::authenticationInfo($settings); OrangeSmsSettings::credentials($settings); $secretConfigured=true; }
         catch (\InvalidArgumentException|\RuntimeException $e) { $authInfo=['credentials_source'=>'incomplete','authentication_method'=>'incomplete']; $secretConfigured=false; }
         unset($settings['secret_cipher']);
-        App::view('orange_sms',compact('settings','error','history','installed','result','secretConfigured','authInfo'));
+        $templates=SmsTemplates::all();
+        App::view('orange_sms',compact('settings','error','history','installed','result','secretConfigured','authInfo','templates'));
     }
     public function save(): void
     {
@@ -31,13 +32,19 @@ final class OrangeSmsController
     {
         Auth::requirePermission('sms.test',true);
         $op=(string)($_POST['operation']??'');
-        if (!in_array($op,['auth','balance','usage','purchases','send'],true)) { http_response_code(422); echo 'Opération invalide'; return; }
+        if (!in_array($op,['auth','balance','usage','purchases','send','preview_template'],true)) { http_response_code(422); echo 'Opération invalide'; return; }
         $id=null;
         try {
             $s=OrangeSmsSettings::all(); $phone=null;
+            $message=(string)($_POST['message']??'');
+            if($op==='preview_template' || ($op==='send' && !empty($_POST['template_key']))) {
+                $preview=SmsTemplates::fromInput((string)($_POST['template_key']??''),(string)($_POST['template_variables']??'{}'),$op==='send');
+                if($op==='preview_template'){$_SESSION['orange_sms_result']=$preview+['state'=>'previewed','http_status'=>null];$this->respond();return;}
+                $message=$preview['message'];
+            }
             if ($op==='send') {
                 $phone=OrangeSmsClient::phone((string)($_POST['recipient']??''));
-                OrangeSmsClient::payload($s,$phone,(string)($_POST['message']??''));
+                OrangeSmsClient::payload($s,$phone,$message);
                 if (!$s['enabled']) throw new \InvalidArgumentException('Activez l’intégration avant le test d’envoi.');
                 if ($s['mode']==='production' && !isset($_POST['confirm_real'])) throw new \InvalidArgumentException('Confirmez l’envoi réel facturé avant le test.');
                 $nonce=(string)($_POST['nonce']??'');
@@ -54,7 +61,7 @@ final class OrangeSmsController
                 $id=(int)$db->lastInsertId(); $db->commit();
             } catch (\Throwable $e) { $db->rollBack(); throw $e; }
             $client=new OrangeSmsClient($s);
-            $result=match($op) { 'auth'=>$client->authenticate(), 'send'=>$client->send($phone,(string)$_POST['message']), default=>$client->inspect($op) };
+            $result=match($op) { 'auth'=>$client->authenticate(), 'send'=>$client->send($phone,$message), default=>$client->inspect($op) };
             $db->prepare('UPDATE orange_sms_logs SET state=?,http_status=?,resource_id=? WHERE id=?')->execute([$result['state'],$result['http_status'],$result['resource_id']??null,$id]);
             Audit::event('sms.'.$op,'orange_sms',(string)$id,['state'=>$result['state'],'http_status'=>$result['http_status']]);
             $_SESSION['orange_sms_result']=$result+['operation'=>$op];

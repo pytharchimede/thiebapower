@@ -21,7 +21,7 @@ final class OrangeSmsClient
         $phone=self::phone($phone);
         if (trim($message)==='' || !preg_match('//u',$message) || preg_match('/[\x00-\x08\x0b\x0c\x0e-\x1f]/',$message)) throw new \InvalidArgumentException('Message vide ou invalide.');
         preg_match_all('/./us',$message,$characters);
-        if (count($characters[0])>160) throw new \InvalidArgumentException('Le test est limité à 160 caractères. Les caractères Unicode peuvent consommer plusieurs unités SMS.');
+        if (count($characters[0])>480) throw new \InvalidArgumentException('Le message est limité à 480 caractères. Les caractères Unicode peuvent consommer plusieurs unités SMS.');
         $body=['address'=>'tel:'.$phone,'senderAddress'=>$s['sender_address'],'outboundSMSTextMessage'=>['message'=>$message]];
         if (($s['sender_mode']??'default')==='custom') {
             if (!$s['sender_approved']) throw new \InvalidArgumentException('Nom expéditeur non approuvé.');

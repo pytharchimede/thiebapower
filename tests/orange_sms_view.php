@@ -17,10 +17,14 @@ namespace {
   ob_start();try{require dirname(__DIR__).'/views/orange_sms.php';return ob_get_clean();}catch(\Throwable $e){ob_end_clean();throw $e;}
  }
  $html=render(['sms.view','sms.manage','sms.test']);
- foreach(['name="client_id"','name="client_secret"','id="sms-live-result"','data-sms-test','/orange-sms.js?v=1','name="sender_mode"','action="/admin/sms/test"','name="csrf"','</html>'] as $marker)if(!str_contains($html,$marker))throw new \RuntimeException('Missing view marker '.$marker);
+ foreach(['name="client_id"','name="client_secret"','id="sms-live-result"','data-sms-test','/orange-sms.js?v=2','name="sender_mode"','action="/admin/sms/test"','name="csrf"','</html>'] as $marker)if(!str_contains($html,$marker))throw new \RuntimeException('Missing view marker '.$marker);
  $html=render(['sms.view']);
  foreach(['name="client_id"','name="client_secret"','action="/admin/sms/test"'] as $marker)if(str_contains($html,$marker))throw new \RuntimeException('Unauthorized form rendered');
  $html=render(['sms.view','sms.manage','sms.test'],['http_status'=>200,'state'=>'authenticated','expires_in'=>3600,'operation'=>'auth']);
  foreach(['id="sms-result"','<details open>','expires_in'] as $marker)if(!str_contains($html,$marker))throw new \RuntimeException('Missing response '.$marker);
+ $templates=[];
+ foreach(\App\Services\SmsTemplates::definitions() as $key=>$d)$templates[$key]=['key'=>$key,'label'=>$d[0],'content'=>$d[1],'variables'=>$d[2],'enabled'=>false];
+ $message='';\App\Services\Auth::$permissions=['sms.manage'];ob_start();require dirname(__DIR__).'/views/sms_templates.php';$html=ob_get_clean();
+ if(substr_count($html,'action="/admin/sms/templates"')!==count($templates))throw new \RuntimeException('Template forms missing');
  echo "Orange SMS view: full rendering, credentials, sender modes and permissions OK\n";
 }

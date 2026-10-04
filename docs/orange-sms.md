@@ -15,12 +15,12 @@ Administration : `/admin/sms`. Permissions séparées `sms.view`, `sms.manage`, 
 
 - Hôte HTTPS fixé à `api.orange.com`, vérification TLS, délais réseau bornés, aucune redirection.
 - OAuth client credentials vers `/oauth/v3/token`. Jeton uniquement en mémoire pour la durée de l’opération ; renouvellement avant expiration. Aucun jeton exposé au navigateur ou enregistré dans l’historique.
-- Envoi POST `/smsmessaging/v1/outbound/tel%3A%2B2250000/requests`, normalisation des numéros ivoiriens locaux / internationaux ; refus des numéros étrangers. Tests limités à 160 caractères Unicode ; plusieurs segments peuvent être facturés selon l’encodage.
+- Envoi POST `/smsmessaging/v1/outbound/tel%3A%2B2250000/requests`, normalisation des numéros ivoiriens locaux / internationaux ; refus des numéros étrangers. Tests limités à 480 caractères Unicode ; plusieurs segments peuvent être facturés selon l’encodage.
 - GET `/sms/admin/v1/contracts`, `/statistics`, `/purchaseorders` pour les informations Orange. Réponses affichées après contrôle explicite ; pas de polling.
 - Protection CSRF et permissions sur chaque opération ; nonce à usage unique contre double soumission, intervalle global de 30 secondes entre contrôles réservé sous verrou SQL. Pas de nouvelle tentative automatique des envois : en cas d’erreur réseau le résultat est inconnu et doit être vérifié chez Orange.
 - Deux modes expéditeur : `default` omet toujours `senderName`, même si un ancien nom est conservé ; `custom` ajoute le nom et exige sa confirmation d’approbation. Le mode par défaut dépend de l’autorisation du compte Orange et peut être refusé par le fournisseur. L’approbation est confirmée par l’administrateur sur la base de la validation Orange, pas vérifiée automatiquement par l’API.
 - HTTP 201 = accepté, jamais « livré ». Les références Orange et statuts sont conservés ; destinataires masqués, messages et secrets absents de l’historique et de l’audit. Un processus interrompu peut laisser une ligne « En cours / à vérifier ».
-- Le service est prêt pour un futur appel métier via `OrangeSmsClient::send`, mais aucun circuit automatique (location, remboursement, OTP, rappel) n’est connecté dans cette livraison. Le débit du fournisseur et les doublons métier devront être gérés dans une file avant raccordement aux événements.
+- Les modèles de processus, la file et les rappels sont maintenant disponibles : voir `docs/sms-templates-otp.md`. L’OTP est préparé pour un futur parcours de vérification, sans endpoint public.
 - Les accusés de livraison sont une évolution séparée : Orange exige une URL HTTPS enregistrée auprès de son équipe. Aucun endpoint non authentifié n’est ajouté ici et aucun statut de livraison n’est inventé.
 
 Sources : collection Postman fournie ; https://developer.orange.com/apis/sms/getting-started ; https://developer.orange.com/apis/sms-ci/faq

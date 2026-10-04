@@ -8,7 +8,7 @@ const nonce = { value: 'old' }, button = { disabled: false };
 let submit, calls = 0, resolveResponse;
 const form = { action: '/admin/sms/test', querySelectorAll() { return [button]; }, querySelector() { return nonce; }, addEventListener(_, cb) { submit = cb; } };
 const sandbox = {
- document: { querySelector() { return panel; }, querySelectorAll() { return [form]; } },
+ document: { querySelector(q) { return q === '#sms-live-result' ? panel : null; }, querySelectorAll() { return [form]; } },
  FormData: class {}, navigator: { clipboard: { writeText: async () => {} } },
  fetch: () => { calls++; return new Promise(resolve => { resolveResponse = resolve; }); }
 };

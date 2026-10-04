@@ -82,6 +82,8 @@ final class AutomaticDepositRefundService
                 "refund_amount" => $refund,
                 "settlement_id" => $id,
             ]);
+            SmsProcessService::queue('rental_returned',$rentalId);
+            if($refund>0)SmsProcessService::queue('refund_pending',$rentalId);
             return $id;
         } catch (\Throwable $e) {
             if ($db->inTransaction()) {
@@ -225,6 +227,7 @@ final class AutomaticDepositRefundService
         $db->prepare(
             "UPDATE deposit_settlements SET status='refunded',confirmed_at=UTC_TIMESTAMP() WHERE id=? AND status='processing'",
         )->execute([$settlementId]);
+        if($db->query("SELECT ROW_COUNT()")->fetchColumn()>0)SmsProcessService::queue('refund_confirmed',(int)$row['rental_id']);
         return true;
     }
 }

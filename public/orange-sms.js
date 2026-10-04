@@ -6,8 +6,16 @@
   const output = panel.querySelector('[data-sms-response]');
   const copy = panel.querySelector('[data-sms-copy]');
   const forms = [...document.querySelectorAll('form[data-sms-test]')];
+  const selector = document.querySelector('[data-sms-template]');
+  const variables = document.querySelector('[data-sms-variables]');
+  const catalog = document.querySelector('#sms-template-catalog');
+  if (selector && variables && catalog) {
+    const items = JSON.parse(catalog.textContent);
+    selector.addEventListener('change', () => { variables.value = JSON.stringify(items[selector.value]?.variables || {}, null, 2); });
+  }
   let busy = false;
   const messages = {
+    previewed: 'Apercu du modele : aucun SMS envoye.',
     authenticated: 'Authentification réussie.',
     checked: 'Consultation Orange réussie.',
     simulated: 'Simulation réussie : aucun SMS envoyé.',
@@ -24,6 +32,7 @@
     if (busy) return;
     busy = true;
     const payload = new FormData(form);
+    if (event.submitter?.value === 'preview_template') payload.set('operation', 'preview_template');
     const buttons = forms.flatMap(f => [...f.querySelectorAll('button')]);
     const disabled = buttons.map(b => b.disabled);
     buttons.forEach(b => { b.disabled = true; });
