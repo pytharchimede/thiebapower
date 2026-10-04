@@ -44,3 +44,37 @@ Le résultat d’envoi affiche la référence Orange et, en cas de refus, un ide
 `printf '%s' "$orange_auth" | php bin/configure_orange_sms_auth.php` permet de configurer le header reçu via saisie masquée dans le shell. Le script écrit atomiquement le .env et impose la source env, sans modifier la clé de chiffrement, l’activation des SMS ou le compte technique. Sauvegarder le .env avant exécution.
 
 `php bin/orange_sms_check.php --balance` teste le même client et les mêmes identifiants que le dashboard et consulte le solde, sans envoyer de SMS. Un en-tête Basic invalide provoque une erreur explicite ; aucun basculement automatique vers un autre compte n’est tenté en cas de 401.
+
+## Accusés de livraison et cron
+
+Appliquer `database/migrations/20261004_orange_sms_delivery.sql`, puis exécuter
+`php bin/install_sms_automation.php` sous le compte de l’hébergement. Ce script génère
+un secret callback dans le `.env`, imprime l’URL privée à transmettre à Orange et
+installe le cron chaque minute avec le PHP courant. Les autres entrées cron sont
+conservées. Une seconde exécution remplace l’entrée SMS sans doublon.
+
+Transmettre cette URL via le formulaire Orange « Real time SMS DR » et demander
+les IP publiques sources. Renseigner `ORANGE_SMS_CALLBACK_IPS=IP1,IP2` dans le `.env`.
+Sans IP autorisée ou sans secret, la réception est refusée (403). Ne pas utiliser
+les en-têtes X-Forwarded-For fournis par un client. Si un proxy frontal est présent,
+configurer le serveur pour restaurer REMOTE_ADDR depuis des proxies de confiance.
+L’URL contient un secret : éviter son exposition dans les journaux du serveur/proxy.
+
+Orange doit activer la destination côté plateforme ; le code seul ne réalise pas
+cette activation. Le callback POST renvoie 200 après stockage, 400 si le payload
+est invalide et 503 si le stockage échoue. Il conserve les notifications uniques,
+masque les numéros et corrèle callbackData à resource_id. Les accusés peuvent
+arriver avant la mise à jour locale de l’envoi ; ils restent stockés pour corrélation.
+La désactivation des envois ne coupe pas la réception des accusés.
+
+L’historique sépare l’acceptation HTTP 201 du statut de livraison :
+DeliveredToTerminal = reçu par téléphone ; DeliveredToNetwork = réseau ;
+MessageWaiting = attente ; DeliveryUncertain = incertain ; DeliveryImpossible =
+réception impossible annoncée (peut évoluer ultérieurement). Une réception terminal
+confirmée ne régresse pas lors d’une notification arrivée dans le désordre.
+
+En mode par défaut, ne pas saisir 727790/777290 comme adresse technique ni comme
+nom personnalisé : senderName est omis et Orange applique « SMS 727790 » pour le
+compte présenté. Si un 201 n’aboutit pas, demander à l’équipe Orange CI de vérifier
+le whitelisting de ce sender, y compris chez les autres opérateurs concernés.
+Documentation : https://developer.orange.com/apis/sms/getting-started

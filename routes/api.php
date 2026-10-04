@@ -1,6 +1,7 @@
 <?php
 // Route map loaded by App\Core\App.
 return [
+    'POST /api/orange/sms/delivery' => [\App\Controllers\OrangeSmsCallbackController::class, 'receive'],
     'POST /api/paiementpro/rental-callback' => [\App\Controllers\PaymentController::class, 'callback'],
     'GET /api/paiementpro/rental-callback' => [\App\Controllers\PaymentController::class, 'callback'],
     'GET /api/heycharge/callback' => [\App\Controllers\StationController::class, 'callbackStatus'],

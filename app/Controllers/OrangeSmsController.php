@@ -9,7 +9,8 @@ final class OrangeSmsController
         Auth::requirePermission('sms.view');
         header('Cache-Control: no-store');
         $settings=OrangeSmsSettings::all(); $error=''; $history=[]; $installed=true;
-        try { $history=App::db()->query('SELECT * FROM orange_sms_logs ORDER BY id DESC LIMIT 50')->fetchAll(); }
+        try { $history=App::db()->query('SELECT * FROM orange_sms_logs ORDER BY id DESC LIMIT 50')->fetchAll();
+            try { $receipts=App::db()->prepare("SELECT delivery_status FROM orange_sms_receipts WHERE resource_id=? ORDER BY (delivery_status='DeliveredToTerminal') DESC,id DESC LIMIT 1"); foreach($history as &$row){if(!empty($row['resource_id'])){$receipts->execute([$row['resource_id']]);$row['delivery_status']=$receipts->fetchColumn()?:($row['delivery_status']??null);}}unset($row); } catch(\PDOException $e){if($e->getCode()!=='42S02')throw $e;} }
         catch (\PDOException $e) { if ($e->getCode()!=='42S02') throw $e; $installed=false; }
         $result=$_SESSION['orange_sms_result']??null; unset($_SESSION['orange_sms_result']);
         try { $authInfo=OrangeSmsSettings::authenticationInfo($settings); OrangeSmsSettings::credentials($settings); $secretConfigured=true; }
