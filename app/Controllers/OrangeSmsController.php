@@ -47,8 +47,8 @@ final class OrangeSmsController
             $db=App::db(); $db->beginTransaction();
             try {
                 $db->query('SELECT id FROM orange_sms_settings WHERE id=1 FOR UPDATE')->fetch();
-                $last=$db->query("SELECT COUNT(*) FROM orange_sms_logs WHERE created_at>DATE_SUB(UTC_TIMESTAMP(),INTERVAL 30 SECOND)")->fetchColumn();
-                if ((int)$last>0) throw new \InvalidArgumentException('Attendez 30 secondes entre deux opérations Orange.');
+                $remaining=(int)$db->query("SELECT COALESCE(MAX(30-TIMESTAMPDIFF(SECOND,created_at,CURRENT_TIMESTAMP)),0) FROM orange_sms_logs WHERE created_at>DATE_SUB(CURRENT_TIMESTAMP,INTERVAL 30 SECOND)")->fetchColumn();
+                if ($remaining>0) throw new \InvalidArgumentException('Attendez encore '.$remaining.' seconde(s) avant une nouvelle opération Orange.');
                 $db->prepare('INSERT INTO orange_sms_logs(user_id,operation,mode,recipient_masked) VALUES(?,?,?,?)')->execute([Auth::id(),$op,$s['mode'],$phone===null?null:'+225******'.substr($phone,-4)]);
                 $id=(int)$db->lastInsertId(); $db->commit();
             } catch (\Throwable $e) { $db->rollBack(); throw $e; }
