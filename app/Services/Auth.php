@@ -6,6 +6,9 @@ use App\Core\App;
 final class Auth
 {
     public const PERMISSIONS = [
+        "sms.view" => "Consulter les SMS Orange et leur historique",
+        "sms.manage" => "Configurer et activer les SMS Orange",
+        "sms.test" => "Tester Orange et envoyer un SMS réel",
         "system.manage" => "Administrer le système et les incidents",
         "dashboard.view" => "Voir le tableau de bord",
         "pricing.view" => "Consulter la tarification",

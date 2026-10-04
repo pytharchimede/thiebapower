@@ -3,6 +3,7 @@ use App\Services\Auth;
 $adminPath =
     parse_url($_SERVER["REQUEST_URI"] ?? "/admin", PHP_URL_PATH) ?: "/admin";
 $navItems = [
+ ["SMS Orange CI", "/admin/sms", "sms.view", "sms"],
  ["Formation et évolutions", "/admin/training", "dashboard.view", "training"],
     ["Interface publique et support", "/admin/public-settings", "system.manage", "public-settings"],
     ["Système", "/admin/system", "system.manage", "system"],
@@ -24,6 +25,7 @@ $navItems = [
     ["Comptes et droits", "/admin/users", "users.manage", "users"],
 ];
 $navIcons = [
+ "sms" => "fa-comment-sms",
  "training" => "fa-graduation-cap",
     "public-settings" => "fa-headset",
     "system" => "fa-server",

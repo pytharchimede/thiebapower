@@ -1,6 +1,9 @@
 <?php
 // Route map loaded by App\Core\App.
 return [
+ "GET /admin/sms" => [\App\Controllers\OrangeSmsController::class,"index"],
+ "POST /admin/sms/settings" => [\App\Controllers\OrangeSmsController::class,"save"],
+ "POST /admin/sms/test" => [\App\Controllers\OrangeSmsController::class,"test"],
  "GET /admin/training" => [\App\Controllers\ClientTrainingController::class,"index"],
  "POST /admin/training/proposals" => [\App\Controllers\ClientTrainingController::class,"save"],
  "GET /admin/training/pdf" => [\App\Controllers\ClientTrainingController::class,"export"],
