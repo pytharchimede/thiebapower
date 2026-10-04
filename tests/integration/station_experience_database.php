@@ -7,9 +7,10 @@ if(!preg_match('/^thiebapower_test_[a-z0-9_]+$/D',(string)$db->query('SELECT DAT
 if((int)$db->query('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()')->fetchColumn()!==0)throw new RuntimeException('Test database must be empty; no existing table is deleted.');
 $root=dirname(__DIR__,2);$db->exec(file_get_contents($root.'/database/schema.sql'));
 $files=glob($root.'/database/migrations/*.sql');
-$order=['20260928_automatic_deposit_refunds.sql','20260928_v1_accounts_audit.sql','20260928_rental_checkout_lifecycle.sql','20260929_heycharge_terminals.sql','20260929_charging_batteries.sql','20260929_manual_battery_release.sql','20260929_manual_battery_reinsertion.sql','20260929_finance_cash.sql','20260929_payment_reservation_timeout.sql','20260929_rental_operations.sql','20260929_station_label_settings.sql','20260929_station_label_logo_settings.sql','20261003_checkout_notifications.sql','20261003_finance_billing.sql','20261003_refund_payment_channel.sql','20261003_deposit_wallet.sql','20261003_deposit_wallet_fee_defaults.sql','20261004_station_experience.sql'];
+$order=['20260928_automatic_deposit_refunds.sql','20260928_v1_accounts_audit.sql','20260928_rental_checkout_lifecycle.sql','20260929_heycharge_terminals.sql','20260929_charging_batteries.sql','20260929_manual_battery_release.sql','20260929_manual_battery_reinsertion.sql','20260929_finance_cash.sql','20260929_payment_reservation_timeout.sql','20260929_rental_operations.sql','20260929_station_label_settings.sql','20260929_station_label_logo_settings.sql','20261003_checkout_notifications.sql','20261003_finance_billing.sql','20261003_refund_payment_channel.sql','20261003_deposit_wallet.sql','20261003_deposit_wallet_fee_defaults.sql','20261004_station_experience.sql','20261004_public_promotions.sql'];
 foreach($order as $file){try{$db->exec(file_get_contents($root.'/database/migrations/'.$file));}catch(Throwable $e){throw new RuntimeException($file.': '.$e->getMessage());}}
 $db->exec(file_get_contents($root.'/database/migrations/20261004_station_experience.sql')); // idempotence
+$db->exec(file_get_contents($root.'/database/migrations/20261004_public_promotions.sql'));
 $db->exec("INSERT INTO stations(imei,label,status,enabled,last_seen_at) VALUES('TEST01','Café test','online',1,UTC_TIMESTAMP()),('DISABLED','Privée','online',0,UTC_TIMESTAMP())");
 $db->exec("INSERT INTO batteries(id,serial,status,station_imei,slot_id,battery_capacity) VALUES(1,'BANK01','available','TEST01','1',100),(2,'BANK02','available','TEST01','2',95),(3,'BANK03','rented','TEST01','3',90)");
 $db->exec("INSERT INTO station_profiles(station_imei,address,latitude,longitude,manager_name,manager_phone,investment) VALUES('TEST01','Koumassi',5.3,-4.0,'SECRET MANAGER','0700000000',100000)");
@@ -29,3 +30,10 @@ $db->beginTransaction();$offer=(new PromotionService)->assess('TEST200','0700000
 $reject=false;try{(new PromotionService)->assess('TEST200','+2250700000001',1000);}catch(InvalidArgumentException){$reject=true;}$assert($reject,'Same phone cannot reuse code');
 $before=$db->query('SELECT id,status,started_at,returned_at,rental_fee,deposit FROM rentals ORDER BY id')->fetchAll();\App\Services\SystemNotifications::refresh();$after=$db->query('SELECT id,status,started_at,returned_at,rental_fee,deposit FROM rentals ORDER BY id')->fetchAll();$assert($before===$after,'Alerts do not mutate rentals');
 echo "MariaDB integration: profitability, promotion locks, phone reuse, alert refresh OK\n";
+
+$db->exec("UPDATE promotions SET is_public=1 WHERE code='TEST200'");
+$db->exec("INSERT INTO promotions(code,kind,discount_amount,max_uses,starts_at,ends_at,enabled,is_public) VALUES('PRIVATE200','campaign',200,20,DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY),DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 DAY),1,0),('LOYAL200','loyalty',200,20,DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY),DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 DAY),1,1),('EXPIRED200','campaign',200,20,DATE_SUB(UTC_TIMESTAMP(),INTERVAL 2 DAY),DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY),1,1)");
+ob_start();(new \App\Controllers\PromotionController)->offers();$html=ob_get_clean();
+$assert(str_contains($html,'TEST200')&&!str_contains($html,'PRIVATE200')&&!str_contains($html,'LOYAL200')&&!str_contains($html,'EXPIRED200'),'Public promotion visibility and validity filter');
+$assert(str_contains($html,'wa.me')&&str_contains($html,'promo-copy'),'Public share actions');
+echo "Public promotions: additive repeated migration, private/loyalty/expired exclusion and share actions OK\n";

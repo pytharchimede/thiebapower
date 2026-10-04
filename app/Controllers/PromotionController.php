@@ -15,6 +15,15 @@ final class PromotionController
   $db->prepare('INSERT INTO promotions(code,kind,discount_amount,minimum_completed,max_uses,starts_at,ends_at,enabled,created_by) VALUES(?,?,?,?,?,?,?,1,?)')->execute([$code,$kind,$discount,$min,$uses,$start.' 00:00:00',$b->modify('+1 day')->format('Y-m-d').' 00:00:00',Auth::id()]);Audit::event('promotion.created','promotion',$code);App::redirect('/admin/promotions');
  }
  public function toggle():void {Auth::requirePermission('pricing.manage',true);$id=filter_var($_POST['id']??0,FILTER_VALIDATE_INT);$enabled=($_POST['enabled']??'')==='1'?1:0;App::db()->prepare('UPDATE promotions SET enabled=? WHERE id=?')->execute([$enabled,$id]);Audit::event('promotion.toggled','promotion',(string)$id,['enabled'=>$enabled]);App::redirect('/admin/promotions');}
+ public function visibility():void {
+  Auth::requirePermission('pricing.manage',true);$id=filter_var($_POST['id']??0,FILTER_VALIDATE_INT);$public=($_POST['is_public']??'')==='1'?1:0;
+  App::db()->prepare("UPDATE promotions SET is_public=? WHERE id=? AND kind='campaign'")->execute([$public,$id]);Audit::event('promotion.visibility','promotion',(string)$id,['is_public'=>$public]);App::redirect('/admin/promotions');
+ }
+ public function offers():void {
+  header('Cache-Control: no-store');$promotions=[];
+  if(PromotionService::enabled())$promotions=App::db()->query("SELECT p.code,p.discount_amount,p.ends_at FROM promotions p WHERE p.is_public=1 AND p.kind='campaign' AND p.enabled=1 AND p.starts_at<=UTC_TIMESTAMP() AND p.ends_at>UTC_TIMESTAMP() AND p.discount_amount<(SELECT rental_fee FROM pricing WHERE id=1) AND (SELECT COUNT(*) FROM rental_promotion_redemptions x WHERE x.promotion_id=p.id)<p.max_uses ORDER BY p.ends_at")->fetchAll();
+  App::view('public_offers',compact('promotions'));
+ }
  public function preview():void {
   header('Content-Type: application/json');header('Cache-Control: no-store');
   if(!str_starts_with($_SERVER['CONTENT_TYPE']??'','application/json')){http_response_code(415);echo '{}';return;}

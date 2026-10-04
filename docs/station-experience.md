@@ -62,3 +62,7 @@ Recherche sur toute la largeur, présentation adaptée aux mobiles, fiches déta
 ## Refonte de Mes locations
 
 Fiches responsive avec statut, tarif, étapes et reçu. Le formulaire d’incident propose quatre catégories, un compteur et un retour après envoi. Les actualisations conservent le brouillon, le focus et le résultat du signalement ; un échec permet de réessayer. Les routes et règles de location restent identiques. Aucune migration supplémentaire. Copier `my-rentals.js` et `my-rentals.css` dans la racine publique après mise à jour du code. Test DOM : `node tests/my_rentals_dom.js` avec jsdom.
+
+## Codes promo publics et partage
+
+Appliquer `database/migrations/20261004_public_promotions.sql` après la migration station experience. Les codes existants restent privés. Depuis `/admin/promotions`, les comptes autorisés à gérer les tarifs peuvent publier les codes de campagne ; fidélité et parrainage restent privés. `/offers` affiche uniquement les campagnes publiques actives, dans leur période, non épuisées et compatibles avec le tarif. `PROMOTIONS_ENABLED=1` reste nécessaire. Le partage ouvre WhatsApp, Telegram, X, Facebook ou le menu natif, et propose une copie de secours. Il ne transmet aucun message automatiquement. Copier `promotion-cards.css` et `promotion-share.js` dans la racine publique.

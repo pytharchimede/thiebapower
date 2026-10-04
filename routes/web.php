@@ -1,6 +1,7 @@
 <?php
 // Route map loaded by App\Core\App.
 return [
+    "GET /offers" => [\App\Controllers\PromotionController::class, "offers"],
     "POST /promotions/preview" => [\App\Controllers\PromotionController::class, "preview"],
     "POST /my-rentals/referral" => [\App\Controllers\PromotionController::class, "referral"],
     "GET /my-rentals" => [\App\Controllers\CustomerExperienceController::class, "index"],

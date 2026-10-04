@@ -1,6 +1,7 @@
 <?php
 // Route map loaded by App\Core\App.
 return [
+    "POST /admin/promotions/visibility" => [\App\Controllers\PromotionController::class, "visibility"],
     "GET /admin/promotions" => [\App\Controllers\PromotionController::class, "index"],
     "POST /admin/promotions" => [\App\Controllers\PromotionController::class, "create"],
     "POST /admin/promotions/toggle" => [\App\Controllers\PromotionController::class, "toggle"],
