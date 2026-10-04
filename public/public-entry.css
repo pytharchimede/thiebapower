@@ -77,3 +77,7 @@
 @media(prefers-reduced-motion:reduce) {.public-nav a {transition:none;}}
 
 @media(max-width:380px) {.public-cycle-step {flex-direction:column;align-items:flex-start;gap:8px;padding:12px;}.cycle-copy small {font-size:11px;}}
+
+/* Give the promotion input and its verification action separate touch areas. */
+.public-rent #preview-promotion {margin-top:14px;}
+.public-rent #promotion-status {margin:10px 0 20px;font-size:12px;line-height:1.6;color:#61776d;}
