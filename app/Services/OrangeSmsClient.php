@@ -23,7 +23,7 @@ final class OrangeSmsClient
         preg_match_all('/./us',$message,$characters);
         if (count($characters[0])>160) throw new \InvalidArgumentException('Le test est limité à 160 caractères. Les caractères Unicode peuvent consommer plusieurs unités SMS.');
         $body=['address'=>'tel:'.$phone,'senderAddress'=>$s['sender_address'],'outboundSMSTextMessage'=>['message'=>$message]];
-        if ($s['sender_name']!=='') {
+        if (($s['sender_mode']??'default')==='custom') {
             if (!$s['sender_approved']) throw new \InvalidArgumentException('Nom expéditeur non approuvé.');
             $body['senderName']=$s['sender_name'];
         }

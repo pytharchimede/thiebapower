@@ -6,13 +6,16 @@ final class OrangeSmsSettings
     public static function defaults(): array
     {
         return ['enabled'=>false, 'mode'=>'simulation', 'client_id'=>'', 'secret_cipher'=>'',
-            'sender_address'=>'tel:+2250000', 'sender_name'=>'', 'sender_approved'=>false];
+            'sender_address'=>'tel:+2250000', 'sender_mode'=>'default', 'sender_name'=>'', 'sender_approved'=>false];
     }
     public static function all(): array
     {
         try { $raw=App::db()->query('SELECT configuration FROM orange_sms_settings WHERE id=1')->fetchColumn(); }
         catch (\PDOException $e) { if ($e->getCode()==='42S02') return self::defaults(); throw $e; }
-        return array_replace(self::defaults(), json_decode($raw?:'{}',true,512,JSON_THROW_ON_ERROR));
+        $data=json_decode($raw?:'{}',true,512,JSON_THROW_ON_ERROR);
+        // Preserve the choice of previously configured approved custom names.
+        $data['sender_mode']??=!empty($data['sender_name'])?'custom':'default';
+        return array_replace(self::defaults(),$data);
     }
     private static function key(): string
     {
@@ -55,18 +58,19 @@ final class OrangeSmsSettings
         elseif ($s['client_id']!==$old['client_id'] && $old['secret_cipher']!=='') throw new \InvalidArgumentException('Renseignez le nouveau secret lorsque vous changez le Client ID.');
         $s['sender_address']=trim((string)($input['sender_address']??''));
         if ($s['sender_address']!=='tel:+2250000') throw new \InvalidArgumentException('Pour Orange CI, utilisez tel:+2250000 comme adresse technique.');
+        $s['sender_mode']=(string)($input['sender_mode']??'default');
+        if (!in_array($s['sender_mode'],['default','custom'],true)) throw new \InvalidArgumentException('Mode expéditeur invalide.');
         $s['sender_name']=trim((string)($input['sender_name']??''));
         if ($s['sender_name']!=='' && !preg_match('/^[A-Za-z0-9]{1,11}$/D',$s['sender_name'])) throw new \InvalidArgumentException('Nom expéditeur : 1 à 11 caractères alphanumériques.');
         $s['sender_approved']=isset($input['sender_approved']);
-        if ($s['sender_name']!=='' && !$s['sender_approved']) throw new \InvalidArgumentException('Confirmez l’approbation Orange du nom expéditeur ou laissez-le vide.');
         self::requireSender($s);
         if ($s['enabled'] && $s['mode']==='production') self::credentials($s);
         return $s;
     }
     public static function requireSender(array $s): void
     {
-        if ($s['mode']==='production' && ($s['sender_name']==='' || !$s['sender_approved'])) {
-            throw new \InvalidArgumentException('Orange CI exige un nom expéditeur approuvé et autorisé. Renseignez ce nom et confirmez son approbation avant de passer en production.');
+        if (($s['sender_mode']??'default')==='custom' && ($s['sender_name']==='' || !$s['sender_approved'])) {
+            throw new \InvalidArgumentException('Le mode personnalisé exige un nom expéditeur approuvé par Orange. Renseignez ce nom et confirmez son approbation.');
         }
     }
     public static function save(array $s): void

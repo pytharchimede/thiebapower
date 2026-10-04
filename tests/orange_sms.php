@@ -16,7 +16,7 @@ same('simulated',(new Client($s,$t))->send('0700000000','Bonjour')['state']);sam
 putenv('ORANGE_SMS_ENCRYPTION_KEY='.base64_encode(random_bytes(32)));$cipher=Settings::encrypt('demo-secret');same('demo-secret',Settings::decrypt($cipher));
 $raw=base64_decode($cipher);$raw[30]=chr(ord($raw[30])^1);rejects(fn()=>Settings::decrypt(base64_encode($raw)));
 putenv('ORANGE_SMS_CLIENT_ID=test-id');putenv('ORANGE_SMS_CLIENT_SECRET=test-secret');
-$s['mode']='production';rejects(fn()=>Client::payload($s,'0700000000','Bonjour'));$s['sender_name']='THIEBAPOWER';rejects(fn()=>Client::payload($s,'0700000000','Bonjour'));$s['sender_approved']=true;
+$s['mode']='production';$s['sender_mode']='custom';rejects(fn()=>Client::payload($s,'0700000000','Bonjour'));$s['sender_name']='THIEBAPOWER';rejects(fn()=>Client::payload($s,'0700000000','Bonjour'));$s['sender_approved']=true;
 $calls=[];$transport=function($method,$url,$headers,$body)use(&$calls){
  $calls[]=[$method,$url,$headers,$body];
  if(str_ends_with($url,'/token'))return ['http_status'=>200,'data'=>['access_token'=>'TOKEN','expires_in'=>3600]];
@@ -29,8 +29,12 @@ foreach(['balance'=>'contracts','usage'=>'statistics','purchases'=>'purchaseorde
 foreach([400=>'rejected',401=>'rejected',429=>'rejected',500=>'unknown'] as $http=>$state){$n=0;$mock=function($method)use($http,&$n){$n++;return $method==='POST'&&$n===1?['http_status'=>200,'data'=>['access_token'=>'TOKEN']]:['http_status'=>$http,'data'=>[]];};same($state,(new Client($s,$mock))->send('0700000000','Test')['state']);same(2,$n);}
 $n=0;$mock=function()use(&$n){$n++;return ['http_status'=>401,'data'=>[]];};rejects(fn()=>(new Client($s,$mock))->send('0700000000','Test'));same(1,$n);
 rejects(fn()=>Settings::validate(['mode'=>'invalid'],Settings::defaults()));rejects(fn()=>Settings::validate(['sender_address'=>'tel:+2250700000000'],Settings::defaults()));
-rejects(fn()=>Settings::validate(['mode'=>'production','sender_address'=>'tel:+2250000'],Settings::defaults()));
-$v=Settings::validate(['mode'=>'production','enabled'=>'on','sender_address'=>'tel:+2250000','client_id'=>'app','client_secret'=>'secret','sender_name'=>'THIEBAPOWER','sender_approved'=>'on'],Settings::defaults());same('secret',Settings::decrypt($v['secret_cipher']));
+rejects(fn()=>Settings::validate(['mode'=>'production','sender_mode'=>'custom','sender_address'=>'tel:+2250000'],Settings::defaults()));
+$v=Settings::validate(['mode'=>'production','enabled'=>'on','sender_address'=>'tel:+2250000','client_id'=>'app','client_secret'=>'secret','sender_mode'=>'custom','sender_name'=>'THIEBAPOWER','sender_approved'=>'on'],Settings::defaults());same('secret',Settings::decrypt($v['secret_cipher']));
 $v2=Settings::validate(['mode'=>'simulation','sender_address'=>'tel:+2250000','client_id'=>'app','client_secret'=>''],$v);same($v['secret_cipher'],$v2['secret_cipher']);
 rejects(fn()=>Settings::validate(['sender_address'=>'tel:+2250000','client_id'=>'other'],$v));
+$default=$s;$default['sender_mode']='default';$default['sender_approved']=false;
+$payload=Client::payload($default,'0700000000','Test');same(false,array_key_exists('senderName',$payload['outboundSMSMessageRequest']));
+$calls=[];same('accepted',(new Client($default,$transport))->send('0700000000','Test')['state']);same(false,array_key_exists('senderName',json_decode($calls[1][3],true)['outboundSMSMessageRequest']));
+rejects(fn()=>Settings::validate(['sender_mode'=>'invalid','sender_address'=>'tel:+2250000'],Settings::defaults()));
 echo "Orange SMS: validation, encryption, simulation, OAuth, endpoints, accepted vs delivered, no retry and monitoring OK\n";
