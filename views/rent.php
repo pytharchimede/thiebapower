@@ -77,5 +77,5 @@
 </div>
 <script>window.TB_PRICE = <?= (int) $prices['rental_fee'] ?>; window.TB_STATION = <?= json_encode($station['imei'],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>;</script>
 <script src="/app.js?v=20261004-1" defer></script>
-</body>
+<?php require __DIR__.'/partials/public_support.php'; ?></body>
 </html>

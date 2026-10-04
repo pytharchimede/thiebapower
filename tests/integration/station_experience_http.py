@@ -57,3 +57,16 @@ assert reader.post(base+'/admin/stations/profile',data={'imei':'TEST01','label':
 assert reader.get(base+'/admin/stations/profitability').status_code==403
 assert reader.get(base+'/admin/rentals/watch').status_code==200
 print('HTTP integration: public privacy, customer bearer tokens, support idempotence, profile validation, CSRF, permissions and admin pages OK')
+
+assert reader.get(base+'/admin/public-settings').status_code==403
+assert owner.post(base+'/admin/public-settings',data={'support_enabled':'on'}).status_code==403
+page=owner.get(base+'/admin/public-settings');assert page.status_code==200,page.text
+csrf=re.search(r'name="csrf" value="([^"]+)"',page.text).group(1)
+params={'csrf':csrf,'support_enabled':'on','whatsapp_enabled':'on','whatsapp':'+2250700000000','message':'Aide location','visible[logo]':'on'}
+saved=owner.post(base+'/admin/public-settings',data=params,allow_redirects=False);assert saved.status_code==303,saved.text
+page=requests.get(base+'/stations/map');assert 'https://wa.me/2250700000000' in page.text and '<details class="public-support">' in page.text
+rows=requests.get(base+'/stations/snapshot').json()['stations'];assert not rows[0]['manager_name'] and not rows[0]['manager_phone']
+params={'csrf':csrf};params.update({'visible['+key+']':'on' for key in ['logo','slogan','locations','stations','intro','steps','illustration','price_teaser','payment_logos','offers','manager_name','manager_phone','hours','stock','summary','incidents','footer']})
+assert owner.post(base+'/admin/public-settings',data=params,allow_redirects=False).status_code==303
+assert '<details class="public-support">' not in requests.get(base+'/stations/map').text
+print('Public support HTTP: permission, CSRF, saved WhatsApp channel, hidden manager fields and disabled widget OK')

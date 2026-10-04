@@ -43,6 +43,8 @@ final class StationExperienceController
  public function publicStations():void {
   header('Content-Type: application/json; charset=utf-8');header('Cache-Control: public, max-age=30');
   $rows=App::db()->query("SELECT s.imei,s.label,s.enabled,s.status,s.last_seen_at,p.address,p.latitude,p.longitude,p.venue_type,p.opening_hours,p.manager_name,p.manager_phone,COALESCE(b.available_count,0) available_count FROM stations s LEFT JOIN station_profiles p ON p.station_imei=s.imei LEFT JOIN (SELECT station_imei,COUNT(*) available_count FROM batteries WHERE status='available' AND slot_id IS NOT NULL AND battery_capacity>=70 GROUP BY station_imei) b ON b.station_imei=s.imei ORDER BY s.enabled DESC,s.label,s.imei")->fetchAll();
+  $visible=\App\Services\PublicExperienceSettings::all()['visible'];
+  foreach($rows as &$row){if(!$visible['manager_name'])$row['manager_name']='';if(!$visible['manager_phone'])$row['manager_phone']='';}unset($row);
   echo json_encode(['stations'=>array_map([StationProfile::class,'publicFields'],$rows)],JSON_THROW_ON_ERROR|JSON_INVALID_UTF8_SUBSTITUTE);
  }
 }

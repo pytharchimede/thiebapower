@@ -21,7 +21,7 @@ final class PromotionController
  }
  public function offers():void {
   header('Cache-Control: no-store');$promotions=[];
-  if(PromotionService::enabled())$promotions=App::db()->query("SELECT p.code,p.discount_amount,p.ends_at FROM promotions p WHERE p.is_public=1 AND p.kind='campaign' AND p.enabled=1 AND p.starts_at<=UTC_TIMESTAMP() AND p.ends_at>UTC_TIMESTAMP() AND p.discount_amount<(SELECT rental_fee FROM pricing WHERE id=1) AND (SELECT COUNT(*) FROM rental_promotion_redemptions x WHERE x.promotion_id=p.id)<p.max_uses ORDER BY p.ends_at")->fetchAll();
+  if(PromotionService::enabled()&&\App\Services\PublicExperienceSettings::all()['visible']['offers'])$promotions=App::db()->query("SELECT p.code,p.discount_amount,p.ends_at FROM promotions p WHERE p.is_public=1 AND p.kind='campaign' AND p.enabled=1 AND p.starts_at<=UTC_TIMESTAMP() AND p.ends_at>UTC_TIMESTAMP() AND p.discount_amount<(SELECT rental_fee FROM pricing WHERE id=1) AND (SELECT COUNT(*) FROM rental_promotion_redemptions x WHERE x.promotion_id=p.id)<p.max_uses ORDER BY p.ends_at")->fetchAll();
   App::view('public_offers',compact('promotions'));
  }
  public function preview():void {

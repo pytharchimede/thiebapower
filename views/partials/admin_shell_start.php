@@ -3,6 +3,7 @@ use App\Services\Auth;
 $adminPath =
     parse_url($_SERVER["REQUEST_URI"] ?? "/admin", PHP_URL_PATH) ?: "/admin";
 $navItems = [
+    ["Interface publique et support", "/admin/public-settings", "system.manage", "public-settings"],
     ["Système", "/admin/system", "system.manage", "system"],
     ["Tableau de bord", "/admin", "dashboard.view", "overview"],
     ["Statistiques en direct", "/admin/statistics", "dashboard.view", "statistics"],
@@ -22,6 +23,7 @@ $navItems = [
     ["Comptes et droits", "/admin/users", "users.manage", "users"],
 ];
 $navIcons = [
+    "public-settings" => "fa-headset",
     "system" => "fa-server",
     "overview" => "fa-chart-pie",
     "statistics" => "fa-chart-line",

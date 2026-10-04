@@ -10,4 +10,4 @@
 </section>
 <div class="finder-layout"><section class="finder-map-panel" aria-label="Carte du réseau"><div class="station-map" id="station-directory-map" aria-label="Carte des stations"></div><div class="finder-legend"><span><i class="legend-dot is-active"></i>Activée et joignable</span><span><i class="legend-dot is-uncertain"></i>Connexion à vérifier</span><span><i class="legend-dot is-inactive"></i>Locations suspendues</span></div></section><section class="finder-results-panel" aria-label="Stations trouvées"><div class="finder-results-heading"><h2>Les stations</h2><span id="station-result-count">—</span></div><div class="station-directory-list" id="station-directory-list"></div></section></div>
 <p class="finder-footnote">Les disponibilités proviennent de la dernière lecture des terminaux. Les horaires sont ceux du lieu d’accueil ; vérifiez-les avant de vous déplacer.</p>
-</main></body></html>
+</main><?php require __DIR__.'/partials/public_support.php'; ?></body></html>

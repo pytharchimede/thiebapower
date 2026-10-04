@@ -8,4 +8,4 @@
 <div class="customer-toolbar"><h2>Mes locations</h2><button id="refresh-rentals" class="customer-button customer-button-secondary" type="button">Actualiser le suivi</button><p id="my-rentals-status" role="status" aria-live="polite">Chargement de votre suivi…</p></div>
 <div id="my-rentals-list" class="customer-rentals-list"></div>
 <footer class="customer-device-note"><div><strong>Votre historique reste sur cet appareil.</strong><p>Seules les locations commencées depuis ce navigateur sont retrouvées ici. Sur un téléphone partagé, effacez votre historique après utilisation.</p></div><button id="forget-rentals" type="button">Effacer sur cet appareil</button></footer>
-</main></body></html>
+</main><?php require __DIR__.'/partials/public_support.php'; ?></body></html>
