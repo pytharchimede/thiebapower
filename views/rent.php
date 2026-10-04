@@ -59,6 +59,7 @@
                 <p class="deposit-info"><?= (int)$prices['duration_minutes'] ?> minutes incluses, puis 5 minutes gratuites. Ensuite, le dépassement est calculé au prorata du tarif payé, arrondi au FCFA supérieur. <?= $depositEnabled ? 'Il est retenu sur la caution, sans jamais la dépasser. Le reste est remboursable.' : 'Sans caution, aucune retenue automatique ; merci de respecter le délai de retour.' ?></p>
                 <?php if ($checkoutEnabled): ?>
                     <form method="post" action="/rentals" id="rental-checkout">
+                        <?php if(\App\Services\PromotionService::enabled()): ?><label>Code promotionnel (facultatif)<input name="promotion_code" id="promotion-code" maxlength="40" pattern="[A-Za-z0-9_-]{3,40}" placeholder="Votre code"></label><input type="hidden" name="previous_token" id="previous-rental-token"><button type="button" id="preview-promotion" class="touch-button outline">Vérifier le code</button><p id="promotion-status" role="status">La remise s’applique au tarif de location ; la caution reste inchangée.</p><script src="/promotions.js?v=1" defer></script><?php endif; ?>
                         <input type="hidden" name="checkout_token" value="<?= bin2hex(random_bytes(16)) ?>"><input type="hidden" name="station_code" id="checkout-station" value="<?= htmlspecialchars($station['imei'],ENT_QUOTES,'UTF-8') ?>">
                         <input type="hidden" name="battery_id" id="checkout-battery">
                         <label class="input-label">Votre nom<input name="name" required maxlength="160"></label>
@@ -77,6 +78,6 @@
     <footer class="kiosk-footer"><span>THIEBAPOWER · Votre énergie, partout</span><span>Besoin d’aide ? Adressez-vous au personnel de la station.</span></footer>
 </div>
 <script>window.TB_PRICE = <?= (int) $prices['rental_fee'] ?>; window.TB_STATION = <?= json_encode($station['imei'],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>;</script>
-<script src="/app.js" defer></script>
+<script src="/app.js?v=20261004-1" defer></script>
 </body>
 </html>

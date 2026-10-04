@@ -110,6 +110,16 @@ final class SystemNotifications
                     "/admin/payout",
                 );
             }
+            $stations=$db->query("SELECT s.imei,s.label,s.status,s.last_seen_at,COALESCE(b.quantity,0) quantity FROM stations s LEFT JOIN (SELECT station_imei,COUNT(*) quantity FROM batteries WHERE status='available' AND slot_id IS NOT NULL AND battery_capacity>=70 GROUP BY station_imei) b ON b.station_imei=s.imei WHERE s.enabled=1")->fetchAll();
+            foreach($stations as $station){
+                if(IntegrationSettings::all()['heycharge']!=='normal')continue;
+                $offline=$station['status']!=='online'||!$station['last_seen_at']||strtotime($station['last_seen_at'].' UTC')<time()-600;
+                $type=$offline?'station.offline':((int)$station['quantity']<=2?'station.low_stock':null);
+                if(!$type)continue;$key=$type.':'.$station['imei'];$keys[]=$key;
+                self::publish($key,$type,'fleet.manage',$offline?'Station à vérifier':'Stock de batteries faible',($station['label']?:$station['imei']).($offline?' : lecture récente indisponible':' : '.$station['quantity'].' batterie(s) disponible(s)'),'/admin/stations/detail?imei='.rawurlencode($station['imei']));
+            }
+            $support=$db->query("SELECT t.id,r.reference FROM rental_support_requests t JOIN rentals r ON r.id=t.rental_id WHERE t.status='open'")->fetchAll();
+            foreach($support as $request){$key='support.open:'.$request['id'];$keys[]=$key;self::publish($key,'support.open','rentals.manage','Demande d’assistance',$request['reference'],'/admin/support');}
             $worker = $db
                 ->query(
                     "SELECT last_run_at FROM service_heartbeats WHERE name='heycharge'",
@@ -133,7 +143,7 @@ final class SystemNotifications
                 );
             }
             $sql =
-                "UPDATE system_notifications SET active=0,resolved_at=UTC_TIMESTAMP() WHERE active=1 AND type IN ('rental.overdue','rental.release_failed','rental.payment_review','refund.failed','worker.heycharge')";
+                "UPDATE system_notifications SET active=0,resolved_at=UTC_TIMESTAMP() WHERE active=1 AND type IN ('rental.overdue','rental.release_failed','rental.payment_review','refund.failed','worker.heycharge','station.offline','station.low_stock','support.open')";
             if ($keys) {
                 $sql .=
                     " AND event_key NOT IN (" .

@@ -21,3 +21,7 @@ En mode HeyCharge simulation, l'administrateur vérifie séparément le paiement
 Ne pas activer un essai financier réel sans avoir vérifié le bénéficiaire et le mode choisi. `PUBLIC_RENTALS_ENABLED` et `SIMULATED_RENTALS_ENABLED` contrôlent l'ouverture du kiosque pour le parcours de simulation ; les essais financiers de l'administration ont leurs propres indicateurs `PAYMENT_LAB_PAYIN_ENABLED` et `PAYMENT_LAB_PAYOUT_ENABLED`.
 
 Étiquettes : appliquer une seule fois `database/migrations/20260929_station_label_settings.sql`, puis copier `public/labels.js` et `public/style.css` dans la racine publique. La page `/admin/stations/labels` permet de régler les quatre marges en cm, de les enregistrer et de consulter le PDF réel avant impression. Les valeurs initiales sont 5 cm à gauche/droite et 7 cm en haut/bas. Le contenu est agrandi uniformément et centré dans la zone disponible sans déformer le QR code.
+
+## Stations et pilotage
+
+La gestion des noms, lieux et gérants, la carte publique, l’assistance, les locations à surveiller, la durée cumulée des batteries, la rentabilité et les offres sont décrites dans [le guide de mise en service](docs/station-experience.md). Appliquer `20261004_station_experience.sql` avant le nouveau code ; les remises sont désactivées par défaut.

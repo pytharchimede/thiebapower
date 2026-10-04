@@ -1,5 +1,5 @@
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scanner pour louer · Thiebapower</title><link rel="stylesheet" href="/style.css"></head>
-<body class="kiosk kiosk-qr-page"><header class="kiosk-header"><a class="kiosk-logo" href="/">THIEBA<span>POWER</span></a><span>Votre énergie, partout</span></header>
+<body class="kiosk kiosk-qr-page"><header class="kiosk-header"><a class="kiosk-logo" href="/">THIEBA<span>POWER</span></a><span>Votre énergie, partout</span><a href="/stations/map">Trouver une station</a><a href="/my-rentals">Mes locations</a></header>
 <main class="kiosk-qr-shell"><section class="kiosk-qr-copy"><span class="kiosk-tag">LIBRE SERVICE · CÔTE D’IVOIRE</span><h1>Votre énergie,<br><em>partout.</em></h1><p>Scannez le QR code avec votre téléphone. Choisissez une batterie, réglez votre location et récupérez-la dans la station.</p></section>
 <section class="kiosk-qr-panel" aria-label="QR code de location">
 <?php if($selected!==''&&$qr): ?>

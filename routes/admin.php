@@ -1,6 +1,18 @@
 <?php
 // Route map loaded by App\Core\App.
 return [
+    "GET /admin/promotions" => [\App\Controllers\PromotionController::class, "index"],
+    "POST /admin/promotions" => [\App\Controllers\PromotionController::class, "create"],
+    "POST /admin/promotions/toggle" => [\App\Controllers\PromotionController::class, "toggle"],
+    "GET /admin/stations/profitability" => [\App\Controllers\StationProfitabilityController::class, "index"],
+    "POST /admin/stations/investment" => [\App\Controllers\StationProfitabilityController::class, "investment"],
+    "POST /admin/stations/cost" => [\App\Controllers\StationProfitabilityController::class, "cost"],
+    "GET /admin/rentals/watch" => [\App\Controllers\ExperienceOperationsController::class, "watch"],
+    "GET /admin/support" => [\App\Controllers\ExperienceOperationsController::class, "support"],
+    "POST /admin/support/resolve" => [\App\Controllers\ExperienceOperationsController::class, "resolve"],
+    "GET /admin/stations/profile" => [\App\Controllers\StationExperienceController::class, "profile"],
+    "POST /admin/stations/profile" => [\App\Controllers\StationExperienceController::class, "save"],
+    "GET /admin/stations/places" => [\App\Controllers\StationExperienceController::class, "places"],
     "GET /admin/rentals/deposits" => [\App\Controllers\RentalOperationsController::class, "deposits"],
     "GET /admin/deposit-wallet/snapshot" => [\App\Controllers\DepositWalletController::class, "snapshot"],
     "GET /admin/deposit-wallet" => [\App\Controllers\DepositWalletController::class, "index"],

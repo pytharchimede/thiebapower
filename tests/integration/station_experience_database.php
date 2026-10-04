@@ -1,0 +1,31 @@
+<?php
+if(getenv('TEST_EXPERIENCE_DATABASE')!=='1'){echo "Experience DB integration skipped (set TEST_EXPERIENCE_DATABASE=1 on an empty test database).\n";exit(0);}
+$dsn=getenv('DB_DSN')?:'';
+if(!preg_match('/dbname=thiebapower_test_[a-z0-9_]+(?:;|$)/D',$dsn))throw new RuntimeException('Use a dedicated thiebapower_test_* database.');
+$db=new PDO($dsn,getenv('DB_USER')?:'',getenv('DB_PASSWORD')?:'',[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+if(!preg_match('/^thiebapower_test_[a-z0-9_]+$/D',(string)$db->query('SELECT DATABASE()')->fetchColumn()))throw new RuntimeException('Selected database is not a dedicated test database.');
+if((int)$db->query('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()')->fetchColumn()!==0)throw new RuntimeException('Test database must be empty; no existing table is deleted.');
+$root=dirname(__DIR__,2);$db->exec(file_get_contents($root.'/database/schema.sql'));
+$files=glob($root.'/database/migrations/*.sql');
+$order=['20260928_automatic_deposit_refunds.sql','20260928_v1_accounts_audit.sql','20260928_rental_checkout_lifecycle.sql','20260929_heycharge_terminals.sql','20260929_charging_batteries.sql','20260929_manual_battery_release.sql','20260929_manual_battery_reinsertion.sql','20260929_finance_cash.sql','20260929_payment_reservation_timeout.sql','20260929_rental_operations.sql','20260929_station_label_settings.sql','20260929_station_label_logo_settings.sql','20261003_checkout_notifications.sql','20261003_finance_billing.sql','20261003_refund_payment_channel.sql','20261003_deposit_wallet.sql','20261003_deposit_wallet_fee_defaults.sql','20261004_station_experience.sql'];
+foreach($order as $file){try{$db->exec(file_get_contents($root.'/database/migrations/'.$file));}catch(Throwable $e){throw new RuntimeException($file.': '.$e->getMessage());}}
+$db->exec(file_get_contents($root.'/database/migrations/20261004_station_experience.sql')); // idempotence
+$db->exec("INSERT INTO stations(imei,label,status,enabled,last_seen_at) VALUES('TEST01','Café test','online',1,UTC_TIMESTAMP()),('DISABLED','Privée','online',0,UTC_TIMESTAMP())");
+$db->exec("INSERT INTO batteries(id,serial,status,station_imei,slot_id,battery_capacity) VALUES(1,'BANK01','available','TEST01','1',100),(2,'BANK02','available','TEST01','2',95),(3,'BANK03','rented','TEST01','3',90)");
+$db->exec("INSERT INTO station_profiles(station_imei,address,latitude,longitude,manager_name,manager_phone,investment) VALUES('TEST01','Koumassi',5.3,-4.0,'SECRET MANAGER','0700000000',100000)");
+$hash=password_hash('local-test-password',PASSWORD_DEFAULT);$q=$db->prepare("INSERT INTO users(username,display_name,password_hash,role) VALUES('owner','Test Owner',?,'owner'),('auditor','Auditeur',?,'auditor')");$q->execute([$hash,$hash]);
+$db->exec("DELETE FROM role_permissions WHERE role='auditor'");$db->exec("INSERT IGNORE INTO role_permissions(role,permission) VALUES('auditor','stations.view'),('auditor','rentals.view'),('auditor','dashboard.view')");
+foreach(['returned','release_failed','active'] as $i=>$state){$token=str_pad((string)($i+1),32,'a');$ref='TBP-'.str_pad((string)($i+1),16,'0');$q=$db->prepare("INSERT INTO rentals(reference,battery_id,customer_name,customer_email,customer_phone,rental_fee,deposit,late_percent,duration_minutes,status,station_code,payment_environment,checkout_token,started_at,due_at,returned_at,billing_rule) VALUES(?,?,'Client Test','','0700000001',1000,5000,10,60,?,'TEST01','production',?,DATE_SUB(UTC_TIMESTAMP(),INTERVAL 2 HOUR),DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 HOUR),?,'prorata_grace5')");$q->execute([$ref,$i+1,$state,$token,$state==='returned'?gmdate('Y-m-d H:i:s',time()-1800):null]);$id=$db->lastInsertId();if($state==='release_failed')$db->exec("UPDATE rentals SET started_at=NULL,due_at=NULL WHERE id=$id");$db->prepare("INSERT INTO payment_notifications(rental_id,payload,received_at) VALUES(?,'{\"responsecode\":\"0\"}',UTC_TIMESTAMP()),(?,'{\"responsecode\":\"0\"}',UTC_TIMESTAMP())")->execute([$id,$id]);if($state==='returned')$db->exec("INSERT INTO deposit_settlements(rental_id,deduction,refund_amount,status,confirmed_at) VALUES($id,500,4500,'refunded',UTC_TIMESTAMP())");}
+$db->exec("INSERT INTO station_costs(request_token,station_imei,category,amount,description,occurred_on,created_by) VALUES('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','TEST01','maintenance',100,'Test',CURRENT_DATE(),1)");
+$db->exec("INSERT INTO promotions(code,kind,discount_amount,max_uses,starts_at,ends_at,enabled) VALUES('TEST200','campaign',200,2,DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY),DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 DAY),1)");
+echo "Fresh and repeated migrations OK\n";
+
+spl_autoload_register(static function($class){if(str_starts_with($class,'App\\'))require dirname(__DIR__,2).'/app/'.str_replace('\\','/',substr($class,4)).'.php';});
+use App\Services\StationProfitability;use App\Services\PromotionService;use App\Core\App;
+$assert=function($condition,$label){if(!$condition)throw new RuntimeException($label);};
+$db=App::db();$report=(new StationProfitability)->report();$row=array_values(array_filter($report,fn($r)=>$r['imei']==='TEST01'))[0];$assert((int)$row['revenue']===2000,'Payment retry deduplication and no-release exclusion');$assert((int)$row['deductions']===500&&$row['net']===2400,'Deposit excluded; cost and deductions included');
+$offer=(new PromotionService)->assess('TEST200','0700000001',1000);$assert($offer['fee']===800,'Promo preview');
+$db->beginTransaction();$offer=(new PromotionService)->assess('TEST200','0700000001',1000,'',true);(new PromotionService)->record(1,$offer,'0700000001');$db->commit();
+$reject=false;try{(new PromotionService)->assess('TEST200','+2250700000001',1000);}catch(InvalidArgumentException){$reject=true;}$assert($reject,'Same phone cannot reuse code');
+$before=$db->query('SELECT id,status,started_at,returned_at,rental_fee,deposit FROM rentals ORDER BY id')->fetchAll();\App\Services\SystemNotifications::refresh();$after=$db->query('SELECT id,status,started_at,returned_at,rental_fee,deposit FROM rentals ORDER BY id')->fetchAll();$assert($before===$after,'Alerts do not mutate rentals');
+echo "MariaDB integration: profitability, promotion locks, phone reuse, alert refresh OK\n";

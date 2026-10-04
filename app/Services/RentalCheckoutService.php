@@ -163,6 +163,10 @@ final class RentalCheckoutService
                 }
             }
             $price = $db->query("SELECT * FROM pricing WHERE id=1")->fetch();
+            $offer=null;$effectiveFee=(int)$price['rental_fee'];
+            if(PromotionService::enabled()&&trim((string)($input['promotion_code']??''))!==''){
+                try{$offer=(new PromotionService)->assess((string)$input['promotion_code'],$phone,$effectiveFee,(string)($input['previous_token']??''),true);$effectiveFee=$offer['fee'];}catch(\InvalidArgumentException $e){throw new CheckoutConflict($e->getMessage());}
+            }
             $reference = "TBP-" . strtoupper(bin2hex(random_bytes(8)));
             $db->prepare(
                 "INSERT INTO rentals(checkout_token,reference,battery_id,station_code,payment_environment,customer_name,customer_email,customer_phone,payment_channel,payout_channel,rental_fee,deposit,late_percent,duration_minutes,billing_rule,status,reservation_expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,'prorata_grace5','pending_payment',DATE_ADD(UTC_TIMESTAMP(),INTERVAL 2 MINUTE))",
@@ -177,7 +181,7 @@ final class RentalCheckoutService
                 $phone,
                 $depositEnabled ? $channel : null,
                 null, // Filled automatically after a verified payment; no separate refund choice.
-                (int) $price["rental_fee"],
+                $effectiveFee,
                 $depositEnabled
                     ? (int) ($battery["deposit_override"] ??
                         $price["default_deposit"])
@@ -185,6 +189,7 @@ final class RentalCheckoutService
                 (int) $price["late_percent"],
                 (int) $price["duration_minutes"],
             ]);
+            if($offer!==null)(new PromotionService)->record((int)$db->lastInsertId(),$offer,$phone);
             $db->prepare(
                 "UPDATE batteries SET status='reserved' WHERE id=?",
             )->execute([$batteryId]);

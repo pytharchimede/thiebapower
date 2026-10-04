@@ -58,6 +58,12 @@ final class AdminPresentationController
                     ) . " FCFA"
                 : "Tarif par défaut",
         ];
+        $q = App::db()->prepare("SELECT COUNT(started_at) total,COALESCE(SUM(CASE WHEN started_at IS NOT NULL THEN GREATEST(0,TIMESTAMPDIFF(SECOND,started_at,COALESCE(returned_at,UTC_TIMESTAMP()))) ELSE 0 END),0) seconds_used,COALESCE(SUM(status='release_failed'),0) incidents FROM rentals WHERE battery_id=?");
+        $q->execute([$id]);$lifetime=$q->fetch();
+        $fields['Locations avec sortie confirmée']=(int)$lifetime['total'];
+        $fields['Durée cumulée connue']=(int)floor((int)$lifetime['seconds_used']/3600).' h '.(int)floor(((int)$lifetime['seconds_used']%3600)/60).' min';
+        $fields['Sorties à vérifier dans l’historique']=(int)$lifetime['incidents'];
+        $fields['Période suivie']='Depuis les premières locations enregistrées ; utilisation en cours incluse.';
         $stationLink = !empty($battery["station_imei"])
             ? "/admin/stations/detail?imei=" .
                 rawurlencode($battery["station_imei"])

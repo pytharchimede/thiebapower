@@ -7,10 +7,14 @@ $navItems = [
     ["Tableau de bord", "/admin", "dashboard.view", "overview"],
     ["Statistiques en direct", "/admin/statistics", "dashboard.view", "statistics"],
     ["Locations", "/admin/rentals", "rentals.view", "rentals"],
+    ["À surveiller", "/admin/rentals/watch", "rentals.view", "watch"],
+    ["Assistance", "/admin/support", "rentals.view", "support"],
+    ["Rentabilité des stations", "/admin/stations/profitability", "finance.view", "profitability"],
     ["Caisse et finances", "/admin/finance", "finance.view", "finance"],
     ["Terminaux", "/admin/stations", "stations.view", "stations"],
     ["Étiquettes QR", "/admin/stations/labels", "labels.view", "labels"],
     ["Tarification", "/admin/pricing", "pricing.view", "pricing"],
+    ["Offres et fidélité", "/admin/promotions", "pricing.view", "promotions"],
     ["Batteries", "/admin/batteries", "batteries.view", "fleet"],
     ["Cautions et solde payout", "/admin/deposit-wallet", "finance.view", "wallet"],
     ["Reversements API", "/admin/payout", "payout.view", "payout"],
@@ -56,7 +60,7 @@ $isActive = static function (string $name, string $href) use (
             $adminPath !== "/admin/stations/labels",
         "labels" => $adminPath === "/admin/stations/labels",
         "fleet" => str_starts_with($adminPath, "/admin/batteries"),
-        "rentals" => str_starts_with($adminPath, "/admin/rentals"),
+        "rentals" => str_starts_with($adminPath, "/admin/rentals") && $adminPath !== "/admin/rentals/watch",
         default => $adminPath === $href,
     };
 };
@@ -75,7 +79,7 @@ $isActive = static function (string $name, string $href) use (
   <nav aria-label="Navigation principale">
    <?php foreach ($navItems as [$label, $href, $permission, $name]):
 
-       if (!Auth::can($permission, $adminUser)) {
+       if (!Auth::can($permission, $adminUser) || ($name==='profitability' && !Auth::can('stations.view',$adminUser))) {
            continue;
        }
        $active = $isActive($name, $href);
@@ -124,7 +128,7 @@ $isActive = static function (string $name, string $href) use (
   </header>
   <details class="admin-mobile-menu"><summary><span><i class="fa-solid fa-grip" aria-hidden="true"></i> Tous les espaces</span><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></summary><nav aria-label="Navigation mobile">
    <?php foreach ($navItems as [$label, $href, $permission, $name]):
-       if (!Auth::can($permission, $adminUser)) {
+       if (!Auth::can($permission, $adminUser) || ($name==='profitability' && !Auth::can('stations.view',$adminUser))) {
            continue;
        } ?><a href="<?= htmlspecialchars(
     $href,
