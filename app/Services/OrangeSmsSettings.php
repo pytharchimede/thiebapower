@@ -9,7 +9,7 @@ final class OrangeSmsSettings
     }
     public static function defaults(): array
     {
-        return ['enabled'=>false, 'mode'=>'simulation', 'client_id'=>'', 'secret_cipher'=>'',
+        return ['enabled'=>false, 'mode'=>'simulation', 'credentials_source'=>'auto', 'client_id'=>'', 'secret_cipher'=>'',
             'sender_address'=>'tel:+2250000', 'sender_mode'=>'default', 'sender_name'=>'', 'sender_approved'=>false];
     }
     public static function all(): array
@@ -42,16 +42,55 @@ final class OrangeSmsSettings
         if ($plain===false) throw new \RuntimeException('Impossible de déchiffrer le secret SMS. Vérifier la clé serveur.');
         return $plain;
     }
+    public static function basicCredentials(string $header): array
+    {
+        if (!preg_match('/^Basic\s+([A-Za-z0-9+\/=]+)$/iD',trim($header),$m)) throw new \InvalidArgumentException('En-tête Orange invalide : collez la valeur complète commençant par Basic.');
+        $decoded=base64_decode($m[1],true);
+        if ($decoded===false || !str_contains($decoded,':')) throw new \InvalidArgumentException('En-tête Basic invalide.');
+        [$id,$secret]=explode(':',$decoded,2);
+        self::validatePair($id,$secret);
+        return [$id,$secret];
+    }
+    private static function validatePair(string $id,string $secret): void
+    {
+        if ($id==='' || $secret==='' || strlen($id)>190 || strlen($secret)>4096 || preg_match('/[\x00-\x20\x7f:]/',$id) || preg_match('/[\x00-\x20\x7f]/',$secret)) {
+            throw new \InvalidArgumentException('Identifiants Orange incomplets ou contenant des espaces. Utilisez le Client ID et le Client Secret bruts, ou l’en-tête Basic fourni par Orange.');
+        }
+    }
+    public static function credentialsSource(array $s): string
+    {
+        $source=trim(App::env('ORANGE_SMS_CREDENTIALS_SOURCE',(string)($s['credentials_source']??'auto')));
+        if (!in_array($source,['auto','env','admin'],true)) throw new \InvalidArgumentException('ORANGE_SMS_CREDENTIALS_SOURCE doit valoir auto, env ou admin.');
+        if ($source!=='auto') return $source;
+        // Select one complete source. Never combine a stored ID with an environment secret.
+        if (trim(App::env('ORANGE_SMS_AUTHORIZATION_HEADER'))!=='' || (trim(App::env('ORANGE_SMS_CLIENT_ID'))!=='' && trim(App::env('ORANGE_SMS_CLIENT_SECRET'))!=='')) return 'env';
+        return 'admin';
+    }
     public static function credentials(array $s): array
     {
-        $id=$s['client_id']?:App::env('ORANGE_SMS_CLIENT_ID');
-        $secret=$s['secret_cipher']!==''?self::decrypt($s['secret_cipher']):App::env('ORANGE_SMS_CLIENT_SECRET');
-        if ($id==='' || $secret==='') throw new \InvalidArgumentException('Renseignez le Client ID et le Client Secret Orange.');
+        if (self::credentialsSource($s)==='env') {
+            $header=trim(App::env('ORANGE_SMS_AUTHORIZATION_HEADER'));
+            if ($header!=='') return self::basicCredentials($header);
+            $id=trim(App::env('ORANGE_SMS_CLIENT_ID'));
+            $secret=trim(App::env('ORANGE_SMS_CLIENT_SECRET'));
+        } else {
+            $id=trim((string)($s['client_id']??''));
+            $secret=($s['secret_cipher']??'')!==''?trim(self::decrypt($s['secret_cipher'])):'';
+        }
+        self::validatePair($id,$secret);
         return [$id,$secret];
+    }
+    public static function authenticationInfo(array $s): array
+    {
+        $source=self::credentialsSource($s);
+        $method=$source==='env' && trim(App::env('ORANGE_SMS_AUTHORIZATION_HEADER'))!==''?'basic_header':'client_credentials';
+        return ['credentials_source'=>$source,'authentication_method'=>$method];
     }
     public static function validate(array $input,array $old): array
     {
         $s=self::defaults(); $s['secret_cipher']=$old['secret_cipher'];
+        $s['credentials_source']=(string)($input['credentials_source']??($old['credentials_source']??'auto'));
+        if (!in_array($s['credentials_source'],['auto','env','admin'],true)) throw new \InvalidArgumentException('Source des identifiants invalide.');
         $s['enabled']=isset($input['enabled']); $s['mode']=(string)($input['mode']??'simulation');
         if (!in_array($s['mode'],['simulation','production'],true)) throw new \InvalidArgumentException('Mode SMS invalide.');
         $s['client_id']=trim((string)($input['client_id']??''));

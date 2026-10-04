@@ -45,11 +45,11 @@ final class OrangeSmsClient
     public function authenticate(): array
     {
         [$id,$secret]=OrangeSmsSettings::credentials($this->settings);
-        $r=$this->request('POST','/oauth/v3/token',['Authorization: Basic '.base64_encode($id.':'.$secret),'Content-Type: application/x-www-form-urlencoded'],'grant_type=client_credentials');
-        if ($r['http_status']!==200 || empty($r['data']['access_token'])) throw new \RuntimeException('Authentification Orange refusée (HTTP '.$r['http_status'].'). Vérifier les identifiants et la souscription SMS CI.');
+        $r=$this->request('POST','/oauth/v3/token',['Authorization: Basic '.base64_encode($id.':'.$secret),'Content-Type: application/x-www-form-urlencoded','Accept: application/json'],'grant_type=client_credentials');
+        if ($r['http_status']!==200 || empty($r['data']['access_token'])) throw new \RuntimeException('Authentification Orange refusée (HTTP '.$r['http_status'].'). Source : '.OrangeSmsSettings::authenticationInfo($this->settings)['credentials_source'].'. Vérifier les identifiants de cette source.');
         $this->token=(string)$r['data']['access_token'];
         $this->expires=microtime(true)+max(0,(int)($r['data']['expires_in']??3600)-60);
-        return ['http_status'=>200,'state'=>'authenticated','expires_in'=>(int)($r['data']['expires_in']??3600)];
+        return OrangeSmsSettings::authenticationInfo($this->settings)+['http_status'=>200,'state'=>'authenticated','expires_in'=>(int)($r['data']['expires_in']??3600)];
     }
     private function authorized(string $method,string $path,?array $body=null): array
     {

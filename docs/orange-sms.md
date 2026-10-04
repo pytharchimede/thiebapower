@@ -8,7 +8,7 @@ Administration : `/admin/sms`. Permissions séparées `sms.view`, `sms.manage`, 
 2. Copier `public/orange-sms.css` dans la racine publique comme les autres assets. Le contrôleur, les services, la vue et les routes restent dans le dépôt applicatif.
 3. PHP 8.2+, PDO MySQL, cURL et OpenSSL requis. Générer une clé avec `php -r 'echo base64_encode(random_bytes(32)), PHP_EOL;'` puis ajouter `ORANGE_SMS_ENCRYPTION_KEY=...` au fichier `.env` protégé. Ne pas publier cette clé ni la mettre dans Git ; la conserver avec les sauvegardes chiffrées. Une perte ou rotation de clé impose de ressaisir le secret.
 4. Dans Orange Developer, créer l’application, souscrire à SMS Côte d’Ivoire, obtenir Client ID et Client Secret, acheter un lot SMS. Choisir l’expéditeur par défaut (sans senderName) ou un nom personnalisé. Pour le mode personnalisé, faire approuver et autoriser le nom, puis confirmer l’approbation dans l’administration. L’adresse technique du pays est `tel:+2250000`, distincte du nom commercial.
-5. Saisir les identifiants dans l’administration (secret chiffré AES-256-GCM en base) ou dans `.env` via `ORANGE_SMS_CLIENT_ID` et `ORANGE_SMS_CLIENT_SECRET`. Les valeurs administratives priment ; un champ secret vide conserve le secret. Les identifiants `.env` restent côté serveur.
+5. Saisir les identifiants dans l’administration (secret chiffré AES-256-GCM en base) ou dans `.env` via `ORANGE_SMS_CLIENT_ID` et `ORANGE_SMS_CLIENT_SECRET`. La sélection automatique privilégie une source .env complète ; sinon elle utilise le couple administratif. Un champ secret vide conserve le secret administratif. Aucun mélange des deux sources. Les identifiants `.env` restent côté serveur.
 6. Enregistrer, tester l’authentification, consulter solde / consommation / achats. Ces contrôles sont réels, même en simulation. Activer en simulation pour vérifier les entrées sans crédit consommé. Passer ensuite en production et confirmer un SMS réel depuis le formulaire.
 
 ## Fonctionnement et limites
@@ -36,3 +36,11 @@ Sources : collection Postman fournie ; https://developer.orange.com/apis/sms/get
 `TECHNICAL_ADMIN_USERNAME` désigne le login exact autorisé pour `sms.manage`, `sms.test`, `integrations.manage`, `payout.send`. À défaut, `ADMIN_USERNAME` puis `admin` est utilisé. Cette restriction est vérifiée avant le rôle propriétaire et ne peut pas être contournée par les permissions de rôle. Le compte désigné doit aussi disposer des permissions ordinaires (le propriétaire les possède). Les autres fonctions métier gardent leurs droits habituels.
 
 Le résultat d’envoi affiche la référence Orange et, en cas de refus, un identifiant d’erreur fournisseur filtré. Aucun statut de livraison n’est déduit d’un HTTP 201.
+
+## Authentification : une source unique
+
+`ORANGE_SMS_CREDENTIALS_SOURCE=env` impose le fichier .env ; `admin` impose le couple chiffré de l’administration ; `auto` choisit un .env complet, sinon l’administration. La variable serveur prime sur le choix du formulaire. Dans la source env, `ORANGE_SMS_AUTHORIZATION_HEADER=Basic ...` prime sur le couple `ORANGE_SMS_CLIENT_ID` / `ORANGE_SMS_CLIENT_SECRET`. L’en-tête est validé, décodé et transmis selon le schéma Basic ; aucun jeton ou secret n’est affiché dans les résultats.
+
+`printf '%s' "$orange_auth" | php bin/configure_orange_sms_auth.php` permet de configurer le header reçu via saisie masquée dans le shell. Le script écrit atomiquement le .env et impose la source env, sans modifier la clé de chiffrement, l’activation des SMS ou le compte technique. Sauvegarder le .env avant exécution.
+
+`php bin/orange_sms_check.php --balance` teste le même client et les mêmes identifiants que le dashboard et consulte le solde, sans envoyer de SMS. Un en-tête Basic invalide provoque une erreur explicite ; aucun basculement automatique vers un autre compte n’est tenté en cas de 401.

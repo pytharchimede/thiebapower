@@ -12,9 +12,10 @@ final class OrangeSmsController
         try { $history=App::db()->query('SELECT * FROM orange_sms_logs ORDER BY id DESC LIMIT 50')->fetchAll(); }
         catch (\PDOException $e) { if ($e->getCode()!=='42S02') throw $e; $installed=false; }
         $result=$_SESSION['orange_sms_result']??null; unset($_SESSION['orange_sms_result']);
-        $secretConfigured=$settings['secret_cipher']!=='' || App::env('ORANGE_SMS_CLIENT_SECRET')!=='';
+        try { $authInfo=OrangeSmsSettings::authenticationInfo($settings); OrangeSmsSettings::credentials($settings); $secretConfigured=true; }
+        catch (\InvalidArgumentException|\RuntimeException $e) { $authInfo=['credentials_source'=>'incomplete','authentication_method'=>'incomplete']; $secretConfigured=false; }
         unset($settings['secret_cipher']);
-        App::view('orange_sms',compact('settings','error','history','installed','result','secretConfigured'));
+        App::view('orange_sms',compact('settings','error','history','installed','result','secretConfigured','authInfo'));
     }
     public function save(): void
     {
