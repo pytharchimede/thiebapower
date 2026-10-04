@@ -66,7 +66,7 @@ params={'csrf':csrf,'support_enabled':'on','whatsapp_enabled':'on','whatsapp':'+
 saved=owner.post(base+'/admin/public-settings',data=params,allow_redirects=False);assert saved.status_code==303,saved.text
 page=requests.get(base+'/stations/map');assert 'https://wa.me/2250700000000' in page.text and '<details class="public-support">' in page.text
 rows=requests.get(base+'/stations/snapshot').json()['stations'];assert not rows[0]['manager_name'] and not rows[0]['manager_phone']
-params={'csrf':csrf};params.update({'visible['+key+']':'on' for key in ['logo','slogan','locations','stations','intro','steps','illustration','price_teaser','payment_logos','offers','manager_name','manager_phone','hours','stock','summary','incidents','footer']})
+params={'csrf':csrf};params.update({'visible['+key+']':'on' for key in ['logo','slogan','locations','stations','intro','steps','illustration','price_teaser','payment_logos','offers','manager_name','manager_phone','hours','stock','summary','incidents','release','footer']})
 assert owner.post(base+'/admin/public-settings',data=params,allow_redirects=False).status_code==303
 assert '<details class="public-support">' not in requests.get(base+'/stations/map').text
 print('Public support HTTP: permission, CSRF, saved WhatsApp channel, hidden manager fields and disabled widget OK')
@@ -84,3 +84,7 @@ assert owner.get(base+'/admin/training/pdf?kind=proposals&id=1').text.startswith
 assert owner.get(base+'/admin/training/pdf?kind=proposals&id=9999').status_code==404
 payload.update({'id':'1','status':'approved'});assert owner.post(base+'/admin/training/proposals',data=payload,allow_redirects=False).status_code==303
 print('Training HTTP: access, CSRF, proposal create/edit, escaping and guide/proposal PDF exports OK')
+
+page=owner.get(base+'/admin/training');assert 'Thiebapower v1.0.0' in page.text and 'Développé par' in page.text and 'Success’Lab' in page.text
+page=requests.get(base+'/stations/map');assert 'Thiebapower v1.0.0' in page.text and 'Success’Lab' in page.text
+print('Release footer HTTP: public and dashboard version and developer credit OK')

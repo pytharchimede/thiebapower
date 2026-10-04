@@ -20,6 +20,7 @@ final class PublicExperienceSettings
   'stock'=>['Stock disponible','Dans les fiches et sur la carte','.finder-stock'],
   'summary'=>['Résumé des locations','Les compteurs dans Mes locations','.customer-summary'],
   'incidents'=>['Signalement des incidents','Le formulaire lié à une location','.customer-incident'],
+  'release'=>['Version et développeur','La mention discrète de version et de Success’Lab','.public-release-footer'],
   'footer'=>['Pied de page de marque','Le texte au bas de l’accueil et de la location','.kiosk-footer'],
  ];
  public static function defaults():array {return ['support_enabled'=>false,'whatsapp_enabled'=>false,'whatsapp'=>'','phone_enabled'=>false,'phone'=>'','email_enabled'=>false,'email'=>'','chat_enabled'=>false,'chat'=>'','message'=>'Bonjour, j’ai besoin d’aide pour ma location Thiebapower.','visible'=>array_fill_keys(array_keys(self::ELEMENTS),true)];}

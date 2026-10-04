@@ -1,0 +1,1 @@
+<footer class="release-footer <?= !empty($releaseAdmin)?'admin-release-footer':'public-release-footer' ?>"><span>Thiebapower v<?= \App\Services\ReleaseInfo::VERSION ?> · <?= \App\Services\ReleaseInfo::LABEL ?></span><span>Développé par <strong><?= \App\Services\ReleaseInfo::DEVELOPER ?></strong></span></footer>
