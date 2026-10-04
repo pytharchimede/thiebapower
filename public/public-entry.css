@@ -1,0 +1,64 @@
+/* Shared public entrance and checkout presentation. */
+.public-entry {background:#f3f7f5;color:#193e42;}
+.public-entry .public-header {background:#fff;color:#153e42;border-bottom:1px solid #dfeae5;padding:18px clamp(20px,4vw,64px);gap:20px;}
+.public-brand {display:flex;flex-direction:column;gap:3px;flex-shrink:0;}
+.public-entry .kiosk-logo {color:#123e42;font-size:23px;line-height:1.2;}
+.public-entry .kiosk-logo span {color:#b87323;}
+.public-slogan {font-size:12px;color:#6a807c;letter-spacing:.025em;}
+.public-nav {display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.public-nav a {display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 14px;min-height:44px;border:1px solid #dce8e1;border-radius:999px;background:#f5f9f6;color:#21564d;text-decoration:none;font-size:13px;font-weight:700;transition:background .15s,border-color .15s;}
+.public-nav a:hover {background:#e5f2e9;border-color:#99c3ae;}
+.public-nav svg {width:17px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;flex-shrink:0;}
+.public-home .kiosk-qr-shell {max-width:1180px;padding:46px 28px;gap:64px;}
+.public-home .kiosk-qr-copy {color:#163e40;}
+.public-home .kiosk-tag {color:#477365;display:inline-block;background:#e2efe6;border-radius:999px;padding:7px 12px;font-size:10px;}
+.public-home .kiosk-qr-copy h1 {font-size:clamp(38px,5vw,66px);margin:22px 0;line-height:1.08;}
+.public-home .kiosk-qr-copy h1 em {color:#16755d;}
+.public-home .kiosk-qr-copy p {color:#607972;font-size:17px;line-height:1.7;}
+.public-how {list-style:none;padding:0;display:grid;gap:13px;margin:28px 0 0;font-size:14px;font-weight:650;}
+.public-how li {display:flex;align-items:center;gap:12px;}
+.public-how span {display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#dfede3;color:#27634e;font-size:12px;}
+.public-home .kiosk-qr-panel {border:1px solid #deebe3;border-radius:26px;box-shadow:0 18px 55px #163f3310;padding:30px;min-width:0;}
+.public-home .kiosk-qr-panel h2 {font-size:30px;margin:8px 0 16px;}
+.public-home .kiosk-qr-art {max-width:280px;padding:10px;border:1px solid #e0ebe4;border-radius:16px;}
+.public-home .station-identity {font-weight:750;color:#24564a;overflow-wrap:anywhere;}
+.public-home .kiosk-qr-panel>p {font-size:13px;color:#647a73;}
+.public-home .kiosk-station-switch {display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:20px;}
+.public-home .kiosk-station-switch a {padding:8px 12px;border:1px solid #dce8e1;border-radius:10px;text-decoration:none;font-size:12px;overflow-wrap:anywhere;}
+.public-home .kiosk-station-switch a[aria-current] {background:#e5f3e9;color:#136048;border-color:#a6cdb6;font-weight:750;}
+.public-rent .kiosk-main {width:min(1180px,calc(100% - 48px));margin:32px auto;grid-template-columns:minmax(280px,.8fr) minmax(0,1.2fr);border:1px solid #dce8e1;border-radius:26px;overflow:hidden;box-shadow:0 16px 55px #193e4210;}
+.public-rent .kiosk-side {padding:42px 34px;min-height:560px;background:linear-gradient(145deg,#154f47,#103d46);}
+.public-rent .kiosk-side h1 {font-size:clamp(38px,4vw,54px);}
+.public-rent .kiosk-side>p {font-size:16px;}
+.public-rent .bank-illustration {margin:32px auto;width:110px;height:190px;}
+.public-rent .kiosk-workflow {padding:34px;}
+.public-rent .workflow-top {align-items:center;flex-wrap:wrap;}
+.public-rent .workflow-label {font-size:10px;overflow-wrap:anywhere;}
+.public-rent .progress {margin:16px 0 26px;}
+.public-rent .screen-icon {width:48px;height:48px;font-size:26px;border-radius:14px;margin-bottom:16px;}
+.public-rent .kiosk-screen h2 {font-size:30px;}
+.public-rent .battery-option {border-radius:16px;min-height:78px;}
+.public-rent .battery-option small {overflow-wrap:anywhere;}
+.public-rent .kiosk-screen input {background:#f8fbf9;border-color:#c9dad1;border-radius:12px;}
+.public-rent .touch-button {min-height:54px;font-size:15px;}
+.public-entry .kiosk-footer {font-size:12px;flex-wrap:wrap;gap:8px;padding:18px 28px;}
+@media(max-width:800px) {
+ .public-home .kiosk-qr-shell {grid-template-columns:1fr;gap:26px;padding:26px 20px;max-width:580px;}
+ .public-home .kiosk-qr-copy h1 {font-size:38px;margin:16px 0;}
+ .public-home .kiosk-qr-copy p {font-size:15px;margin-bottom:0;}
+ .public-how {gap:9px;margin-top:18px;font-size:13px;}
+}
+@media(max-width:760px) {
+ .public-rent .kiosk-main {width:calc(100% - 32px);margin:20px auto;display:block;border-radius:20px;}
+ .public-rent .kiosk-workflow {padding:26px 20px;}
+}
+@media(max-width:580px) {
+ .public-entry .public-header {flex-direction:column;align-items:stretch;padding:16px 20px;gap:14px;}
+ .public-brand {align-items:center;}
+ .public-entry .kiosk-logo {font-size:22px;}
+ .public-nav {display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+ .public-nav a {font-size:12px;padding:9px 8px;gap:6px;white-space:nowrap;}
+ .public-home .kiosk-qr-panel {padding:24px 18px;}
+ .public-home .kiosk-qr-panel h2 {font-size:26px;}
+}
+@media(prefers-reduced-motion:reduce) {.public-nav a {transition:none;}}

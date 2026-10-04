@@ -6,17 +6,15 @@
     <meta name="theme-color" content="#103d46">
     <title>Louer une batterie · Thiebapower</title>
     <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/public-entry.css?v=20261004-1">
 </head>
-<body class="kiosk">
+<body class="kiosk public-entry public-rent">
 <div class="kiosk-shell">
-    <header class="kiosk-header">
-        <a class="kiosk-logo" href="/">THIEBA<span>POWER</span></a>
-        <div class="kiosk-header-right"><span class="live-dot"></span> Votre énergie, partout</div>
-    </header>
+    <?php require __DIR__.'/partials/public_header.php'; ?>
     <main class="kiosk-main">
         <aside class="kiosk-side">
             <span class="kiosk-tag">LIBRE SERVICE · CÔTE D’IVOIRE</span>
-            <h1>Votre énergie,<br><em>partout.</em></h1>
+            <h1>Une batterie.<br><em>La journée continue.</em></h1>
             <p>Empruntez une batterie externe en quelques étapes et continuez votre journée l’esprit tranquille.</p>
             <div class="bank-illustration" aria-hidden="true"><div class="bank-cap"></div><span>ϟ</span><small>THIEBAPOWER</small></div>
             <div class="side-footer"><span>À partir de</span><strong><?= number_format((int) $prices['rental_fee'], 0, ',', ' ') ?> FCFA</strong><small>pour <?= (int) $prices['duration_minutes'] ?> minutes</small></div>
