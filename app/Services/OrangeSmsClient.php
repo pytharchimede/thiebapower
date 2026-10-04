@@ -17,6 +17,7 @@ final class OrangeSmsClient
     }
     public static function payload(array $s,string $phone,string $message): array
     {
+        OrangeSmsSettings::requireSender($s);
         $phone=self::phone($phone);
         if (trim($message)==='' || !preg_match('//u',$message) || preg_match('/[\x00-\x08\x0b\x0c\x0e-\x1f]/',$message)) throw new \InvalidArgumentException('Message vide ou invalide.');
         preg_match_all('/./us',$message,$characters);

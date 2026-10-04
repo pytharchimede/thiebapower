@@ -59,8 +59,15 @@ final class OrangeSmsSettings
         if ($s['sender_name']!=='' && !preg_match('/^[A-Za-z0-9]{1,11}$/D',$s['sender_name'])) throw new \InvalidArgumentException('Nom expéditeur : 1 à 11 caractères alphanumériques.');
         $s['sender_approved']=isset($input['sender_approved']);
         if ($s['sender_name']!=='' && !$s['sender_approved']) throw new \InvalidArgumentException('Confirmez l’approbation Orange du nom expéditeur ou laissez-le vide.');
+        self::requireSender($s);
         if ($s['enabled'] && $s['mode']==='production') self::credentials($s);
         return $s;
+    }
+    public static function requireSender(array $s): void
+    {
+        if ($s['mode']==='production' && ($s['sender_name']==='' || !$s['sender_approved'])) {
+            throw new \InvalidArgumentException('Orange CI exige un nom expéditeur approuvé et autorisé. Renseignez ce nom et confirmez son approbation avant de passer en production.');
+        }
     }
     public static function save(array $s): void
     {
