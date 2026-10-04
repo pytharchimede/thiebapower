@@ -1,5 +1,7 @@
 <?php
 declare(strict_types=1);
+// Test fixtures override every Orange setting; never use the production .env.
+foreach (['ORANGE_SMS_ENABLED'=>'1','ORANGE_SMS_CREDENTIALS_SOURCE'=>'auto','ORANGE_SMS_AUTHORIZATION_HEADER'=>'','ORANGE_SMS_CLIENT_ID'=>'','ORANGE_SMS_CLIENT_SECRET'=>'','ORANGE_SMS_ENCRYPTION_KEY'=>base64_encode(random_bytes(32)),'TECHNICAL_ADMIN_USERNAME'=>'test-admin'] as $key=>$value) putenv($key.'='.$value);
 spl_autoload_register(static function($c){ if(str_starts_with($c,'App\\'))require dirname(__DIR__).'/app/'.str_replace('\\','/',substr($c,4)).'.php'; });
 use App\Services\{OrangeSmsClient as Client,OrangeSmsSettings as Settings};
 function same($want,$got): void {if($want!==$got)throw new RuntimeException('Assertion failed: '.var_export($got,true));}
@@ -38,13 +40,13 @@ $payload=Client::payload($default,'0700000000','Test');same(false,array_key_exis
 $calls=[];same('accepted',(new Client($default,$transport))->send('0700000000','Test')['state']);same(false,array_key_exists('senderName',json_decode($calls[1][3],true)['outboundSMSMessageRequest']));
 rejects(fn()=>Settings::validate(['sender_mode'=>'invalid','sender_address'=>'tel:+2250000'],Settings::defaults()));
 putenv('ORANGE_SMS_ENABLED=0');$calls=[];rejects(fn()=>(new Client($default,$transport))->send('0700000000','Test'));same(0,count($calls));
-putenv('ORANGE_SMS_ENABLED=1');same(true,Settings::serverEnabled());putenv('ORANGE_SMS_ENABLED');
+putenv('ORANGE_SMS_ENABLED=1');same(true,Settings::serverEnabled());putenv('ORANGE_SMS_ENABLED=1');
 putenv('TECHNICAL_ADMIN_USERNAME=ulrich');
 same(true,\App\Services\Auth::can('sms.test',['role'=>'owner','username'=>'ulrich']));
 same(false,\App\Services\Auth::can('sms.test',['role'=>'owner','username'=>'client']));
 same(false,\App\Services\Auth::can('payout.send',['role'=>'owner','username'=>'client']));
 same(true,\App\Services\Auth::can('finance.withdraw',['role'=>'owner','username'=>'client']));
-putenv('TECHNICAL_ADMIN_USERNAME');
+putenv('TECHNICAL_ADMIN_USERNAME=test-admin');
 $partial=Settings::defaults();$partial['client_id']='stored-id';
 putenv('ORANGE_SMS_CLIENT_ID=env-id');putenv('ORANGE_SMS_CLIENT_SECRET=env-secret');
 same(['env-id','env-secret'],Settings::credentials($partial));
@@ -54,11 +56,11 @@ putenv('ORANGE_SMS_CREDENTIALS_SOURCE=env');same(['env-id','env-secret'],Setting
 putenv('ORANGE_SMS_AUTHORIZATION_HEADER=Basic '.base64_encode('header-id:header-secret'));
 same(['header-id','header-secret'],Settings::credentials($partial));same('basic_header',Settings::authenticationInfo($partial)['authentication_method']);
 $calls=[];(new Client($default,$transport))->authenticate();same('Authorization: Basic '.base64_encode('header-id:header-secret'),$calls[0][2][0]);
-putenv('ORANGE_SMS_AUTHORIZATION_HEADER');putenv('ORANGE_SMS_CLIENT_SECRET');
+putenv('ORANGE_SMS_AUTHORIZATION_HEADER=');putenv('ORANGE_SMS_CLIENT_SECRET=');
 rejects(fn()=>Settings::credentials($partial));
-putenv('ORANGE_SMS_CREDENTIALS_SOURCE');
+putenv('ORANGE_SMS_CREDENTIALS_SOURCE=auto');
 same(['stored-id','stored-secret'],Settings::credentials($partial));
 $partial['secret_cipher']='';rejects(fn()=>Settings::credentials($partial));
 foreach(['Bearer token','Basic invalid','Basic '.base64_encode('id:'),'Basic '.base64_encode('id:bad secret')] as $bad)rejects(fn()=>Settings::basicCredentials($bad));
-putenv('ORANGE_SMS_CLIENT_ID');
+putenv('ORANGE_SMS_CLIENT_ID=');
 echo "Orange SMS: validation, encryption, simulation, OAuth, endpoints, accepted vs delivered, no retry and monitoring OK\n";
