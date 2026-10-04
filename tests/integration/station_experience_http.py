@@ -30,7 +30,7 @@ for _ in range(30):
   if requests.get(base+'/stations/map').status_code==200: break
  except requests.ConnectionError: time.sleep(.1)
 public=requests.get(base+'/stations/snapshot');assert public.status_code==200,public.text
-rows=public.json()['stations'];assert len(rows)==1 and rows[0]['imei']=='TEST01';assert 'SECRET' not in public.text and '0700000000' not in public.text and 'investment' not in public.text
+rows=public.json()['stations'];assert len(rows)==2 and rows[0]['imei']=='TEST01';assert rows[0]['manager_name']=='SECRET MANAGER' and rows[0]['manager_phone']=='0700000000';assert rows[1]['enabled'] is False;assert 'manager_email' not in public.text and 'manager_notes' not in public.text and 'investment' not in public.text
 assert requests.get(base+'/my-rentals/snapshot').status_code==404
 unknown=requests.post(base+'/my-rentals/snapshot',json={'tokens':['b'*32]});assert unknown.json()=={'rentals':[]}
 token='1'+'a'*31

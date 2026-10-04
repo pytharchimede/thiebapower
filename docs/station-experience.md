@@ -19,7 +19,7 @@ Leaflet 1.9.4 est fourni localement avec sa licence. Les fonds de carte utilisen
 
 `PHOTON_API_URL` permet de remplacer le serveur public par une instance HTTPS dédiée. Le serveur public ne fournit pas de garantie de disponibilité ; pour une exploitation à volume élevé, configurer un service dédié. L’autocomplétion n’utilise pas le serveur public Nominatim. Références : [Photon](https://github.com/komoot/photon/blob/master/docs/api-v1.md), [usage des tuiles OSM](https://operations.osmfoundation.org/policies/tiles/).
 
-Les noms, adresses, horaires et positions sont publics pour les stations activées. Les contacts et notes du gérant, les investissements et coûts restent administratifs. Une lecture de stock datant de plus de dix minutes, ou une station hors ligne, affiche « disponibilité à vérifier ».
+Les noms, adresses, horaires, positions, noms et téléphones des gérants sont publics. Les stations suspendues apparaissent en gris, sans bouton de location. L’email et les notes du gérant, les investissements et coûts restent administratifs. Une lecture de stock datant de plus de dix minutes, ou une station hors ligne, affiche « disponibilité à vérifier ».
 
 ## Droits et sécurité
 
@@ -54,3 +54,7 @@ Les tests DOM n’ont pas été complétés par un rendu Chromium : le télécha
 `php tests/station_experience.php` et `node tests/station_experience_dom.js` (avec jsdom) sont autonomes. Pour la base, créer une **base vide** dont le nom commence par `thiebapower_test_`, puis lancer `TEST_EXPERIENCE_DATABASE=1 PROMOTIONS_ENABLED=1 php tests/integration/station_experience_database.php` avec `DB_DSN`, `DB_USER` et `DB_PASSWORD` dirigés vers cette base. Le test refuse une base existante contenant des tables et ne supprime aucune base.
 
 Le test HTTP `python3 tests/integration/station_experience_http.py` vise exclusivement un serveur local (`TEST_BASE_URL`, port 8090 par défaut), préparé avec cette fixture. Il vérifie les comptes de test, les refus d’accès et les nouvelles routes.
+
+## Refonte de la carte publique
+
+Recherche sur toute la largeur, présentation adaptée aux mobiles, fiches détaillées dans la liste et les bulles de carte, liens d’appel au gérant et actualisation manuelle. Marqueur vert : locations activées et lecture récente ; orange : locations activées mais connexion à vérifier ; gris : locations suspendues. Le filtrage ignore la casse et les accents. Cette refonte ne nécessite pas de nouvelle migration. Copier `station-experience.css` et `station-directory.js` dans la racine publique.

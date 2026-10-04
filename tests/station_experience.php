@@ -10,10 +10,12 @@ $n=0;$assert=static function(bool $condition,string $label)use(&$n):void{if(!$co
 $profile=StationProfile::validate(['label'=>'Thieba Power · Koumassi','latitude'=>'0','longitude'=>'0','manager_email'=>'gerant@example.ci','manager_name'=>'Amani']);
 $assert($profile['latitude']===0.0&&$profile['longitude']===0.0,'Zero coordinates are valid');
 foreach([['label'=>''],['label'=>'Station','latitude'=>5],['label'=>'Station','latitude'=>91,'longitude'=>0],['label'=>'Station','latitude'=>0,'longitude'=>181],['label'=>'Station','latitude'=>[], 'longitude'=>0],['label'=>'Station','manager_email'=>'bad'],['label'=>str_repeat('x',161)]] as $bad){$rejected=false;try{StationProfile::validate($bad);}catch(InvalidArgumentException){$rejected=true;}$assert($rejected,'Invalid station profile rejected');}
-$public=StationProfile::publicFields(['imei'=>'A','label'=>'Lieu','status'=>'online','last_seen_at'=>gmdate('Y-m-d H:i:s'),'available_count'=>3,'manager_name'=>'Secret','manager_phone'=>'0700000000','investment'=>100000]);
-$assert(!isset($public['manager_name'])&&!isset($public['manager_phone'])&&!isset($public['investment']),'No manager or financial data public');
+$public=StationProfile::publicFields(['imei'=>'A','label'=>'Lieu','status'=>'online','last_seen_at'=>gmdate('Y-m-d H:i:s'),'available_count'=>3,'manager_name'=>'Secret','manager_phone'=>'0700000000','manager_email'=>'secret@example.com','manager_notes'=>'PRIVATE NOTE','investment'=>100000]);
+$assert($public['manager_name']==='Secret'&&$public['manager_phone']==='0700000000','Public manager contact explicitly requested');
+$assert(!isset($public['manager_email'])&&!isset($public['manager_notes'])&&!isset($public['investment']),'Private email, notes and financial data excluded');
 $assert($public['available']===3,'Fresh stock published');
 $public=StationProfile::publicFields(['imei'=>'A','label'=>'Lieu','status'=>'offline','last_seen_at'=>gmdate('Y-m-d H:i:s'),'available_count'=>3]);$assert($public['available']===0,'Offline stock is not advertised');
+$disabled=StationProfile::publicFields(['imei'=>'OFF','label'=>'Suspendue','enabled'=>0,'status'=>'online','last_seen_at'=>gmdate('Y-m-d H:i:s'),'available_count'=>9]);$assert(!$disabled['enabled']&&$disabled['available']===0,'Suspended station never advertises rentable stock');
 $places=PlaceSearch::normalize(['features'=>[['properties'=>['name'=>'Cap Sud','city'=>'Abidjan','country'=>"Côte d’Ivoire"],'geometry'=>['coordinates'=>[-4.0,5.3]]],['geometry'=>['coordinates'=>[400,5]]]]]);$assert(count($places)===1&&$places[0]['latitude']===5.3,'Photon GeoJSON coordinates and filtering');
 $now=strtotime('2026-10-04 12:00:00 UTC');
 $assert(count(RentalWatch::reasons(['status'=>'returned'], $now))===0,'Normal return is not an incident');

@@ -23,10 +23,12 @@ final class StationProfile
   return $data;
  }
  public static function publicFields(array $row):array {
+  $enabled=(int)($row['enabled']??1)===1;
   $fresh=!empty($row['last_seen_at'])&&strtotime($row['last_seen_at'].' UTC')>=time()-600&&$row['status']==='online';
   return ['imei'=>$row['imei'],'label'=>$row['label']?:$row['imei'],'address'=>$row['address']??'',
    'latitude'=>isset($row['latitude'])?(float)$row['latitude']:null,'longitude'=>isset($row['longitude'])?(float)$row['longitude']:null,
    'opening_hours'=>$row['opening_hours']??'','venue_type'=>$row['venue_type']??'',
-   'available'=>$fresh?(int)($row['available_count']??0):0,'fresh'=>$fresh];
+   'enabled'=>$enabled,'manager_name'=>$row['manager_name']??'','manager_phone'=>$row['manager_phone']??'',
+   'available'=>$enabled&&$fresh?(int)($row['available_count']??0):0,'fresh'=>$fresh];
  }
 }
