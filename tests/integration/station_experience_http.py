@@ -116,3 +116,15 @@ preview=requests.post(base+'/promotions/preview',json={'code':'TEST200','phone':
 assert preview.status_code==422,preview.text
 assert 'indisponible' in preview.json()['error']
 print('Promotion HTTP: independent activation/public visibility, CSRF, unused deletion, used inactive archive and archived preview rejection OK')
+page=owner.get(base+'/admin/promotions?archived=1');csrf=re.search(r'name="csrf" value="([^"]+)"',page.text).group(1)
+assert owner.post(base+'/admin/promotions/limits',data={'csrf':csrf,'id':id,'max_uses':5,'max_uses_per_phone':2}).status_code==409
+payload={'csrf':csrf,'code':'LIMITS200','kind':'campaign','discount':200,'max_uses':10,'max_uses_per_phone':3,'minimum_completed':0,'start':'2020-01-01','end':'2099-12-31','enabled':'on'}
+assert owner.post(base+'/admin/promotions',data=payload,allow_redirects=False).status_code==303
+page=owner.get(base+'/admin/promotions');card=re.search(r'<article class="promo-card">(?:(?!</article>).)*LIMITS200(?:(?!</article>).)*</article>',page.text,re.S).group(0);id=re.search(r'name="id" value="(\d+)"',card).group(1)
+assert '3 utilisation(s) autorisée(s) par numéro' in card
+assert owner.post(base+'/admin/promotions/limits',data={'csrf':'bad','id':id,'max_uses':5,'max_uses_per_phone':2}).status_code==403
+assert reader.post(base+'/admin/promotions/limits',data={'csrf':csrf,'id':id,'max_uses':5,'max_uses_per_phone':2}).status_code==403
+assert owner.post(base+'/admin/promotions/limits',data={'csrf':csrf,'id':id,'max_uses':5,'max_uses_per_phone':0}).status_code==422
+assert owner.post(base+'/admin/promotions/limits',data={'csrf':csrf,'id':id,'max_uses':5,'max_uses_per_phone':2},allow_redirects=False).status_code==303
+page=owner.get(base+'/admin/promotions');card=re.search(r'<article class="promo-card">(?:(?!</article>).)*LIMITS200(?:(?!</article>).)*</article>',page.text,re.S).group(0);assert '2 utilisation(s) autorisée(s) par numéro' in card
+print('Promotion limit settings HTTP: create, edit, positive bounds, archive rejection, CSRF and permissions OK')

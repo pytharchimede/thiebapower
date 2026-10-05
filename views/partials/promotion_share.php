@@ -1,6 +1,6 @@
 <?php
 $shareUrl=rtrim(\App\Core\App::env('APP_URL','https://thiebapower.com'),'/').'/stations/map';
-$shareText='Thiebapower : '.$p['discount_amount'].' FCFA de remise sur votre caution avec le code '.$p['code'].'. Valable jusqu’au '.$end.'. Saisissez le code avant le paiement. Tarif de location inchangé, caution réellement payée remboursable, une utilisation par numéro, dans la limite des utilisations disponibles.';
+$shareText='Thiebapower : '.$p['discount_amount'].' FCFA de remise sur votre caution avec le code '.$p['code'].'. Valable jusqu’au '.$end.'. Saisissez le code avant le paiement. Tarif de location inchangé, caution réellement payée remboursable, '.(int)$p['max_uses_per_phone'].' utilisation(s) par numéro, dans la limite des utilisations disponibles.';
 if($p['kind']==='loyalty')$shareText.=' Offre fidélité : '.$p['minimum_completed'].' locations terminées requises sur le même navigateur.';
 if($p['kind']==='referral')$shareText.=' Offre réservée à un proche du parrain.';
 ?>

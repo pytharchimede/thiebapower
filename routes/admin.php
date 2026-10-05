@@ -11,6 +11,7 @@ return [
  "GET /admin/training/pdf" => [\App\Controllers\ClientTrainingController::class,"export"],
  "GET /admin/public-settings" => [\App\Controllers\PublicExperienceSettingsController::class,"index"],
  "POST /admin/public-settings" => [\App\Controllers\PublicExperienceSettingsController::class,"save"],
+    "POST /admin/promotions/limits" => [\App\Controllers\PromotionController::class, "limits"],
     "POST /admin/promotions/remove" => [\App\Controllers\PromotionController::class, "remove"],
     "POST /admin/promotions/visibility" => [\App\Controllers\PromotionController::class, "visibility"],
     "GET /admin/promotions" => [\App\Controllers\PromotionController::class, "index"],

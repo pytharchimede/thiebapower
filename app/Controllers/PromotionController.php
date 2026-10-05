@@ -6,13 +6,22 @@ use App\Services\Audit;
 use App\Services\PromotionService;
 final class PromotionController
 {
- public function index():void {Auth::requirePermission('pricing.view');$archivedView=($_GET['archived']??'')==='1';$promotions=App::db()->query('SELECT p.*,COUNT(x.rental_id) uses FROM promotions p LEFT JOIN rental_promotion_redemptions x ON x.promotion_id=p.id WHERE p.archived_at IS '.($archivedView?'NOT NULL':'NULL').' GROUP BY p.id ORDER BY p.id DESC')->fetchAll();$enabled=PromotionService::enabled();App::view('promotions',compact('promotions','enabled','archivedView'));}
+ public function index():void {Auth::requirePermission('pricing.view');$archivedView=($_GET['archived']??'')==='1';$promotions=App::db()->query('SELECT p.*,(SELECT COUNT(*) FROM rental_promotion_redemptions x WHERE x.promotion_id=p.id) recorded_uses,(SELECT COUNT(*) FROM rental_promotion_redemptions x JOIN rentals r ON r.id=x.rental_id WHERE x.promotion_id=p.id AND '.PromotionService::usageCondition().') uses FROM promotions p WHERE p.archived_at IS '.($archivedView?'NOT NULL':'NULL').' ORDER BY p.id DESC')->fetchAll();$enabled=PromotionService::enabled();App::view('promotions',compact('promotions','enabled','archivedView'));}
  public function create():void {
-  Auth::requirePermission('pricing.manage',true);$code=strtoupper(trim((string)($_POST['code']??'')));$kind=(string)($_POST['kind']??'');$discount=filter_var($_POST['discount']??null,FILTER_VALIDATE_INT);$uses=filter_var($_POST['max_uses']??null,FILTER_VALIDATE_INT);$min=filter_var($_POST['minimum_completed']??0,FILTER_VALIDATE_INT);
+  Auth::requirePermission('pricing.manage',true);$code=strtoupper(trim((string)($_POST['code']??'')));$kind=(string)($_POST['kind']??'');$discount=filter_var($_POST['discount']??null,FILTER_VALIDATE_INT);$uses=filter_var($_POST['max_uses']??null,FILTER_VALIDATE_INT);$min=filter_var($_POST['minimum_completed']??0,FILTER_VALIDATE_INT);$perPhone=filter_var($_POST['max_uses_per_phone']??1,FILTER_VALIDATE_INT);
   $start=(string)($_POST['start']??'');$end=(string)($_POST['end']??'');$a=\DateTimeImmutable::createFromFormat('!Y-m-d',$start);$b=\DateTimeImmutable::createFromFormat('!Y-m-d',$end);
-  if(!preg_match('/^[A-Z0-9_-]{3,40}$/D',$code)||!in_array($kind,['campaign','loyalty'],true)||$discount===false||$discount<1||$discount>1000000||$uses===false||$uses<1||$uses>100000||$min===false||$min<0||$min>10000||!$a||!$b||$a->format('Y-m-d')!==$start||$b->format('Y-m-d')!==$end||$b<$a){http_response_code(422);echo 'Offre invalide';return;}
+  if(!preg_match('/^[A-Z0-9_-]{3,40}$/D',$code)||!in_array($kind,['campaign','loyalty'],true)||$discount===false||$discount<1||$discount>1000000||$uses===false||$uses<1||$uses>100000||$perPhone===false||$perPhone<1||$perPhone>100000||$min===false||$min<0||$min>10000||!$a||!$b||$a->format('Y-m-d')!==$start||$b->format('Y-m-d')!==$end||$b<$a){http_response_code(422);echo 'Offre invalide';return;}
   $db=App::db();$q=$db->prepare('SELECT 1 FROM promotions WHERE code=?');$q->execute([$code]);if($q->fetchColumn()){http_response_code(409);echo 'Ce code existe déjà.';return;}
-  $db->prepare('INSERT INTO promotions(code,kind,discount_amount,minimum_completed,max_uses,starts_at,ends_at,enabled,is_public,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)')->execute([$code,$kind,$discount,$min,$uses,$start.' 00:00:00',$b->modify('+1 day')->format('Y-m-d').' 00:00:00',isset($_POST['enabled'])?1:0,$kind==='campaign'&&isset($_POST['is_public'])?1:0,Auth::id()]);Audit::event('promotion.created','promotion',$code);App::redirect('/admin/promotions');
+  $db->prepare('INSERT INTO promotions(code,kind,discount_amount,minimum_completed,max_uses,max_uses_per_phone,starts_at,ends_at,enabled,is_public,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)')->execute([$code,$kind,$discount,$min,$uses,$perPhone,$start.' 00:00:00',$b->modify('+1 day')->format('Y-m-d').' 00:00:00',isset($_POST['enabled'])?1:0,$kind==='campaign'&&isset($_POST['is_public'])?1:0,Auth::id()]);Audit::event('promotion.created','promotion',$code);App::redirect('/admin/promotions');
+ }
+ public function limits():void {
+  Auth::requirePermission('pricing.manage',true);$id=filter_var($_POST['id']??0,FILTER_VALIDATE_INT);$total=filter_var($_POST['max_uses']??null,FILTER_VALIDATE_INT);$phone=filter_var($_POST['max_uses_per_phone']??null,FILTER_VALIDATE_INT);
+  if(!$id||$total===false||$total<1||$total>100000||$phone===false||$phone<1||$phone>100000){http_response_code(422);echo 'Limites invalides.';return;}
+  $db=App::db();$db->beginTransaction();try{
+   $q=$db->prepare('SELECT id FROM promotions WHERE id=? AND archived_at IS NULL FOR UPDATE');$q->execute([$id]);if(!$q->fetchColumn()){$db->rollBack();http_response_code(409);echo 'Code indisponible.';return;}
+   $db->prepare('UPDATE promotions SET max_uses=?,max_uses_per_phone=? WHERE id=?')->execute([$total,$phone,$id]);$db->commit();
+  }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+  Audit::event('promotion.limits','promotion',(string)$id,['max_uses'=>$total,'max_uses_per_phone'=>$phone]);App::redirect('/admin/promotions');
  }
  public function toggle():void {Auth::requirePermission('pricing.manage',true);$id=filter_var($_POST['id']??0,FILTER_VALIDATE_INT);$enabled=($_POST['enabled']??'')==='1'?1:0;App::db()->prepare('UPDATE promotions SET enabled=? WHERE id=? AND archived_at IS NULL')->execute([$enabled,$id]);Audit::event('promotion.toggled','promotion',(string)$id,['enabled'=>$enabled]);App::redirect('/admin/promotions');}
  public function visibility():void {
@@ -35,7 +44,7 @@ final class PromotionController
  }
  public function offers():void {
   header('Cache-Control: no-store');$promotions=[];
-  if(PromotionService::enabled()&&\App\Services\PublicExperienceSettings::all()['visible']['offers'])$promotions=App::db()->query("SELECT p.code,p.discount_amount,p.ends_at FROM promotions p WHERE p.archived_at IS NULL AND p.is_public=1 AND p.kind='campaign' AND p.enabled=1 AND p.starts_at<=UTC_TIMESTAMP() AND p.ends_at>UTC_TIMESTAMP() AND (SELECT deposit_enabled FROM pricing WHERE id=1)=1 AND (SELECT COUNT(*) FROM rental_promotion_redemptions x WHERE x.promotion_id=p.id)<p.max_uses ORDER BY p.ends_at")->fetchAll();
+  if(PromotionService::enabled()&&\App\Services\PublicExperienceSettings::all()['visible']['offers'])$promotions=App::db()->query("SELECT p.code,p.discount_amount,p.ends_at,p.max_uses_per_phone FROM promotions p WHERE p.archived_at IS NULL AND p.is_public=1 AND p.kind='campaign' AND p.enabled=1 AND p.starts_at<=UTC_TIMESTAMP() AND p.ends_at>UTC_TIMESTAMP() AND (SELECT deposit_enabled FROM pricing WHERE id=1)=1 AND (SELECT COUNT(*) FROM rental_promotion_redemptions x JOIN rentals r ON r.id=x.rental_id WHERE x.promotion_id=p.id AND ".PromotionService::usageCondition().")<p.max_uses ORDER BY p.ends_at")->fetchAll();
   App::view('public_offers',compact('promotions'));
  }
  public function preview():void {

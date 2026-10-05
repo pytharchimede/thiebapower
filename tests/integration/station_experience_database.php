@@ -7,7 +7,7 @@ if(!preg_match('/^thiebapower_test_[a-z0-9_]+$/D',(string)$db->query('SELECT DAT
 if((int)$db->query('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()')->fetchColumn()!==0)throw new RuntimeException('Test database must be empty; no existing table is deleted.');
 $root=dirname(__DIR__,2);$db->exec(file_get_contents($root.'/database/schema.sql'));
 $files=glob($root.'/database/migrations/*.sql');
-$order=['20260928_automatic_deposit_refunds.sql','20260928_v1_accounts_audit.sql','20260928_rental_checkout_lifecycle.sql','20260929_heycharge_terminals.sql','20260929_charging_batteries.sql','20260929_manual_battery_release.sql','20260929_manual_battery_reinsertion.sql','20260929_finance_cash.sql','20260929_payment_reservation_timeout.sql','20260929_rental_operations.sql','20260929_station_label_settings.sql','20260929_station_label_logo_settings.sql','20261003_checkout_notifications.sql','20261003_finance_billing.sql','20261003_refund_payment_channel.sql','20261003_deposit_wallet.sql','20261003_deposit_wallet_fee_defaults.sql','20261004_station_experience.sql','20261004_public_promotions.sql','20261004_public_support.sql','20261004_training_roadmap.sql','20261005_configurable_grace.sql','20261005_deposit_promotions.sql','20261005_promotion_archive.sql'];
+$order=['20260928_automatic_deposit_refunds.sql','20260928_v1_accounts_audit.sql','20260928_rental_checkout_lifecycle.sql','20260929_heycharge_terminals.sql','20260929_charging_batteries.sql','20260929_manual_battery_release.sql','20260929_manual_battery_reinsertion.sql','20260929_finance_cash.sql','20260929_rental_operations.sql','20260929_payment_reservation_timeout.sql','20260929_station_label_settings.sql','20260929_station_label_logo_settings.sql','20261003_checkout_notifications.sql','20261003_finance_billing.sql','20261003_refund_payment_channel.sql','20261003_deposit_wallet.sql','20261003_deposit_wallet_fee_defaults.sql','20261004_station_experience.sql','20261004_public_promotions.sql','20261004_public_support.sql','20261004_training_roadmap.sql','20261005_configurable_grace.sql','20261005_deposit_promotions.sql','20261005_promotion_archive.sql','20261005_promotion_retry_limits.sql'];
 foreach($order as $file){try{$db->exec(file_get_contents($root.'/database/migrations/'.$file));}catch(Throwable $e){throw new RuntimeException($file.': '.$e->getMessage());}}
 $db->exec(file_get_contents($root.'/database/migrations/20261004_station_experience.sql')); // idempotence
 $db->exec(file_get_contents($root.'/database/migrations/20261004_public_promotions.sql'));
@@ -48,3 +48,32 @@ $db->exec("UPDATE pricing SET grace_minutes=10 WHERE id=1");
 $assert((int)$db->query("SELECT grace_minutes FROM rentals LIMIT 1")->fetchColumn()===5,"Existing rental grace is frozen");
 $db->exec("UPDATE pricing SET grace_minutes=5 WHERE id=1");
 echo "Grace migration: idempotent and existing rentals retain five minutes OK\n";
+
+// Abandoned attempts keep their history but release coupon quota without a cron.
+$db->exec(file_get_contents($root.'/database/migrations/20261005_promotion_retry_limits.sql'));
+$db->exec(file_get_contents($root.'/database/migrations/20261005_promotion_retry_limits.sql'));
+$db->exec("INSERT INTO promotions(code,kind,discount_amount,max_uses,max_uses_per_phone,starts_at,ends_at,enabled,is_public) VALUES('RETRY200','campaign',200,2,1,DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY),DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 DAY),1,1)");
+$retryId=(int)$db->lastInsertId();$service=new PromotionService;
+$newAttempt=function(string $status,string $expires)use($db):int{
+ $q=$db->prepare("INSERT INTO rentals(reference,battery_id,customer_name,customer_email,customer_phone,rental_fee,deposit,late_percent,duration_minutes,status,station_code,payment_environment,checkout_token,reservation_expires_at) SELECT ?,battery_id,customer_name,customer_email,customer_phone,rental_fee,deposit,late_percent,duration_minutes,?,station_code,payment_environment,?,? FROM rentals WHERE id=1");
+ $q->execute(['TBP-'.strtoupper(bin2hex(random_bytes(8))),$status,bin2hex(random_bytes(16)),$expires]);return (int)$db->lastInsertId();
+};
+$future=gmdate('Y-m-d H:i:s',time()+120);$past=gmdate('Y-m-d H:i:s',time()-1);$phone='0700000099';
+$offer=$service->assess('RETRY200',$phone,1000);$attempt=$newAttempt('pending_payment',$future);$service->record($attempt,$offer,$phone);
+$rejected=false;try{$service->assess('RETRY200',$phone,1000);}catch(InvalidArgumentException $e){$rejected=str_contains($e->getMessage(),'Ce numéro');}$assert($rejected,'Pending reservation holds phone quota for two minutes');
+$db->prepare('UPDATE rentals SET reservation_expires_at=? WHERE id=?')->execute([$past,$attempt]);
+$offer=$service->assess('RETRY200','+2250700000099',1000);$assert($offer['deposit']===800,'Expired unpaid attempt releases equivalent phone without cron');
+$attempt2=$newAttempt('payment_failed',$future);$service->record($attempt2,$offer,$phone);
+$rejected=false;try{$service->assess('RETRY200',$phone,1000);}catch(InvalidArgumentException){$rejected=true;}$assert($rejected,'Failed payment keeps reservation until its deadline');
+$db->prepare('UPDATE rentals SET reservation_expires_at=? WHERE id=?')->execute([$past,$attempt2]);$offer=$service->assess('RETRY200',$phone,1000);
+$attempt3=$newAttempt('returned',$past);$service->record($attempt3,$offer,$phone);
+$db->prepare("INSERT INTO payment_notifications(rental_id,payload,received_at) VALUES(?,'{\"responsecode\":\"0\"}',UTC_TIMESTAMP()),(?,'{\"responsecode\":\"0\"}',UTC_TIMESTAMP())")->execute([$attempt3,$attempt3]);
+$rejected=false;try{$service->assess('RETRY200',$phone,1000);}catch(InvalidArgumentException $e){$rejected=str_contains($e->getMessage(),'Ce numéro');}$assert($rejected,'Paid attempt consumes phone quota once despite duplicate notifications');
+$db->prepare('UPDATE promotions SET max_uses_per_phone=2 WHERE id=?')->execute([$retryId]);
+$offer=$service->assess('RETRY200',$phone,1000);$attempt4=$newAttempt('pending_payment',$future);$service->record($attempt4,$offer,$phone);
+$rejected=false;try{$service->assess('RETRY200','0700000088',1000);}catch(InvalidArgumentException $e){$rejected=str_contains($e->getMessage(),'limite globale');}$assert($rejected,'Global quota counts payments plus live reservations');
+$db->prepare("UPDATE rentals SET status='payment_timeout',reservation_expires_at=? WHERE id=?")->execute([$past,$attempt4]);
+$assert($service->assess('RETRY200',$phone,1000)['deposit']===800,'Per-phone limit two permits another attempt after timeout');
+$assert((int)$db->query("SELECT COUNT(*) FROM rental_promotion_redemptions WHERE promotion_id=$retryId")->fetchColumn()===4,'Expired attempts retained in audit history');
+ob_start();(new \App\Controllers\PromotionController)->offers();$html=ob_get_clean();$assert(str_contains($html,'RETRY200'),'Public offer is available again after unpaid expiry');
+echo "Promotion retry: repeatable migration, expiry without cron, failed payment window, duplicate callback, adjustable phone limit, global quota and retained history OK\n";

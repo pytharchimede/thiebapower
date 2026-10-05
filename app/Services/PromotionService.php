@@ -12,13 +12,19 @@ final class PromotionService
  public static function discountedDeposit(int $deposit,int $discount):int {
   if($deposit<1||$discount<1)throw new \InvalidArgumentException('Le code promo nécessite une caution active.');return max(0,$deposit-$discount);
  }
+ /** Successful payments consume the code; unpaid reservations hold it only for two minutes. */
+ public static function usageCondition():string {
+  return "(EXISTS(SELECT 1 FROM payment_notifications n WHERE n.rental_id=r.id AND JSON_UNQUOTE(JSON_EXTRACT(n.payload,'$.responsecode'))='0') OR (r.status IN ('pending_payment','payment_failed') AND r.reservation_expires_at>UTC_TIMESTAMP()))";
+ }
  public function assess(string $code,string $phone,int $fee,string $previousToken='',bool $lock=false):array {
   if(!self::enabled())throw new \InvalidArgumentException('Les offres promotionnelles ne sont pas activées.');
   $code=strtoupper(trim($code));if(!preg_match('/^[A-Z0-9_-]{3,40}$/D',$code))throw new \InvalidArgumentException('Code invalide.');
   $db=App::db();$q=$db->prepare("SELECT * FROM promotions WHERE code=? AND archived_at IS NULL AND enabled=1 AND starts_at<=UTC_TIMESTAMP() AND ends_at>UTC_TIMESTAMP()".($lock?' FOR UPDATE':''));$q->execute([$code]);$promotion=$q->fetch();
   if(!$promotion)throw new \InvalidArgumentException('Code indisponible ou expiré.');
-  $q=$db->prepare('SELECT COUNT(*) total,COALESCE(SUM(phone_key=?),0) used FROM rental_promotion_redemptions WHERE promotion_id=?');$q->execute([self::phoneKey($phone),$promotion['id']]);$usage=$q->fetch();
-  if((int)$usage['total']>=(int)$promotion['max_uses']||(int)$usage['used']>0)throw new \InvalidArgumentException('Ce code a atteint sa limite d’utilisation.');
+  // Locking reads see the latest committed reservations after waiting for the promotion lock.
+  $q=$db->prepare('SELECT x.phone_key FROM rental_promotion_redemptions x JOIN rentals r ON r.id=x.rental_id WHERE x.promotion_id=? AND '.self::usageCondition().($lock?' FOR UPDATE':''));$q->execute([$promotion['id']]);$keys=$q->fetchAll(\PDO::FETCH_COLUMN);$usage=['total'=>count($keys),'used'=>count(array_filter($keys,static fn($key)=>$key===self::phoneKey($phone)))];
+  if((int)$usage['used']>=(int)$promotion['max_uses_per_phone'])throw new \InvalidArgumentException('Ce numéro a atteint sa limite de '.$promotion['max_uses_per_phone'].' utilisation(s) pour ce code. Un paiement en attente réserve une utilisation pendant deux minutes.');
+  if((int)$usage['total']>=(int)$promotion['max_uses'])throw new \InvalidArgumentException('Ce code a atteint sa limite globale. Un paiement en attente réserve une utilisation pendant deux minutes.');
   if($promotion['referrer_rental_id']){
    $q=$db->prepare('SELECT customer_phone FROM rentals WHERE id=?');$q->execute([$promotion['referrer_rental_id']]);$referrer=$q->fetchColumn();
    if($referrer&&self::phoneKey($referrer)===self::phoneKey($phone))throw new \InvalidArgumentException('Le parrainage est destiné à une autre personne.');
