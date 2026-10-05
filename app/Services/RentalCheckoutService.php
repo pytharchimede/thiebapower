@@ -163,9 +163,9 @@ final class RentalCheckoutService
                 }
             }
             $price = $db->query("SELECT * FROM pricing WHERE id=1")->fetch();
-            $offer=null;$effectiveFee=(int)$price['rental_fee'];
+            $offer=null;$effectiveFee=(int)$price['rental_fee'];$effectiveDeposit=$depositEnabled?(int)($battery['deposit_override']??$price['default_deposit']):0;
             if(PromotionService::enabled()&&trim((string)($input['promotion_code']??''))!==''){
-                try{$offer=(new PromotionService)->assess((string)$input['promotion_code'],$phone,$effectiveFee,(string)($input['previous_token']??''),true);$effectiveFee=$offer['fee'];}catch(\InvalidArgumentException $e){throw new CheckoutConflict($e->getMessage());}
+                try{$offer=(new PromotionService)->assess((string)$input['promotion_code'],$phone,$effectiveDeposit,(string)($input['previous_token']??''),true);$effectiveDeposit=$offer['deposit'];$offer['original_fee']=$effectiveFee;}catch(\InvalidArgumentException $e){throw new CheckoutConflict($e->getMessage());}
             }
             $reference = "TBP-" . strtoupper(bin2hex(random_bytes(8)));
             $db->prepare(
@@ -182,10 +182,7 @@ final class RentalCheckoutService
                 $depositEnabled ? $channel : null,
                 null, // Filled automatically after a verified payment; no separate refund choice.
                 $effectiveFee,
-                $depositEnabled
-                    ? (int) ($battery["deposit_override"] ??
-                        $price["default_deposit"])
-                    : 0,
+                $effectiveDeposit,
                 (int) $price["late_percent"],
                 (int) $price["duration_minutes"],
                 (int) ($price["grace_minutes"] ?? 5),

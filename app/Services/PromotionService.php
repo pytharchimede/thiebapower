@@ -9,6 +9,9 @@ final class PromotionService
   if($discount<1||$discount>=$fee)throw new \InvalidArgumentException('Ce code ne s’applique pas au tarif actuel.');return $fee-$discount;
  }
  public static function phoneKey(string $phone):string {return hash('sha256',substr(preg_replace('/[^0-9]/','',$phone),-10));}
+ public static function discountedDeposit(int $deposit,int $discount):int {
+  if($deposit<1||$discount<1)throw new \InvalidArgumentException('Le code promo nécessite une caution active.');return max(0,$deposit-$discount);
+ }
  public function assess(string $code,string $phone,int $fee,string $previousToken='',bool $lock=false):array {
   if(!self::enabled())throw new \InvalidArgumentException('Les offres promotionnelles ne sont pas activées.');
   $code=strtoupper(trim($code));if(!preg_match('/^[A-Z0-9_-]{3,40}$/D',$code))throw new \InvalidArgumentException('Code invalide.');
@@ -27,9 +30,9 @@ final class PromotionService
    $q=$db->prepare("SELECT COUNT(*) FROM rentals r WHERE RIGHT(REPLACE(r.customer_phone,' ',''),10)=? AND r.status='returned' AND r.payment_environment='production' AND EXISTS(SELECT 1 FROM payment_notifications n WHERE n.rental_id=r.id AND JSON_UNQUOTE(JSON_EXTRACT(n.payload,'$.responsecode'))='0')");$q->execute([substr(preg_replace('/[^0-9]/','',$phone),-10)]);
    if((int)$q->fetchColumn()<(int)$promotion['minimum_completed'])throw new \InvalidArgumentException('Nombre de locations terminées insuffisant pour cette offre.');
   }
-  return ['id'=>(int)$promotion['id'],'code'=>$code,'discount'=>(int)$promotion['discount_amount'],'fee'=>self::discountedFee($fee,(int)$promotion['discount_amount']),'original_fee'=>$fee];
+  return ['id'=>(int)$promotion['id'],'code'=>$code,'discount'=>min($fee,(int)$promotion['discount_amount']),'deposit'=>self::discountedDeposit($fee,(int)$promotion['discount_amount']),'original_deposit'=>$fee];
  }
  public function record(int $rentalId,array $offer,string $phone):void {
-  App::db()->prepare('INSERT INTO rental_promotion_redemptions(rental_id,promotion_id,phone_key,original_fee,discount_amount) VALUES(?,?,?,?,?)')->execute([$rentalId,$offer['id'],self::phoneKey($phone),$offer['original_fee'],$offer['discount']]);
+  App::db()->prepare('INSERT INTO rental_promotion_redemptions(rental_id,promotion_id,phone_key,original_fee,discount_amount,discount_target,original_deposit) VALUES(?,?,?,?,?,"deposit",?)')->execute([$rentalId,$offer['id'],self::phoneKey($phone),$offer['original_fee']??0,$offer['discount'],$offer['original_deposit']]);
  }
 }

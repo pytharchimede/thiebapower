@@ -32,3 +32,5 @@ $assert(PromotionService::phoneKey('+2250700000000')===PromotionService::phoneKe
 putenv('PROMOTIONS_ENABLED');$assert(!PromotionService::enabled(),'Promotions default disabled');
 $routes=require dirname(__DIR__).'/routes/web.php';$assert(isset($routes['POST /my-rentals/snapshot'])&&!isset($routes['GET /my-rentals/snapshot']),'Customer token API only accepts POST');
 echo "$n station experience tests OK\n";
+
+foreach([[2000,500,1500],[2000,2000,0],[2000,3000,0]] as [$deposit,$discount,$expected]){if(\App\Services\PromotionService::discountedDeposit($deposit,$discount)!==$expected)throw new RuntimeException('Deposit discount failed');}

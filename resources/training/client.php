@@ -49,7 +49,7 @@ return [
  'Le tarif initial couvre la durée configurée. La règle en vigueur prévoit ensuite cinq minutes gratuites. Au-delà, le dépassement est calculé au prorata du tarif effectivement payé et arrondi au FCFA supérieur.',
  'Exemple pédagogique : tarif 600 FCFA pour 60 minutes, batterie rendue 75 minutes après le début. Après les 5 minutes gratuites, 10 minutes sont facturables : 600 / 60 × 10 = 100 FCFA.',
  'Avec une caution de 200 FCFA dans cet exemple, la retenue est de 100 FCFA et le reste à restituer est de 100 FCFA. La retenue ne dépasse jamais la caution.',
- 'Quand la caution est désactivée, aucune retenue automatique n’est appliquée. Une remise réduit le tarif utilisé pour le prorata. Vérifiez toujours la règle et les montants de la fiche réelle.'
+ 'Quand la caution est désactivée, aucune retenue automatique n’est appliquée. Une remise sur la caution ne change pas le tarif utilisé pour le prorata. Vérifiez toujours la règle et les montants de la fiche réelle.'
  ],'Calculer un retour dans le délai, pendant les cinq minutes gratuites, puis dix minutes après la période gratuite.','/admin/pricing'],
  ['Confirmer le retour et fournir le reçu','Terminer la location sur la base du retour reconnu.',[
  'Le client rapporte la batterie dans une station adaptée. Il vérifie que le retour est reconnu dans Mes locations.',
@@ -76,7 +76,7 @@ return [
  'Documentez chaque action dans le circuit prévu et escaladez au responsable technique si les preuves ne concordent pas. Ne modifiez pas directement les tables de production.'
  ],'Simuler un appel client et constituer le dossier de vérification : référence, station, heure, symptôme et preuves.','/admin/rentals/watch'],
  ['Créer et partager un code promo','Maîtriser remise, visibilité et limites.',[
- 'Dans Offres et fidélité, créez un code unique, choisissez campagne ou fidélité, remise fixe, dates et limite d’utilisations. La remise ne doit pas rendre le tarif gratuit.',
+ 'Dans Offres et fidélité, créez un code unique, choisissez campagne ou fidélité, remise fixe, dates et limite d’utilisations. La remise s’applique uniquement à la caution et ne change pas le tarif de location. Elle est plafonnée à la caution.',
  'Les réservations consomment l’utilisation même en cas de paiement abandonné. Chaque code ne peut être réutilisé par le même numéro. Les conditions de fidélité reposent aussi sur une location précédente retrouvée dans le navigateur.',
  'Les codes restent privés par défaut. Rendre public concerne les campagnes : seules les offres actives, non expirées, non épuisées et compatibles avec le tarif apparaissent sur /offers, si l’activation globale est autorisée.',
  'Copiez le code ou préparez un partage WhatsApp, Telegram, X ou autre. Le partage n’envoie pas automatiquement le message. Le client saisit puis vérifie le code avant le paiement. Fidélité et parrainage restent ciblés.'
