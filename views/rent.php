@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#103d46">
     <title>Louer une batterie · Thiebapower</title>
     <link rel="stylesheet" href="/style.css">
-    <link rel="stylesheet" href="/public-entry.css?v=20261004-3">
+    <link rel="stylesheet" href="/public-entry.css?v=20261005-4">
 </head>
 <body class="kiosk public-entry public-rent">
 <div class="kiosk-shell">
@@ -34,8 +34,14 @@
                             data-serial="<?= htmlspecialchars($battery['serial'], ENT_QUOTES, 'UTF-8') ?>"
                             data-slot="<?= htmlspecialchars((string)$battery['slot_id'], ENT_QUOTES, 'UTF-8') ?>"
                             data-deposit="<?= $depositEnabled ? (int) ($battery['deposit_override'] ?? $prices['default_deposit']) : 0 ?>" data-station="<?= htmlspecialchars((string)$battery['station_imei'],ENT_QUOTES,'UTF-8') ?>">
-                            <span class="option-symbol" aria-hidden="true">ϟ</span>
-                            <span><strong>Slot <?= htmlspecialchars((string)$battery['slot_id'],ENT_QUOTES,'UTF-8') ?> · <?= (int)$battery['battery_capacity'] ?> %</strong><small><?= htmlspecialchars($battery['serial'],ENT_QUOTES,'UTF-8') ?> · <?= $depositEnabled ? 'Caution '.number_format((int) ($battery['deposit_override'] ?? $prices['default_deposit']), 0, ',', ' ').' FCFA' : 'Sans caution' ?></small></span>
+                            <span class="option-powerbank" aria-hidden="true"><span class="powerbank-ports"></span><span class="powerbank-light"></span><span class="powerbank-bolt">ϟ</span><span class="powerbank-brand">THIEBA POWER</span></span>
+                            <span class="option-details">
+                                <span class="option-topline"><span class="option-slot">Emplacement <?= htmlspecialchars((string)$battery['slot_id'],ENT_QUOTES,'UTF-8') ?></span><span class="option-charge"><svg viewBox="0 0 24 16" aria-hidden="true"><rect x="1" y="2" width="19" height="12" rx="2"/><path d="M22 6v4"/><rect x="4" y="5" width="<?= 13*max(0,min(100,(int)$battery['battery_capacity']))/100 ?>" height="6" class="charge-fill"/></svg><?= (int)$battery['battery_capacity'] ?> %</span></span>
+                                <span class="option-rental-price"><strong><?= number_format((int)$prices['rental_fee'],0,',',' ') ?></strong><span>FCFA</span></span>
+                                <span class="option-price-caption">Location · <?= (int)$prices['duration_minutes'] ?> minutes incluses</span>
+                                <span class="option-deposit-note"><?= $depositEnabled ? 'Caution restituable : '.number_format((int)($battery['deposit_override']??$prices['default_deposit']),0,',',' ').' FCFA' : 'Sans caution' ?></span>
+                                <span class="option-serial"><?= htmlspecialchars($battery['serial'],ENT_QUOTES,'UTF-8') ?></span>
+                            </span>
                             <span class="option-arrow" aria-hidden="true">→</span>
                         </button>
                     <?php endforeach; ?>
