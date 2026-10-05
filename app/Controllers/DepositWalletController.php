@@ -26,7 +26,7 @@ final class DepositWalletController
     }
     private function data():array
     {
-        $rows=App::db()->query("SELECT w.*,r.reference,r.customer_name,r.customer_phone,r.payout_channel,r.deposit,r.deposit_payment_verified_at,r.status rental_status,r.due_at,r.returned_at,r.rental_fee,r.duration_minutes,r.billing_rule,r.late_percent,b.serial,s.refund_amount,s.status refund_status FROM deposit_wallet_transfers w LEFT JOIN rentals r ON r.id=w.rental_id LEFT JOIN batteries b ON b.id=r.battery_id LEFT JOIN deposit_settlements s ON s.rental_id=r.id ORDER BY w.id DESC LIMIT 100")->fetchAll();
+        $rows=App::db()->query("SELECT w.*,r.reference,r.customer_name,r.customer_phone,r.payout_channel,r.deposit,r.deposit_payment_verified_at,r.status rental_status,r.due_at,r.returned_at,r.rental_fee,r.duration_minutes,r.grace_minutes,r.billing_rule,r.late_percent,b.serial,s.refund_amount,s.status refund_status FROM deposit_wallet_transfers w LEFT JOIN rentals r ON r.id=w.rental_id LEFT JOIN batteries b ON b.id=r.battery_id LEFT JOIN deposit_settlements s ON s.rental_id=r.id ORDER BY w.id DESC LIMIT 100")->fetchAll();
         $totals=App::db()->query("SELECT purpose,status,SUM(amount) amount,COUNT(*) count FROM deposit_wallet_transfers GROUP BY purpose,status ORDER BY purpose,status")->fetchAll();
         return ['rows'=>$rows,'totals'=>$totals,'signature'=>hash('sha256',json_encode($rows,JSON_THROW_ON_ERROR))];
     }

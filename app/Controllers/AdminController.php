@@ -40,10 +40,11 @@ final class AdminController {
   $deposit=filter_input(INPUT_POST,'default_deposit',FILTER_VALIDATE_INT);
   $minutes=filter_input(INPUT_POST,'duration_minutes',FILTER_VALIDATE_INT);
   $percent=filter_input(INPUT_POST,'late_percent',FILTER_VALIDATE_INT);
+  $grace=filter_input(INPUT_POST,'grace_minutes',FILTER_VALIDATE_INT);
   $depositEnabled=($_POST['deposit_enabled']??'')==='1'?1:0;
-  if(!is_int($fee)||$fee<1||!is_int($deposit)||$deposit<0||!is_int($minutes)||$minutes<1||!is_int($percent)||$percent<0||$percent>100){http_response_code(422);exit('Tarifs invalides');}
-  App::db()->prepare('UPDATE pricing SET rental_fee=?,default_deposit=?,duration_minutes=?,late_percent=?,deposit_enabled=? WHERE id=1')->execute([$fee,$deposit,$minutes,$percent,$depositEnabled]);
-  Audit::event('pricing.updated','pricing','1',['rental_fee'=>$fee,'default_deposit'=>$deposit,'duration_minutes'=>$minutes,'late_percent'=>$percent,'deposit_enabled'=>$depositEnabled]);
+  if(!is_int($fee)||$fee<1||!is_int($deposit)||$deposit<0||!is_int($minutes)||$minutes<1||!is_int($percent)||$percent<0||$percent>100||!is_int($grace)||$grace<0||$grace>1440){http_response_code(422);exit('Tarifs invalides');}
+  App::db()->prepare('UPDATE pricing SET rental_fee=?,default_deposit=?,duration_minutes=?,late_percent=?,deposit_enabled=?,grace_minutes=? WHERE id=1')->execute([$fee,$deposit,$minutes,$percent,$depositEnabled,$grace]);
+  Audit::event('pricing.updated','pricing','1',['rental_fee'=>$fee,'default_deposit'=>$deposit,'duration_minutes'=>$minutes,'late_percent'=>$percent,'deposit_enabled'=>$depositEnabled,'grace_minutes'=>$grace]);
   App::redirect('/admin/pricing?saved=1');
  }
  public function battery():void {

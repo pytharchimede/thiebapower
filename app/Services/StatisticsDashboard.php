@@ -21,7 +21,7 @@ final class StatisticsDashboard
     UNION ALL SELECT DATE(started_at),0,COUNT(*),0 FROM rentals WHERE started_at>=? AND started_at<? GROUP BY DATE(started_at)
     UNION ALL SELECT DATE(returned_at),0,0,COUNT(*) FROM rentals WHERE returned_at>=? AND returned_at<? GROUP BY DATE(returned_at)
    ) events GROUP BY day ORDER BY day");$q->execute([$from,$until,$from,$until,$from,$until]);$daily=$q->fetchAll();
-   $rows=$db->query("SELECT r.reference,r.customer_name,r.status,r.started_at,r.due_at,r.returned_at,r.deposit,r.deposit_payment_verified_at,r.billing_rule,r.rental_fee,r.duration_minutes,r.late_percent,b.serial FROM rentals r JOIN batteries b ON b.id=r.battery_id WHERE r.status='active' ORDER BY r.due_at LIMIT 100")->fetchAll();
+   $rows=$db->query("SELECT r.reference,r.customer_name,r.status,r.started_at,r.due_at,r.returned_at,r.deposit,r.deposit_payment_verified_at,r.billing_rule,r.rental_fee,r.duration_minutes,r.grace_minutes,r.late_percent,b.serial FROM rentals r JOIN batteries b ON b.id=r.battery_id WHERE r.status='active' ORDER BY r.due_at LIMIT 100")->fetchAll();
    $q=$db->prepare("SELECT reference,customer_name,returned_at FROM rentals WHERE status='returned' AND returned_at>=? AND returned_at<? ORDER BY returned_at DESC LIMIT 12");$q->execute([$from,$until]);
    foreach($rows as &$row){if($permissions['finance'])$row['caution']=DepositWallet::remaining($row);unset($row['deposit'],$row['deposit_payment_verified_at'],$row['billing_rule'],$row['rental_fee'],$row['duration_minutes'],$row['late_percent']);}unset($row);
    $data['rentals']=['totals'=>$totals,'states'=>$states,'daily'=>$daily,'active'=>$rows,'recentReturns'=>$q->fetchAll(),'limited'=>(int)$totals['active']>100];

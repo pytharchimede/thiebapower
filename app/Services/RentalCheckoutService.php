@@ -45,8 +45,8 @@ final class RentalCheckoutService
                             (string) ($input["phone"] ?? ""),
                         )
                 ) {
-                    throw new \InvalidArgumentException(
-                        "Formulaire incohérent",
+                    throw new CheckoutConflict(
+                        "Cette demande a déjà été enregistrée avec d’autres informations. Consultez Mes locations avant de commencer une nouvelle location.",
                     );
                 }
                 if (
@@ -169,7 +169,7 @@ final class RentalCheckoutService
             }
             $reference = "TBP-" . strtoupper(bin2hex(random_bytes(8)));
             $db->prepare(
-                "INSERT INTO rentals(checkout_token,reference,battery_id,station_code,payment_environment,customer_name,customer_email,customer_phone,payment_channel,payout_channel,rental_fee,deposit,late_percent,duration_minutes,billing_rule,status,reservation_expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,'prorata_grace5','pending_payment',DATE_ADD(UTC_TIMESTAMP(),INTERVAL 2 MINUTE))",
+                "INSERT INTO rentals(checkout_token,reference,battery_id,station_code,payment_environment,customer_name,customer_email,customer_phone,payment_channel,payout_channel,rental_fee,deposit,late_percent,duration_minutes,grace_minutes,billing_rule,status,reservation_expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'prorata_grace5','pending_payment',DATE_ADD(UTC_TIMESTAMP(),INTERVAL 2 MINUTE))",
             )->execute([
                 $input["checkout_token"],
                 $reference,
@@ -188,6 +188,7 @@ final class RentalCheckoutService
                     : 0,
                 (int) $price["late_percent"],
                 (int) $price["duration_minutes"],
+                (int) ($price["grace_minutes"] ?? 5),
             ]);
             if($offer!==null)(new PromotionService)->record((int)$db->lastInsertId(),$offer,$phone);
             $db->prepare(

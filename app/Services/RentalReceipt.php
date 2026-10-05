@@ -12,7 +12,7 @@ final class RentalReceipt
         $deduction=(int)($settlement['deduction']??$r['late_charge']??0);
         $refund=(int)($settlement['refund_amount']??max(0,(int)$r['deposit']-$deduction));
         $rule=($r['billing_rule']??'legacy_hourly')===RentalBilling::RULE
-            ? '5 minutes gratuites après le délai, puis prorata du tarif payé. Secondes facturables : '.$bill['billable_seconds'].'. Arrondi au FCFA supérieur ; retenue plafonnée à la caution.'
+            ? (int)($r['grace_minutes']??5).' minutes gratuites après le délai, puis prorata du tarif payé. Secondes facturables : '.$bill['billable_seconds'].'. Arrondi au FCFA supérieur ; retenue plafonnée à la caution.'
             : 'Règle initiale : '.$r['late_percent'].' % de la caution par heure de retard entamée, plafonnée à la caution.';
         $status=['pending'=>'À rembourser','processing'=>'En traitement','refunded'=>'Restitution clôturée','unknown'=>'À vérifier','failed'=>'Échec à traiter'];
         $rows=[

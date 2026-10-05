@@ -7,7 +7,7 @@ if(!preg_match('/^thiebapower_test_[a-z0-9_]+$/D',(string)$db->query('SELECT DAT
 if((int)$db->query('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()')->fetchColumn()!==0)throw new RuntimeException('Test database must be empty; no existing table is deleted.');
 $root=dirname(__DIR__,2);$db->exec(file_get_contents($root.'/database/schema.sql'));
 $files=glob($root.'/database/migrations/*.sql');
-$order=['20260928_automatic_deposit_refunds.sql','20260928_v1_accounts_audit.sql','20260928_rental_checkout_lifecycle.sql','20260929_heycharge_terminals.sql','20260929_charging_batteries.sql','20260929_manual_battery_release.sql','20260929_manual_battery_reinsertion.sql','20260929_finance_cash.sql','20260929_payment_reservation_timeout.sql','20260929_rental_operations.sql','20260929_station_label_settings.sql','20260929_station_label_logo_settings.sql','20261003_checkout_notifications.sql','20261003_finance_billing.sql','20261003_refund_payment_channel.sql','20261003_deposit_wallet.sql','20261003_deposit_wallet_fee_defaults.sql','20261004_station_experience.sql','20261004_public_promotions.sql','20261004_public_support.sql','20261004_training_roadmap.sql'];
+$order=['20260928_automatic_deposit_refunds.sql','20260928_v1_accounts_audit.sql','20260928_rental_checkout_lifecycle.sql','20260929_heycharge_terminals.sql','20260929_charging_batteries.sql','20260929_manual_battery_release.sql','20260929_manual_battery_reinsertion.sql','20260929_finance_cash.sql','20260929_payment_reservation_timeout.sql','20260929_rental_operations.sql','20260929_station_label_settings.sql','20260929_station_label_logo_settings.sql','20261003_checkout_notifications.sql','20261003_finance_billing.sql','20261003_refund_payment_channel.sql','20261003_deposit_wallet.sql','20261003_deposit_wallet_fee_defaults.sql','20261004_station_experience.sql','20261004_public_promotions.sql','20261004_public_support.sql','20261004_training_roadmap.sql','20261005_configurable_grace.sql'];
 foreach($order as $file){try{$db->exec(file_get_contents($root.'/database/migrations/'.$file));}catch(Throwable $e){throw new RuntimeException($file.': '.$e->getMessage());}}
 $db->exec(file_get_contents($root.'/database/migrations/20261004_station_experience.sql')); // idempotence
 $db->exec(file_get_contents($root.'/database/migrations/20261004_public_promotions.sql'));
@@ -41,3 +41,9 @@ echo "Public promotions: additive repeated migration, private/loyalty/expired ex
 $db->exec(file_get_contents($root.'/database/migrations/20261004_public_support.sql'));
 \App\Services\PublicExperienceSettings::save(\App\Services\PublicExperienceSettings::defaults());
 $assert((int)$db->query("SELECT COUNT(*) FROM public_experience_settings WHERE id=1")->fetchColumn()===1,"Support settings save and repeated migration");
+
+$db->exec(file_get_contents($root.'/database/migrations/20261005_configurable_grace.sql'));
+$db->exec("UPDATE pricing SET grace_minutes=10 WHERE id=1");
+$assert((int)$db->query("SELECT grace_minutes FROM rentals LIMIT 1")->fetchColumn()===5,"Existing rental grace is frozen");
+$db->exec("UPDATE pricing SET grace_minutes=5 WHERE id=1");
+echo "Grace migration: idempotent and existing rentals retain five minutes OK\n";

@@ -4,7 +4,7 @@ function paint(){if(document.hidden)return;const stale=Date.now()-lastSuccess>60
  for(const el of cells()){let b=data.get(el.dataset.reference);if(!b&&el.dataset.billing){try{b=JSON.parse(el.dataset.billing);data.set(el.dataset.reference,b);}catch{}}if(!b)continue;
  const lines=[];if(!b.deposit)lines.push('Caution désactivée');else if(!b.paid)lines.push('Caution de '+b.deposit+' FCFA · paiement à confirmer');else{
   let late=b.due?Math.max(0,(b.end||now)-b.due):0;if(!b.active&&!b.end)late=0;
-  let deduction=b.rule==='prorata_grace5'?Math.ceil(b.fee*Math.max(0,late-300)/(Math.max(1,b.duration)*60)):Math.ceil(b.deposit*b.latePercent*Math.ceil(late/3600)/100);
+  let deduction=b.rule==='prorata_grace5'?Math.ceil(b.fee*Math.max(0,late-(b.grace??5)*60)/(Math.max(1,b.duration)*60)):Math.ceil(b.deposit*b.latePercent*Math.ceil(late/3600)/100);
   deduction=Math.min(b.deposit,Math.max(0,deduction));if(stale&&el.dataset.lastRefund)deduction=b.deposit-Number(el.dataset.lastRefund);
   const refund=b.deposit-deduction;el.dataset.lastRefund=refund;
   lines.push((b.active?'À restituer : ':'Caution restante : ')+refund.toLocaleString('fr-FR')+' / '+b.deposit.toLocaleString('fr-FR')+' FCFA','Retenue : '+deduction.toLocaleString('fr-FR')+' FCFA · Frais à notre charge');

@@ -9,6 +9,7 @@ namespace App\Services {
     }
 }
 namespace {
+    require_once dirname(__DIR__).'/app/Services/ReleaseInfo.php';
     function renderView(string $view, array $data): string {
         extract($data); ob_start(); require dirname(__DIR__).'/views/'.$view.'.php'; return ob_get_clean();
     }
