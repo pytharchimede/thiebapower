@@ -26,7 +26,7 @@
                 <div class="screen-icon" aria-hidden="true">ϟ</div>
                 <h2>Choisissez une batterie</h2>
                 <p class="station-identity">Station <?= htmlspecialchars($station['label']?:$station['imei'],ENT_QUOTES,'UTF-8') ?></p>
-                <p><?= $depositEnabled ? 'La caution peut varier selon la batterie.' : 'Aucune caution demandée.' ?></p>
+                <?php if(!$depositEnabled): ?><p>Aucune caution demandée.</p><?php endif; ?>
                 <div class="battery-options" id="battery-options">
                     <?php foreach ($batteries as $battery): ?>
                         <button type="button" class="battery-option"
