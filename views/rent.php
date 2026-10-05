@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#103d46">
     <title>Louer une batterie · Thiebapower</title>
     <link rel="stylesheet" href="/style.css">
-    <link rel="stylesheet" href="/public-entry.css?v=20261005-4">
+    <link rel="stylesheet" href="/public-entry.css?v=20261005-5">
 </head>
 <body class="kiosk public-entry public-rent">
 <div class="kiosk-shell">

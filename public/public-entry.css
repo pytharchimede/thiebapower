@@ -83,25 +83,27 @@
 .public-rent #promotion-status {margin:10px 0 20px;font-size:12px;line-height:1.6;color:#61776d;}
 
 /* Mobile battery cards: rental price first, refundable deposit secondary. */
-.public-rent .battery-options {max-height:none;gap:14px;}
-.public-rent .battery-option {background:white;gap:16px;padding:18px 14px;border:1px solid #dbe5df;box-shadow:0 4px 16px #193e4205;align-items:center;}
+.public-rent .battery-options {max-height:none;gap:9px;}
+.public-rent .battery-option {background:white;gap:12px;padding:12px;border:1px solid #e0e8e2;box-shadow:none;border-radius:13px;align-items:center;}
 .public-rent .battery-option:hover {background:#fafcfb;border-color:#94b9a4;}
-.option-powerbank {position:relative;width:57px;height:106px;flex-shrink:0;border:1px solid #b8c3bc;border-radius:12px;background:linear-gradient(110deg,#fafbf9 0%,#e3e8e2 45%,#f6f8f5 78%,#d5ddd4 100%);box-shadow:inset 2px 0 3px #ffffff,3px 5px 8px #163c4212;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;color:#557163;}
-.powerbank-ports {position:absolute;top:7px;width:24px;height:4px;border-radius:2px;background:#4c5c52;border:1px solid #c6cec8;}
-.powerbank-light {position:absolute;top:17px;width:14px;height:2px;background:repeating-linear-gradient(to right,#528c6a 0 2px,transparent 2px 4px);}
-.powerbank-bolt {font-size:28px;line-height:1;}
-.powerbank-brand {font-size:5px;letter-spacing:.06em;color:#7b887e;}
+.option-powerbank {position:relative;width:38px;height:72px;flex-shrink:0;border:1px solid #b8c3bc;border-radius:9px;background:linear-gradient(110deg,#fafbf9 0%,#e3e8e2 45%,#f6f8f5 78%,#d5ddd4 100%);box-shadow:inset 2px 0 3px #ffffff,2px 3px 5px #163c420c;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;color:#557163;}
+.powerbank-ports {position:absolute;top:5px;width:17px;height:3px;border-radius:2px;background:#4c5c52;border:1px solid #c6cec8;}
+.powerbank-light {position:absolute;top:12px;width:11px;height:2px;background:repeating-linear-gradient(to right,#528c6a 0 2px,transparent 2px 4px);}
+.powerbank-bolt {font-size:20px;line-height:1;}
+.powerbank-brand {font-size:4px;letter-spacing:.06em;color:#7b887e;}
 .option-details {display:flex;flex-direction:column;flex:1;min-width:0;}
-.option-topline {display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:7px;}
+.option-topline {display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:4px;}
 .option-slot {font-size:11px;color:#718277;}
-.option-charge {display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:750;color:#36724f;white-space:nowrap;}
-.option-charge svg {width:23px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;}
+.option-charge {display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:750;color:#36724f;white-space:nowrap;}
+.option-charge svg {width:19px;height:13px;fill:none;stroke:currentColor;stroke-width:1.5;}
 .option-charge .charge-fill {fill:currentColor;stroke:none;}
 .option-rental-price {display:flex;align-items:baseline;gap:6px;line-height:1.15;}
-.public-rent .option-rental-price strong {font-size:30px;color:#244a3b;letter-spacing:-.035em;}
+.public-rent .option-rental-price strong {font-size:23px;font-weight:750;color:#244a3b;letter-spacing:-.035em;}
 .option-rental-price>span {font-size:11px;color:#536d5f;font-weight:700;}
-.option-price-caption {font-size:11px;color:#65796d;margin:5px 0 10px;}
-.option-deposit-note {font-size:10px;color:#7b877e;border-top:1px solid #edf1ed;padding-top:7px;line-height:1.5;}
-.option-serial {font-size:9px;color:#8a968d;margin-top:3px;overflow-wrap:anywhere;}
-.public-rent .battery-option .option-arrow {font-size:18px;color:#60786a;margin-left:0;}
-@media(max-width:380px) {.public-rent .battery-option{gap:10px;padding:14px 10px;}.option-powerbank{width:45px;height:90px;}.public-rent .option-rental-price strong{font-size:27px;}.option-slot{font-size:10px;}}
+.option-price-caption {font-size:11px;color:#65796d;margin:3px 0 5px;}
+.option-deposit-note {font-size:10px;color:#7b877e;padding-top:1px;line-height:1.5;}
+.option-serial {display:none;font-size:9px;color:#8a968d;margin-top:3px;overflow-wrap:anywhere;}
+.public-rent .battery-option .option-arrow {font-size:15px;color:#88998d;margin-left:0;}
+@media(max-width:380px) {.public-rent .battery-option{gap:10px;padding:11px 10px;}.option-powerbank{width:34px;height:65px;}.public-rent .option-rental-price strong{font-size:22px;}.option-slot{font-size:10px;}}
+
+@media(max-width:760px){.public-rent .kiosk-screen h2{font-size:25px;}.public-rent .screen-icon{width:38px;height:38px;font-size:22px;margin-bottom:12px;}.public-rent .kiosk-screen>p{font-size:13px;margin-bottom:18px;}.public-rent .kiosk-workflow{padding:22px 16px;}.public-rent .progress{height:4px;margin:12px 0 20px;}}
