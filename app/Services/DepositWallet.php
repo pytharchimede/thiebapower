@@ -78,12 +78,33 @@ final class DepositWallet
         }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
         try {
             $reply=$client->request((int)$r['amount'],$token);
-            $status=$reply['http']>=200 && $reply['http']<300?'submitted':'unknown';
+            $status=!empty($reply['credited'])?'confirmed':($reply['http']>=200 && $reply['http']<300?'submitted':'unknown');
             $db->prepare('UPDATE deposit_wallet_transfers SET status=?,http_status=?,response_summary=? WHERE id=? AND status=?')->execute([$status,$reply['http'],json_encode($reply['summary']),$id,'unknown']);
+            if($status==='confirmed')self::recordAutomaticProof($id);
             Audit::event('wallet.request','wallet_transfer',(string)$id,['amount'=>$r['amount'],'status'=>$status]);
         }catch(\Throwable $e){SystemReports::record('wallet.request',$e,['transfer_id'=>$id],'wallet.request:'.$id);throw $e;}
     }
-    /** Until a provider confirmation contract is supplied, credit requires an auditable reconciliation. */
+    private static function recordAutomaticProof(int $id):void
+    {
+        App::db()->prepare("UPDATE deposit_wallet_transfers SET confirmation_proof='XPaye : rechargement effectué avec succès, montant exact confirmé par API',confirmed_at=UTC_TIMESTAMP() WHERE id=? AND status='confirmed'")->execute([$id]);
+        Audit::event('wallet.credit_auto_confirmed','wallet_transfer',(string)$id);
+    }
+    /** Recover existing successful requests from their own recorded reply; never send again. */
+    public static function reconcileCompletedCredits():void
+    {
+        $db=App::db();$rows=$db->query("SELECT id,amount,http_status,response_summary FROM deposit_wallet_transfers WHERE status='submitted' ORDER BY id LIMIT 500")->fetchAll();
+        foreach($rows as $row){
+            $confirmed=XPayeWalletClient::creditConfirmed((int)$row['http_status'],json_decode($row['response_summary']??'{}',true)?:[],(int)$row['amount']);
+            if(!$confirmed){$trace=SystemStorage::read('xpaye-wallet-transfer-'.(int)$row['id'].'.json');
+                foreach(($trace['events']??[]) as $event){
+                    if(($event['method']??'')==='POST'&&($event['endpoint']??'')==='https://api.xpaye.africa/wallet/request'&&(int)($event['payload']['montant']??0)===(int)$row['amount']&&XPayeWalletClient::creditConfirmed((int)($event['http_status']??0),is_array($event['response']??null)?$event['response']:[],(int)$row['amount'])){$confirmed=true;break;}
+                }
+            }
+            if(!$confirmed)continue;
+            $q=$db->prepare("UPDATE deposit_wallet_transfers SET status='confirmed' WHERE id=? AND status='submitted'");$q->execute([$row['id']]);if($q->rowCount()===1)self::recordAutomaticProof((int)$row['id']);
+        }
+    }
+    /** Manual fallback for ambiguous replies only, after verification with the provider. */
     public static function confirm(int $id,string $proof,int $actor):void
     {
         $proof=trim($proof);if(strlen($proof)<5 || strlen($proof)>240)throw new \InvalidArgumentException('Indiquez la référence du crédit vérifié dans le solde payout.');

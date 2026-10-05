@@ -1,6 +1,6 @@
 <?php
 $esc=static fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');
-$labels=['pending'=>'Prêt à transférer','needs_fees'=>'Frais à renseigner','submitted'=>'Transfert accepté par XPaye · crédit à rapprocher','unknown'=>'Résultat incertain · à vérifier','confirmed'=>'Crédit payout rapproché'];
+$labels=['pending'=>'Prêt à transférer','needs_fees'=>'Frais à renseigner','submitted'=>'Réponse incomplète · crédit à vérifier','unknown'=>'Résultat incertain · à vérifier','confirmed'=>'Crédit payout confirmé'];
 $canWrite=\App\Services\Auth::can('finance.withdraw');$csrf=$esc($_SESSION['csrf']??'');
 ?>
 <?php if(!$totals): ?><p>Aucun transfert enregistré.</p><?php endif; ?>

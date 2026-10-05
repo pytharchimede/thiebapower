@@ -1,7 +1,7 @@
 <?php
 namespace App\Services;
 use App\Core\App;
-/** XPaye's supplied request contract. A request acknowledgement is not credit confirmation. */
+/** XPaye wallet transfers: explicit completed recharge responses confirm the credit. */
 final class XPayeWalletClient
 {
     private $transport;
@@ -45,10 +45,19 @@ final class XPayeWalletClient
         $reply=$this->post('/wallet/request',['montant'=>$amount],$token);
         // Store only neutral provider fields. Never store tokens, credentials, raw errors or arbitrary payloads.
         $data=json_decode($reply['body'],true);$summary=[];
-        if(is_array($data))foreach(['status','code','reference','transaction_id','montant'] as $field){
+        if(is_array($data))foreach(['status','code','reference','transaction_id','montant','message','balance'] as $field){
             if(isset($data[$field]) && (is_string($data[$field]) || is_numeric($data[$field])))$summary[$field]=substr(str_replace(array_filter([$token,App::env('XPAYE_LOGIN'),App::env('XPAYE_PASSWORD')]),'[masqué]',(string)$data[$field]),0,120);
         }
-        return ['http'=>$reply['http'],'summary'=>$summary];
+        return ['http'=>$reply['http'],'summary'=>$summary,'credited'=>self::creditConfirmed((int)$reply['http'],is_array($data)?$data:[],$amount)];
+    }
+    /** Explicit synchronous recharge completion, not a generic HTTP acknowledgement. */
+    public static function creditConfirmed(int $http,array $data,int $amount):bool
+    {
+        $money=static fn($v)=>is_int($v)||is_float($v)||is_string($v)?(preg_match('/^[0-9]+(?:\.0+)?$/D',(string)$v)?(float)$v:null):null;
+        $returned=$money($data['montant']??null);$balance=$money($data['balance']??null);
+        return $http===201 && ($data['status']??null)==='success'
+            && trim((string)($data['message']??''))==='Rechargement effectué avec succès'
+            && $returned!==null && $returned===$amount*1.0 && $balance!==null && $balance>=0;
     }
     private function post(string $path,array $payload,?string $token=null):array
     {

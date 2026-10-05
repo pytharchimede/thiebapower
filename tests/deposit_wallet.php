@@ -75,5 +75,13 @@ namespace {
  $db->exec("UPDATE rentals SET checkout_token='private-checkout',due_at='2099-10-03 12:00:00',rental_fee=600,duration_minutes=60,billing_rule='prorata_grace5',late_percent=20,status='active' WHERE id=1");
  $controller=new \App\Controllers\RentalController();
  foreach(['','wrong','private-checkout'] as $token){$_GET=['reference'=>'TBP-TEST','token'=>$token];ob_start();$controller->status();$data=json_decode(ob_get_clean(),true);same($token==='private-checkout',isset($data['caution']));if($token==='private-checkout')same(5000,$data['caution']['refund']);}
+ $success=['status'=>'success','message'=>'Rechargement effectué avec succès','montant'=>2040,'balance'=>2416];
+ same(true,XPayeWalletClient::creditConfirmed(201,$success,2040));
+ foreach([array_replace($success,['montant'=>204]),array_replace($success,['message'=>'Demande reçue']),array_replace($success,['status'=>'pending']),array_replace($success,['balance'=>null])] as $bad)same(false,XPayeWalletClient::creditConfirmed(201,$bad,2040));same(false,XPayeWalletClient::creditConfirmed(500,$success,2040));
+ $autoId=DepositWallet::createTest(str_repeat('c',32),2040,9);$automaticCalls=0;
+ $automatic=new XPayeWalletClient(function($path,$payload)use(&$automaticCalls,$success){if($path==='/auth/token')return ['http'=>200,'body'=>'{"token":"test-token"}'];$automaticCalls++;return ['http'=>201,'body'=>json_encode($success)];});
+ DepositWallet::send($autoId,$automatic);DepositWallet::send($autoId,$automatic);same(1,$automaticCalls);same('confirmed',$db->query('SELECT status FROM deposit_wallet_transfers WHERE id='.$autoId)->fetchColumn());
+ $recoveryId=DepositWallet::createTest(str_repeat('d',32),2040,9);$db->prepare("UPDATE deposit_wallet_transfers SET status='submitted',http_status=201,response_summary=? WHERE id=?")->execute([json_encode($success),$recoveryId]);DepositWallet::reconcileCompletedCredits();DepositWallet::reconcileCompletedCredits();same('confirmed',$db->query('SELECT status FROM deposit_wallet_transfers WHERE id='.$recoveryId)->fetchColumn());same(1,$automaticCalls);
+ echo "Automatic wallet credit: exact XPaye completion, negative cases, duplicate protection and recorded reply recovery OK\n";
  echo "Deposit wallet OK: verified payments, fee reserve, durable duplicate/timeout protection, credit gate, secret redaction, frozen return and grace boundaries; no real API calls\n";
 }

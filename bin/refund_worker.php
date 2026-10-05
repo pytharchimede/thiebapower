@@ -10,6 +10,7 @@ use App\Core\App;
 use App\Services\AutomaticDepositRefundService;
 \App\Services\DepositWallet::recoverVerifiedPayments();
 \App\Services\DepositWallet::prepareMissingFees();
+\App\Services\DepositWallet::reconcileCompletedCredits();
 if((int)\App\Services\DepositWallet::settings()['enabled']===1){
  foreach(App::db()->query("SELECT id FROM deposit_wallet_transfers WHERE purpose='deposit' AND status='pending' ORDER BY id LIMIT 25")->fetchAll() as $transfer){
   try{\App\Services\DepositWallet::send((int)$transfer['id']);}catch(Throwable $e){error_log('Wallet worker transfer '.$transfer['id'].': '.$e->getMessage());}
