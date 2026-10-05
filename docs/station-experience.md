@@ -96,3 +96,7 @@ Déployer `promotions.js`, `promotion-cards.css` et `promotion-share.js`. La vé
 ## Réessai des codes après paiement abandonné
 
 Migration `20261005_promotion_retry_limits.sql` : ajoute une limite par numéro (1 par défaut) et remplace l’unicité promotion/téléphone par un index, sans supprimer les utilisations historiques. Les limites comptent les paiements validés (notification authentifiée responsecode=0) et les réservations en attente dans leur fenêtre de deux minutes. Les tentatives impayées expirées ne consomment plus de place, même avant le prochain cron. La limite est revérifiée sous verrou au checkout. La liste publique emploie le même calcul. Suppression/archivage conservent leur contrôle sur toutes les tentatives historiques. L’admin peut modifier les deux limites ; les messages distinguent limite globale et limite par numéro. Copier `promotion-cards.css` vers la racine publique.
+
+## Messages et formulaire de code promo
+
+Les refus distinguent une limite consommée par des paiements validés et une réservation temporaire : le délai restant est calculé depuis les échéances serveur, en tenant compte du nombre de places à libérer si une limite a été abaissée. Le formulaire présente nom puis téléphone, puis le code facultatif. Le champ et le bouton Appliquer s’activent avec un téléphone valide et une batterie choisie ; la remise est annulée si le téléphone ou la sélection change. Déployer `promotions.js` et `public-entry.css`. Aucune nouvelle migration.

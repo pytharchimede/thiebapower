@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#103d46">
     <title>Louer une batterie · Thiebapower</title>
     <link rel="stylesheet" href="/style.css">
-    <link rel="stylesheet" href="/public-entry.css?v=20261005-5">
+    <link rel="stylesheet" href="/public-entry.css?v=20261005-6">
 </head>
 <body class="kiosk public-entry public-rent">
 <div class="kiosk-shell">
@@ -63,11 +63,18 @@
                 <p class="deposit-info"><?= (int)$prices['duration_minutes'] ?> minutes incluses, puis <?= (int)($prices['grace_minutes']??5) ?> minutes gratuites. Ensuite, le dépassement est calculé au prorata du tarif payé, arrondi au FCFA supérieur. <?= $depositEnabled ? 'Il est retenu sur la caution, sans jamais la dépasser. Le reste est remboursable.' : 'Sans caution, aucune retenue automatique ; merci de respecter le délai de retour.' ?></p>
                 <?php if ($checkoutEnabled): ?>
                     <form method="post" action="/rentals" id="rental-checkout">
-                        <?php if(\App\Services\PromotionService::enabled()&&$depositEnabled): ?><label>Code promotionnel (facultatif)<input name="promotion_code" id="promotion-code" maxlength="40" pattern="[A-Za-z0-9_-]{3,40}" placeholder="Votre code"></label><input type="hidden" name="previous_token" id="previous-rental-token"><button type="button" id="preview-promotion" class="touch-button outline">Vérifier le code</button><p id="promotion-status" role="status">La remise s’applique uniquement à la caution ; le tarif de location reste inchangé.</p><script src="/promotions.js?v=20261005-2" defer></script><?php endif; ?>
                         <input type="hidden" name="checkout_token" value="<?= bin2hex(random_bytes(16)) ?>"><input type="hidden" name="station_code" id="checkout-station" value="<?= htmlspecialchars($station['imei'],ENT_QUOTES,'UTF-8') ?>">
                         <input type="hidden" name="battery_id" id="checkout-battery">
-                        <label class="input-label">Votre nom<input name="name" required maxlength="160"></label>
-                        <label class="input-label">Votre téléphone<input name="phone" type="tel" required placeholder="+225..."></label>
+                        <label class="input-label">Votre nom<input name="name" required autocomplete="name" maxlength="160"></label>
+                        <label class="input-label">Votre téléphone<input name="phone" type="tel" required autocomplete="tel" inputmode="tel" placeholder="07 00 00 00 00 ou +225..."></label>
+                        <?php if(\App\Services\PromotionService::enabled()&&$depositEnabled): ?>
+                        <section class="checkout-promotion" aria-label="Code promotionnel facultatif">
+                            <label for="promotion-code">Vous avez un code promo ? <small>Facultatif</small></label>
+                            <p id="promotion-help">Renseignez votre téléphone ci-dessus, puis saisissez le code et appuyez sur « Appliquer ».</p>
+                            <div class="promotion-input-row"><input name="promotion_code" id="promotion-code" maxlength="40" pattern="[A-Za-z0-9_-]{3,40}" placeholder="Votre code" aria-describedby="promotion-help promotion-status" disabled><button type="button" id="preview-promotion" class="touch-button outline" disabled>Appliquer</button></div>
+                            <input type="hidden" name="previous_token" id="previous-rental-token">
+                            <p id="promotion-status" role="status" aria-live="polite">Renseignez un téléphone valide pour activer le champ. La remise porte uniquement sur la caution.</p>
+                        </section><script src="/promotions.js?v=20261005-3" defer></script><?php endif; ?>
                         <?php if ($depositEnabled): $paymentField='payment_channel';$paymentLegend='Moyen de paiement';require __DIR__.'/partials/payment_channels.php'; ?><p class="tb-muted">La caution restante sera remboursée automatiquement par le même moyen de paiement, au numéro renseigné, après le retour confirmé de la batterie.</p><?php endif; ?>
                         <?php require __DIR__.'/partials/payment_logos.php'; ?>
                         <button class="touch-button primary">Procéder au paiement <span aria-hidden="true">→</span></button>

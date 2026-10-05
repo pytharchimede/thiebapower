@@ -71,7 +71,7 @@ $db->prepare("INSERT INTO payment_notifications(rental_id,payload,received_at) V
 $rejected=false;try{$service->assess('RETRY200',$phone,1000);}catch(InvalidArgumentException $e){$rejected=str_contains($e->getMessage(),'Ce numéro');}$assert($rejected,'Paid attempt consumes phone quota once despite duplicate notifications');
 $db->prepare('UPDATE promotions SET max_uses_per_phone=2 WHERE id=?')->execute([$retryId]);
 $offer=$service->assess('RETRY200',$phone,1000);$attempt4=$newAttempt('pending_payment',$future);$service->record($attempt4,$offer,$phone);
-$rejected=false;try{$service->assess('RETRY200','0700000088',1000);}catch(InvalidArgumentException $e){$rejected=str_contains($e->getMessage(),'limite globale');}$assert($rejected,'Global quota counts payments plus live reservations');
+$rejected=false;try{$service->assess('RETRY200','0700000088',1000);}catch(InvalidArgumentException $e){$rejected=str_contains($e->getMessage(),'Réessayez dans');}$assert($rejected,'Global quota counts payments plus live reservations');
 $db->prepare("UPDATE rentals SET status='payment_timeout',reservation_expires_at=? WHERE id=?")->execute([$past,$attempt4]);
 $assert($service->assess('RETRY200',$phone,1000)['deposit']===800,'Per-phone limit two permits another attempt after timeout');
 $assert((int)$db->query("SELECT COUNT(*) FROM rental_promotion_redemptions WHERE promotion_id=$retryId")->fetchColumn()===4,'Expired attempts retained in audit history');

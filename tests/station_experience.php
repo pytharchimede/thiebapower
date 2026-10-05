@@ -39,3 +39,10 @@ $routes=require dirname(__DIR__).'/routes/web.php';$assert(isset($routes['POST /
 echo "$n station experience tests OK\n";
 
 foreach([[2000,500,1500],[2000,2000,0],[2000,3000,0]] as [$deposit,$discount,$expected]){if(\App\Services\PromotionService::discountedDeposit($deposit,$discount)!==$expected)throw new RuntimeException('Deposit discount failed');}
+
+$assert(PromotionService::limitMessage([],1,true)===null,'Available phone quota has no error');
+$assert(str_contains(PromotionService::limitMessage([['paid'=>0,'remaining_seconds'=>90]],1,true),'Réessayez dans 1 min 30 s'),'Pending phone shows remaining delay');
+$assert(str_contains(PromotionService::limitMessage([['paid'=>1,'remaining_seconds'=>null]],1,true),'épuisé ses 1'),'Paid phone explicitly exhausted');
+$assert(str_contains(PromotionService::limitMessage([['paid'=>1,'remaining_seconds'=>null]],1,false),'limite globale'),'Paid global explicitly exhausted');
+$assert(str_contains(PromotionService::limitMessage([['paid'=>0,'remaining_seconds'=>20],['paid'=>0,'remaining_seconds'=>80]],1,true),'1 min 20 s'),'Reduced limit waits for enough reservations to expire');
+echo "Promotion messages tests OK\n";
