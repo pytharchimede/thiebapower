@@ -36,15 +36,13 @@ final class AdminController {
  }
  public function prices():void {
   Auth::requirePermission('pricing.manage',true);
-  $fee=filter_input(INPUT_POST,'rental_fee',FILTER_VALIDATE_INT);
-  $deposit=filter_input(INPUT_POST,'default_deposit',FILTER_VALIDATE_INT);
-  $minutes=filter_input(INPUT_POST,'duration_minutes',FILTER_VALIDATE_INT);
-  $percent=filter_input(INPUT_POST,'late_percent',FILTER_VALIDATE_INT);
-  $grace=filter_input(INPUT_POST,'grace_minutes',FILTER_VALIDATE_INT);
-  $depositEnabled=($_POST['deposit_enabled']??'')==='1'?1:0;
-  if(!is_int($fee)||$fee<1||!is_int($deposit)||$deposit<0||!is_int($minutes)||$minutes<1||!is_int($percent)||$percent<0||$percent>100||!is_int($grace)||$grace<0||$grace>1440){http_response_code(422);exit('Tarifs invalides');}
-  App::db()->prepare('UPDATE pricing SET rental_fee=?,default_deposit=?,duration_minutes=?,late_percent=?,deposit_enabled=?,grace_minutes=? WHERE id=1')->execute([$fee,$deposit,$minutes,$percent,$depositEnabled,$grace]);
-  Audit::event('pricing.updated','pricing','1',['rental_fee'=>$fee,'default_deposit'=>$deposit,'duration_minutes'=>$minutes,'late_percent'=>$percent,'deposit_enabled'=>$depositEnabled,'grace_minutes'=>$grace]);
+  $scope=(string)($_POST['pricing_scope']??'default');$selected=$_POST['stations']??[];
+  try{
+   if(!is_array($selected))throw new \InvalidArgumentException('Sélection de stations invalide.');
+   $price=$scope==='inherit'?[]:\App\Services\StationPricing::validate($_POST);
+   \App\Services\StationPricing::apply($price,$scope,$selected);
+  }catch(\InvalidArgumentException $e){http_response_code(422);echo htmlspecialchars($e->getMessage(),ENT_QUOTES,'UTF-8');return;}
+  Audit::event('pricing.updated','pricing',$scope,['scope'=>$scope,'stations'=>$selected,'price'=>$price]);
   App::redirect('/admin/pricing?saved=1');
  }
  public function battery():void {

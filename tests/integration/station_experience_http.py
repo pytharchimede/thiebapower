@@ -128,3 +128,21 @@ assert owner.post(base+'/admin/promotions/limits',data={'csrf':csrf,'id':id,'max
 assert owner.post(base+'/admin/promotions/limits',data={'csrf':csrf,'id':id,'max_uses':5,'max_uses_per_phone':2},allow_redirects=False).status_code==303
 page=owner.get(base+'/admin/promotions');card=re.search(r'<article class="promo-card">(?:(?!</article>).)*LIMITS200(?:(?!</article>).)*</article>',page.text,re.S).group(0);assert '2 utilisation(s) autorisée(s) par numéro' in card
 print('Promotion limit settings HTTP: create, edit, positive bounds, archive rejection, CSRF and permissions OK')
+# Station pricing settings and public promo preview use the same effective price.
+page=owner.get(base+'/admin/pricing');assert page.status_code==200,page.text
+csrf=re.search(r'name="csrf" value="([^"]+)"',page.text).group(1)
+price={'csrf':csrf,'pricing_scope':'selected','stations[]':'TEST01','rental_fee':250,'default_deposit':1200,'duration_minutes':30,'late_percent':10,'deposit_enabled':1,'grace_minutes':2}
+assert owner.post(base+'/admin/prices',data=price,allow_redirects=False).status_code==303
+page=owner.get(base+'/admin/pricing?station=TEST01');assert page.status_code==200 and 'value="250"' in page.text and 'Tarif spécifique' in page.text
+rent=requests.get(base+'/rent?station=TEST01');assert rent.status_code==200 and 'window.TB_PRICE = 250' in rent.text,rent.text
+preview=requests.post(base+'/promotions/preview',json={'code':'LIMITS200','phone':'0700000077','station_code':'TEST01','battery_id':1});assert preview.status_code==200,preview.text;assert preview.json()['fee']==250 and preview.json()['deposit']==1000
+bad=dict(price);bad['csrf']='bad';assert owner.post(base+'/admin/prices',data=bad).status_code==403
+assert reader.post(base+'/admin/prices',data=price).status_code==403
+bad=dict(price);bad['stations[]']='UNKNOWN';assert owner.post(base+'/admin/prices',data=bad).status_code==422
+bad=dict(price);bad.pop('stations[]');assert owner.post(base+'/admin/prices',data=bad).status_code==422
+price['deposit_enabled']=0;assert owner.post(base+'/admin/prices',data=price,allow_redirects=False).status_code==303
+preview=requests.post(base+'/promotions/preview',json={'code':'LIMITS200','phone':'0700000077','station_code':'TEST01','battery_id':1});assert preview.status_code==422 and 'caution' in preview.json()['error'],preview.text
+assert owner.post(base+'/admin/prices',data={'csrf':csrf,'pricing_scope':'inherit','stations[]':'TEST01'},allow_redirects=False).status_code==303
+page=owner.get(base+'/admin/pricing?station=TEST01');assert 'Tarif spécifique' not in page.text
+assert owner.get(base+'/admin/pricing?station=UNKNOWN').status_code==404
+print('Station pricing HTTP: selected station, public rent amount, promo deposit, disabled caution, inheritance, CSRF and permissions OK')

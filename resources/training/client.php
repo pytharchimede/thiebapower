@@ -46,7 +46,9 @@ return [
  'Sans suite après le délai de réservation, la batterie redevient louable selon le mécanisme prévu. Ne contournez pas ce contrôle par une nouvelle sortie manuelle.'
  ],'Faire un parcours sandbox : sélection, récapitulatif, paiement de test et lecture du statut.','/'],
  ['Expliquer le tarif et le dépassement','Présenter les règles en langage simple.',[
- 'Le tarif initial couvre la durée configurée. La règle en vigueur prévoit ensuite cinq minutes gratuites. Au-delà, le dépassement est calculé au prorata du tarif effectivement payé et arrondi au FCFA supérieur.',
+ 'Dans Tarification, choisissez le tarif général, toutes les stations ou une sélection (une station suffit). Un tarif spécifique remplace le général. Toutes les stations remplace aussi les tarifs spécifiques. Revenir au tarif général supprime la personnalisation de la station.',
+ 'Location, durée, caution et délai de grâce peuvent varier selon la station. Vérifiez le tarif appliqué sur les cartes du dashboard ; les locations déjà créées conservent leurs montants et leurs règles.',
+ 'Le tarif initial couvre la durée configurée. Le délai de grâce configuré pour cette station est gratuit (cinq minutes par défaut). Au-delà, le dépassement est calculé au prorata du tarif effectivement payé et arrondi au FCFA supérieur.',
  'Exemple pédagogique : tarif 600 FCFA pour 60 minutes, batterie rendue 75 minutes après le début. Après les 5 minutes gratuites, 10 minutes sont facturables : 600 / 60 × 10 = 100 FCFA.',
  'Avec une caution de 200 FCFA dans cet exemple, la retenue est de 100 FCFA et le reste à restituer est de 100 FCFA. La retenue ne dépasse jamais la caution.',
  'Quand la caution est désactivée, aucune retenue automatique n’est appliquée. Une remise sur la caution ne change pas le tarif utilisé pour le prorata. Vérifiez toujours la règle et les montants de la fiche réelle.'
@@ -58,7 +60,7 @@ return [
  'En cas de retour non reconnu, demandez la station, l’heure, la référence et le numéro de batterie. Vérifiez l’inventaire et le journal avant toute correction.'
  ],'Retrouver le reçu d’une location terminée dans le navigateur de test.','/my-rentals'],
  ['Suivre les cautions et restitutions','Ne pas confondre paiement et remboursement.',[
- 'La caution est distincte du revenu de location. Elle peut être désactivée globalement ; quand elle est active, le reste après retenue suit le circuit de restitution prévu.',
+ 'La caution est distincte du revenu de location. Elle peut être désactivée dans le tarif général ou pour certaines stations ; quand elle est active, le reste après retenue suit le circuit de restitution prévu.',
  'Consultez Cautions et solde payout pour distinguer encaissement client, transfert vers le solde de payout, remboursement en attente et remboursement confirmé.',
  'Une réponse technique de création de demande ne prouve pas à elle seule le crédit effectif du solde ou la réception par le client. Rapprochez avec le fournisseur et le journal.',
  'Les frais de remboursement sont pris en charge par Thiebapower. Un payout réel débite des fonds : vérifiez montant, numéro et canal ; ne relancez pas un essai en attente.'

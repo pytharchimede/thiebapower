@@ -100,3 +100,9 @@ Migration `20261005_promotion_retry_limits.sql` : ajoute une limite par numéro 
 ## Messages et formulaire de code promo
 
 Les refus distinguent une limite consommée par des paiements validés et une réservation temporaire : le délai restant est calculé depuis les échéances serveur, en tenant compte du nombre de places à libérer si une limite a été abaissée. Le formulaire présente nom puis téléphone, puis le code facultatif. Le champ et le bouton Appliquer s’activent avec un téléphone valide et une batterie choisie ; la remise est annulée si le téléphone ou la sélection change. Déployer `promotions.js` et `public-entry.css`. Aucune nouvelle migration.
+
+## Tarification par station
+
+Appliquer `20261005_station_pricing.sql` : toutes les stations héritent initialement du tarif général, sans modification des locations existantes. La page `/admin/pricing` propose un tarif général (conserve les personnalisations), toutes les stations (remplace les personnalisations et devient le tarif général), ou une sélection d’une ou plusieurs stations. Chaque personnalisation contient location, durée, caution activée/montant, grâce et ancien taux de dépassement. Le retour au tarif général retire seulement cette personnalisation. Les nouvelles stations héritent du général. La caution propre à la batterie est prioritaire si la caution de la station est activée.
+
+`StationPricing` résout le tarif public, le checkout et la prévisualisation des promotions ; la transaction capture les montants et règles sur la location. Les écritures de tarifs sont atomiques, valident toute la sélection et partagent un verrou avec le checkout pour lire une configuration cohérente. Accès pricing.view, modifications pricing.manage + CSRF, historique d’audit. Déployer `station-pricing.css` et `station-pricing.js`. Les suites HTTP et MariaDB couvrent sélection, héritage, restauration, toutes stations, cautions, promotion et immutabilité des locations.

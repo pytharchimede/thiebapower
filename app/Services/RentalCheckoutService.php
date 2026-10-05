@@ -75,10 +75,7 @@ final class RentalCheckoutService
         $phone = preg_replace("/\s+/", "", (string) ($input["phone"] ?? ""));
         $station = trim((string) ($input["station_code"] ?? ""));
         $channel = (string) ($input["payment_channel"] ?? "");
-        $depositEnabled =
-            (int) App::db()
-                ->query("SELECT deposit_enabled FROM pricing WHERE id=1")
-                ->fetchColumn() === 1;
+        $depositEnabled=(int)StationPricing::resolve($station)['deposit_enabled']===1;
         $batteryId = filter_var(
             $input["battery_id"] ?? null,
             FILTER_VALIDATE_INT,
@@ -162,7 +159,9 @@ final class RentalCheckoutService
                     );
                 }
             }
-            $price = $db->query("SELECT * FROM pricing WHERE id=1")->fetch();
+            $price = StationPricing::resolve($station,true);
+            $depositEnabled=(int)$price['deposit_enabled']===1;
+            if($depositEnabled&&!in_array($channel,['WAVECI','MOMOCI','OMCIV','FLOOZ'],true))throw new CheckoutConflict('Le tarif de cette station a changé. Actualisez la page et choisissez votre moyen de paiement.');
             $offer=null;$effectiveFee=(int)$price['rental_fee'];$effectiveDeposit=$depositEnabled?(int)($battery['deposit_override']??$price['default_deposit']):0;
             if(PromotionService::enabled()&&trim((string)($input['promotion_code']??''))!==''){
                 try{$offer=(new PromotionService)->assess((string)$input['promotion_code'],$phone,$effectiveDeposit,(string)($input['previous_token']??''),true);$effectiveDeposit=$offer['deposit'];$offer['original_fee']=$effectiveFee;}catch(\InvalidArgumentException $e){throw new CheckoutConflict($e->getMessage());}

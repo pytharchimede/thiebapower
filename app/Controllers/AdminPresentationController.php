@@ -10,8 +10,12 @@ final class AdminPresentationController
     {
         Auth::requirePermission("pricing.view");
         $csrf = $_SESSION["csrf"];
-        $prices = App::db()->query("SELECT * FROM pricing WHERE id=1")->fetch();
-        App::view("pricing", compact("prices", "csrf"));
+        $db=App::db();$stations=$db->query('SELECT imei,label FROM stations ORDER BY label,imei')->fetchAll();
+        $selectedStation=(string)($_GET['station']??'');$known=array_column($stations,'imei');
+        if($selectedStation!==''&&!in_array($selectedStation,$known,true)){http_response_code(404);return;}
+        $prices=\App\Services\StationPricing::resolve($selectedStation);
+        $stationPrices=[];foreach($stations as $station)$stationPrices[$station['imei']]=\App\Services\StationPricing::resolve($station['imei']);
+        App::view("pricing", compact("prices", "csrf","stations","selectedStation","stationPrices"));
     }
     public function batteries(): void
     {

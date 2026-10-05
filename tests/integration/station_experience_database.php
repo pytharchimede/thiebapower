@@ -7,7 +7,7 @@ if(!preg_match('/^thiebapower_test_[a-z0-9_]+$/D',(string)$db->query('SELECT DAT
 if((int)$db->query('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()')->fetchColumn()!==0)throw new RuntimeException('Test database must be empty; no existing table is deleted.');
 $root=dirname(__DIR__,2);$db->exec(file_get_contents($root.'/database/schema.sql'));
 $files=glob($root.'/database/migrations/*.sql');
-$order=['20260928_automatic_deposit_refunds.sql','20260928_v1_accounts_audit.sql','20260928_rental_checkout_lifecycle.sql','20260929_heycharge_terminals.sql','20260929_charging_batteries.sql','20260929_manual_battery_release.sql','20260929_manual_battery_reinsertion.sql','20260929_finance_cash.sql','20260929_rental_operations.sql','20260929_payment_reservation_timeout.sql','20260929_station_label_settings.sql','20260929_station_label_logo_settings.sql','20261003_checkout_notifications.sql','20261003_finance_billing.sql','20261003_refund_payment_channel.sql','20261003_deposit_wallet.sql','20261003_deposit_wallet_fee_defaults.sql','20261004_station_experience.sql','20261004_public_promotions.sql','20261004_public_support.sql','20261004_training_roadmap.sql','20261005_configurable_grace.sql','20261005_deposit_promotions.sql','20261005_promotion_archive.sql','20261005_promotion_retry_limits.sql'];
+$order=['20260928_automatic_deposit_refunds.sql','20260928_v1_accounts_audit.sql','20260928_rental_checkout_lifecycle.sql','20260929_heycharge_terminals.sql','20260929_charging_batteries.sql','20260929_manual_battery_release.sql','20260929_manual_battery_reinsertion.sql','20260929_finance_cash.sql','20260929_rental_operations.sql','20260929_payment_reservation_timeout.sql','20260929_station_label_settings.sql','20260929_station_label_logo_settings.sql','20261003_checkout_notifications.sql','20261003_finance_billing.sql','20261003_refund_payment_channel.sql','20261003_deposit_wallet.sql','20261003_deposit_wallet_fee_defaults.sql','20261004_station_experience.sql','20261004_public_promotions.sql','20261004_public_support.sql','20261004_training_roadmap.sql','20261005_configurable_grace.sql','20261005_deposit_promotions.sql','20261005_promotion_archive.sql','20261005_promotion_retry_limits.sql','20261005_station_pricing.sql'];
 foreach($order as $file){try{$db->exec(file_get_contents($root.'/database/migrations/'.$file));}catch(Throwable $e){throw new RuntimeException($file.': '.$e->getMessage());}}
 $db->exec(file_get_contents($root.'/database/migrations/20261004_station_experience.sql')); // idempotence
 $db->exec(file_get_contents($root.'/database/migrations/20261004_public_promotions.sql'));
@@ -77,3 +77,19 @@ $assert($service->assess('RETRY200',$phone,1000)['deposit']===800,'Per-phone lim
 $assert((int)$db->query("SELECT COUNT(*) FROM rental_promotion_redemptions WHERE promotion_id=$retryId")->fetchColumn()===4,'Expired attempts retained in audit history');
 ob_start();(new \App\Controllers\PromotionController)->offers();$html=ob_get_clean();$assert(str_contains($html,'RETRY200'),'Public offer is available again after unpaid expiry');
 echo "Promotion retry: repeatable migration, expiry without cron, failed payment window, duplicate callback, adjustable phone limit, global quota and retained history OK\n";
+
+// Global/default/selected scopes and existing rental snapshots are independent.
+use App\Services\StationPricing;
+$db->exec(file_get_contents($root.'/database/migrations/20261005_station_pricing.sql'));
+$db->exec(file_get_contents($root.'/database/migrations/20261005_station_pricing.sql'));
+$global=StationPricing::resolve('TEST01');$assert(!$global['is_station_price'],'Existing station inherits general price after migration');
+$snapshots=$db->query('SELECT id,rental_fee,deposit,duration_minutes,grace_minutes FROM rentals ORDER BY id')->fetchAll();
+$custom=StationPricing::validate(['rental_fee'=>250,'default_deposit'=>1200,'duration_minutes'=>30,'late_percent'=>10,'deposit_enabled'=>1,'grace_minutes'=>2]);
+StationPricing::apply($custom,'selected',['TEST01']);$assert((int)StationPricing::resolve('TEST01')['rental_fee']===250,'Selected station receives override');$assert((int)StationPricing::resolve('DISABLED')['rental_fee']===(int)$global['rental_fee'],'Other station retains general price');
+$general=$custom;$general['rental_fee']=400;StationPricing::apply($general,'default',[]);$assert((int)StationPricing::resolve('TEST01')['rental_fee']===250&&(int)StationPricing::resolve('DISABLED')['rental_fee']===400,'Changing general price preserves overrides');
+$reject=false;try{StationPricing::apply($custom,'selected',['TEST01','UNKNOWN']);}catch(InvalidArgumentException){$reject=true;}$assert($reject&&(int)StationPricing::resolve('TEST01')['rental_fee']===250,'Unknown selection rolls back entire update');
+StationPricing::apply($custom,'selected',['TEST01','DISABLED']);$assert((int)StationPricing::resolve('DISABLED')['rental_fee']===250,'Selection applies to several stations');
+StationPricing::apply([],'inherit',['TEST01']);$assert(!StationPricing::resolve('TEST01')['is_station_price']&&(int)StationPricing::resolve('TEST01')['rental_fee']===400,'Restore inheritance follows general price');
+StationPricing::apply($general,'all',[]);$assert((int)$db->query('SELECT COUNT(*) FROM station_pricing')->fetchColumn()===0,'All-stations scope removes prior overrides');
+$assert($snapshots===$db->query('SELECT id,rental_fee,deposit,duration_minutes,grace_minutes FROM rentals ORDER BY id')->fetchAll(),'Changing prices never changes existing rental snapshots');
+echo "Station pricing database: repeated migration, global inheritance, selected stations, default preservation, atomic invalid selection, all stations and frozen rentals OK\n";

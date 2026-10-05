@@ -30,7 +30,7 @@ final class RentalController {
    try {$inventoryError=!(new \App\Services\StationFleetService)->syncPublic($imei);}
    catch(\Throwable $e){error_log('Public station inventory '.$imei.': '.$e->getMessage());$inventoryError=true;}
   }
-  $prices=App::db()->query('SELECT * FROM pricing WHERE id=1')->fetch();
+  $prices=\App\Services\StationPricing::resolve($imei);
   $modes=\App\Services\IntegrationSettings::all();
   $q=$db->prepare("SELECT id,serial,slot_id,battery_capacity,deposit_override,station_imei FROM batteries WHERE station_imei=? AND status='available' AND slot_id IS NOT NULL AND battery_capacity>=70 ORDER BY CAST(slot_id AS UNSIGNED),slot_id");$q->execute([$imei]);
   $batteries=$inventoryError?[]:$q->fetchAll();
