@@ -29,7 +29,12 @@ $assert(StationProfitability::metrics(100,0,0,0)['recovered_percent']===null,'Un
 $assert(PromotionService::discountedFee(1000,200)===800,'Only fee is discounted');
 foreach([0,1000,1200] as $discount){$rejected=false;try{PromotionService::discountedFee(1000,$discount);}catch(InvalidArgumentException){$rejected=true;}$assert($rejected,'Invalid discounts rejected');}
 $assert(PromotionService::phoneKey('+2250700000000')===PromotionService::phoneKey('07 00 00 00 00'),'Equivalent phones share coupon limit');
-putenv('PROMOTIONS_ENABLED');$assert(!PromotionService::enabled(),'Promotions default disabled');
+// Explicit process-local values override a production .env without changing it.
+$previousPromotions=getenv('PROMOTIONS_ENABLED');
+try {
+ putenv('PROMOTIONS_ENABLED=0');$assert(!PromotionService::enabled(),'Promotions explicitly disabled');
+ putenv('PROMOTIONS_ENABLED=1');$assert(PromotionService::enabled(),'Promotions explicitly enabled');
+} finally {putenv($previousPromotions===false?'PROMOTIONS_ENABLED':'PROMOTIONS_ENABLED='.$previousPromotions);}
 $routes=require dirname(__DIR__).'/routes/web.php';$assert(isset($routes['POST /my-rentals/snapshot'])&&!isset($routes['GET /my-rentals/snapshot']),'Customer token API only accepts POST');
 echo "$n station experience tests OK\n";
 
