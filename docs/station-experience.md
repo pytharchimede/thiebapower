@@ -86,3 +86,9 @@ Le succès synchrone `/wallet/request` (HTTP 201, status success, message exact 
 ## Promotions sur la caution uniquement
 
 Migration `20261005_deposit_promotions.sql` préserve la cible des remises historiques (rental_fee) et enregistre deposit pour les nouvelles utilisations. Le code réduit la caution réelle de la batterie choisie ; le tarif de location et le prorata ne changent pas. Remise plafonnée à la caution, jusqu’à zéro. Sans caution active, code indisponible. Prévisualisation fondée sur les données serveur de la batterie, vérification finale sous transaction. La caution réduite est enregistrée sur la location : transfert payout, réserve de frais, retenue et remboursement utilisent ce montant réellement payé. Copier `promotions.js` vers la racine publique.
+
+## Gestion du cycle de vie des codes
+
+Appliquer `20261005_promotion_archive.sql` avant le nouveau code PHP. Activation au paiement et visibilité publique sont indépendantes ; un code public désactivé ne paraît pas sur `/offers`. La suppression est réservée aux codes sans aucune utilisation. Un code utilisé se conserve dans les archives après désactivation ; un code actif ne peut pas être archivé. Les opérations verrouillent le code comme le checkout, préservent les utilisations historiques et refusent la réactivation des archives. L’écran propose une vue dédiée aux archives. Le partage inclut WhatsApp, Telegram, X, Facebook, email, SMS et menu natif, sans envoyer automatiquement de message.
+
+Déployer `promotions.js`, `promotion-cards.css` et `promotion-share.js`. La vérification affiche chargement, erreurs et délai dépassé ; les réponses devenues obsolètes sont ignorées et les anciennes remises annulées si les données changent. Vérifier `PROMOTIONS_ENABLED=1` et une caution active. Tests : `tests/promotions_dom.js` et suites HTTP/base de données station experience.

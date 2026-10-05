@@ -88,3 +88,31 @@ print('Training HTTP: access, CSRF, proposal create/edit, escaping and guide/pro
 page=owner.get(base+'/admin/training');assert 'Thiebapower v1.0.0' in page.text and 'Développé par' in page.text and 'Success’Lab' in page.text
 page=requests.get(base+'/stations/map');assert 'Thiebapower v1.0.0' in page.text and 'Success’Lab' in page.text
 print('Release footer HTTP: public and dashboard version and developer credit OK')
+# Independent flags and lifecycle operations on local fixtures, without payment calls.
+page=owner.get(base+'/admin/promotions');assert page.status_code==200,page.text
+csrf=re.search(r'name="csrf" value="([^"]+)"',page.text).group(1)
+payload={'csrf':csrf,'code':'LIFECYCLE','kind':'campaign','discount':200,'max_uses':5,'minimum_completed':0,'start':'2020-01-01','end':'2099-12-31','enabled':'on'}
+assert owner.post(base+'/admin/promotions',data=payload,allow_redirects=False).status_code==303
+page=owner.get(base+'/admin/promotions');card=re.search(r'<article class="promo-card">(?:(?!</article>).)*LIFECYCLE(?:(?!</article>).)*</article>',page.text,re.S).group(0)
+id=re.search(r'name="id" value="(\d+)"',card).group(1)
+assert 'Code privé' in card and 'Suspendre' in card
+assert owner.post(base+'/admin/promotions/visibility',data={'csrf':csrf,'id':id,'is_public':1},allow_redirects=False).status_code==303
+assert owner.post(base+'/admin/promotions/toggle',data={'csrf':csrf,'id':id,'enabled':0},allow_redirects=False).status_code==303
+page=owner.get(base+'/admin/promotions');card=re.search(r'<article class="promo-card">(?:(?!</article>).)*LIFECYCLE(?:(?!</article>).)*</article>',page.text,re.S).group(0)
+assert 'Visible dans les offres publiques' in card and '>Activer<' in card
+assert owner.post(base+'/admin/promotions/remove',data={'csrf':csrf,'id':id,'action':'archive'}).status_code==409
+assert owner.post(base+'/admin/promotions/remove',data={'csrf':'bad','id':id,'action':'delete'}).status_code==403
+assert owner.post(base+'/admin/promotions/remove',data={'csrf':csrf,'id':id,'action':'delete'},allow_redirects=False).status_code==303
+assert 'LIFECYCLE' not in owner.get(base+'/admin/promotions').text
+page=owner.get(base+'/admin/promotions');card=re.search(r'<article class="promo-card">(?:(?!</article>).)*TEST200(?:(?!</article>).)*</article>',page.text,re.S).group(0);id=re.search(r'name="id" value="(\d+)"',card).group(1)
+assert owner.post(base+'/admin/promotions/remove',data={'csrf':csrf,'id':id,'action':'delete'}).status_code==409
+assert owner.post(base+'/admin/promotions/remove',data={'csrf':csrf,'id':id,'action':'archive'}).status_code==409
+assert owner.post(base+'/admin/promotions/toggle',data={'csrf':csrf,'id':id,'enabled':0},allow_redirects=False).status_code==303
+assert owner.post(base+'/admin/promotions/remove',data={'csrf':csrf,'id':id,'action':'archive'},allow_redirects=False).status_code==303
+assert 'TEST200' not in owner.get(base+'/admin/promotions').text
+assert 'TEST200' in owner.get(base+'/admin/promotions?archived=1').text
+assert owner.post(base+'/admin/promotions/toggle',data={'csrf':csrf,'id':id,'enabled':1},allow_redirects=False).status_code==303
+preview=requests.post(base+'/promotions/preview',json={'code':'TEST200','phone':'0700000009','battery_id':1,'station_code':'TEST01'})
+assert preview.status_code==422,preview.text
+assert 'indisponible' in preview.json()['error']
+print('Promotion HTTP: independent activation/public visibility, CSRF, unused deletion, used inactive archive and archived preview rejection OK')

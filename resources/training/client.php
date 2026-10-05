@@ -76,6 +76,9 @@ return [
  'Documentez chaque action dans le circuit prévu et escaladez au responsable technique si les preuves ne concordent pas. Ne modifiez pas directement les tables de production.'
  ],'Simuler un appel client et constituer le dossier de vérification : référence, station, heure, symptôme et preuves.','/admin/rentals/watch'],
  ['Créer et partager un code promo','Maîtriser remise, visibilité et limites.',[
+ 'Activer autorise le code au paiement ; rendre public contrôle sa présentation sur le site. Les deux réglages sont indépendants. Un code privé actif peut être partagé.',
+ 'Supprimez seulement les codes jamais utilisés. Pour un code utilisé, désactivez-le puis archivez-le ; son historique reste conservé. Consultez les archives depuis la liste des codes.',
+ 'Partagez via les boutons WhatsApp, réseaux sociaux, email ou SMS. Le message est préparé et vous confirmez son envoi dans votre application.',
  'Dans Offres et fidélité, créez un code unique, choisissez campagne ou fidélité, remise fixe, dates et limite d’utilisations. La remise s’applique uniquement à la caution et ne change pas le tarif de location. Elle est plafonnée à la caution.',
  'Les réservations consomment l’utilisation même en cas de paiement abandonné. Chaque code ne peut être réutilisé par le même numéro. Les conditions de fidélité reposent aussi sur une location précédente retrouvée dans le navigateur.',
  'Les codes restent privés par défaut. Rendre public concerne les campagnes : seules les offres actives, non expirées, non épuisées et compatibles avec le tarif apparaissent sur /offers, si l’activation globale est autorisée.',
