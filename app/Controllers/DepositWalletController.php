@@ -5,6 +5,7 @@ use App\Services\Auth;
 use App\Services\DepositWallet;
 use App\Services\XPayeWalletClient;
 use App\Services\Audit;
+use App\Services\RentalPaymentChannel;
 final class DepositWalletController
 {
     public function index():void
@@ -42,17 +43,20 @@ final class DepositWalletController
             $action=(string)($_POST['action']??'');
             if($action==='settings'){
                 Auth::requirePermission('pricing.manage');
-                $rules=[];
-                foreach(['WAVECI','MOMOCI','OMCIV','FLOOZ'] as $channel){
+                $rules=[];$paymentChannels=[];$payoutChannels=[];
+                foreach(array_keys(RentalPaymentChannel::CHANNELS) as $channel){
+                    if(($_POST['payment_enabled'][$channel]??'')==='1')$paymentChannels[]=$channel;
+                    if(($_POST['payout_enabled'][$channel]??'')==='1')$payoutChannels[]=$channel;
                     if(($_POST['configured'][$channel]??'')!=='1')continue;
                     $fixed=filter_var($_POST['fixed'][$channel]??null,FILTER_VALIDATE_INT);$bps=DepositWallet::percentageBasisPoints($_POST['percent'][$channel]??null);
                     if($fixed===false)throw new \InvalidArgumentException('Frais invalides.');
                     $rules[$channel]=['fixed'=>$fixed,'basis_points'=>$bps];DepositWallet::fee(100,$channel,$rules);
                 }
+                if(!$paymentChannels)throw new \LogicException('Activez au moins un moyen d’encaissement Côte d’Ivoire.');
                 $enabled=($_POST['enabled']??'')==='1';
                 if($enabled && (!XPayeWalletClient::configured() || count($rules)!==4))throw new \LogicException('Renseignez les identifiants serveur et confirmez les frais des quatre canaux avant activation.');
-                App::db()->prepare('UPDATE deposit_wallet_settings SET enabled=?,fee_rules=?,updated_at=UTC_TIMESTAMP() WHERE id=1')->execute([(int)$enabled,json_encode($rules)]);
-                Audit::event('wallet.settings','wallet','1',['enabled'=>$enabled,'fees'=>$rules]);DepositWallet::prepareMissingFees();
+                App::db()->prepare('UPDATE deposit_wallet_settings SET enabled=?,fee_rules=?,payment_channels=?,payout_channels=?,updated_at=UTC_TIMESTAMP() WHERE id=1')->execute([(int)$enabled,json_encode($rules),json_encode($paymentChannels),json_encode($payoutChannels)]);
+                Audit::event('wallet.settings','wallet','1',['enabled'=>$enabled,'fees'=>$rules,'payment_channels'=>$paymentChannels,'payout_channels'=>$payoutChannels]);DepositWallet::prepareMissingFees();
                 $message='Paramètres enregistrés. Les cautions se règlent dans Tarification ; les reversements automatiques doivent aussi être activés sur le serveur.';
             }elseif($action==='auth'){
                 (new XPayeWalletClient(null,'auth'))->authenticate();$message='Authentification XPaye réussie. Aucun transfert effectué.';
