@@ -87,12 +87,7 @@ final class RentalCheckoutService
             $station === "" ||
             strlen($station) > 120 ||
             !$batteryId ||
-            ($depositEnabled &&
-                !in_array(
-                    $channel,
-                    ["WAVECI", "MOMOCI", "OMCIV", "FLOOZ"],
-                    true,
-                ))
+            RentalPaymentChannel::normalize($channel)===null
         ) {
             throw new \InvalidArgumentException(
                 "Informations de location invalides",
@@ -161,7 +156,7 @@ final class RentalCheckoutService
             }
             $price = StationPricing::resolve($station,true);
             $depositEnabled=(int)$price['deposit_enabled']===1;
-            if($depositEnabled&&!in_array($channel,['WAVECI','MOMOCI','OMCIV','FLOOZ'],true))throw new CheckoutConflict('Le tarif de cette station a changé. Actualisez la page et choisissez votre moyen de paiement.');
+            if(RentalPaymentChannel::normalize($channel)===null)throw new CheckoutConflict('Choisissez un moyen de paiement Côte d’Ivoire.');
             $offer=null;$effectiveFee=(int)$price['rental_fee'];$effectiveDeposit=$depositEnabled?(int)($battery['deposit_override']??$price['default_deposit']):0;
             if(PromotionService::enabled()&&trim((string)($input['promotion_code']??''))!==''){
                 try{$offer=(new PromotionService)->assess((string)$input['promotion_code'],$phone,$effectiveDeposit,(string)($input['previous_token']??''),true);$effectiveDeposit=$offer['deposit'];$offer['original_fee']=$effectiveFee;}catch(\InvalidArgumentException $e){throw new CheckoutConflict($e->getMessage());}
@@ -178,7 +173,7 @@ final class RentalCheckoutService
                 $name,
                 $email,
                 $phone,
-                $depositEnabled ? $channel : null,
+                RentalPaymentChannel::normalize($channel),
                 null, // Filled automatically after a verified payment; no separate refund choice.
                 $effectiveFee,
                 $effectiveDeposit,
