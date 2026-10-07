@@ -30,7 +30,7 @@ final class PaiementProService {
    'customerPhoneNumber'=>$r['customer_phone'],'description'=>'Location powerbank '.$r['reference'],
    'notificationURL'=>$base.$notificationPath,'returnURL'=>$base.$returnPath];
   $channel=RentalPaymentChannel::normalize($r['payment_channel']??null);
-  if($channel===null)throw new \LogicException('Choisissez un moyen de paiement Côte d’Ivoire.');
+  if($channel===null||!RentalPaymentChannel::paymentEnabled($channel))throw new \LogicException('Choisissez un moyen de paiement Côte d’Ivoire actuellement actif.');
   $payload['channel']=$channel;
   $endpoint=$mode==='sandbox'?'https://sandbox.paiementpro.net/webservice/onlinepayment/init/curl-init.php':'https://www.paiementpro.net/webservice/onlinepayment/init/curl-init.php';
   $ch=curl_init($endpoint);
