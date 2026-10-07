@@ -2,3 +2,13 @@
 /vendor/
 /storage/*.log
 /storage/system/
+
+# Local environment backups
+.env.backup-*
+
+# Runtime PHP/cPanel logs
+error_log
+*.log
+
+# Private certificates / keys
+/storage/certs/
