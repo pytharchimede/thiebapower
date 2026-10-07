@@ -13,7 +13,10 @@ namespace {
  $r=['reference'=>'TBP-ROUTING-TEST','payment_environment'=>'production','customer_name'=>'Test client','customer_phone'=>'0700000000','customer_email'=>'client@example.test','rental_fee'=>600,'deposit'=>5000,'payment_channel'=>'WAVECI','payout_channel'=>'MOMOCI'];
  (new \App\Services\PaiementProService())->initiateTest($r);
  if($GLOBALS['routed_payload']['channel']!=='WAVECI'||$GLOBALS['routed_payload']['amount']!==5600)throw new \RuntimeException('Payment not bound to the chosen payment channel');
+ $r['deposit']=0;$r['rental_fee']=600;$r['payment_channel']='OMCIV';
+ (new \App\Services\PaiementProService())->initiateTest($r);
+ if($GLOBALS['routed_payload']['channel']!=='OMCIV'||$GLOBALS['routed_payload']['amount']!==600)throw new \RuntimeException('CI channel missing when deposit is disabled');
  unset($r['payment_channel']);try{(new \App\Services\PaiementProService())->initiateTest($r);throw new \RuntimeException('Refund preference used as payment channel');}catch(\LogicException $e){}
- if($GLOBALS['routed_calls']!==1)throw new \RuntimeException('Unsupported payment reached provider');
- echo "Rental payment routing OK: selected channel and total sent to provider, independent refund preference rejected; mocked HTTP, no payment\n";
+ if($GLOBALS['routed_calls']!==2)throw new \RuntimeException('Unsupported payment reached provider');
+ echo "Rental payment routing OK: CI channel enforced with or without deposit; unsupported payment blocked; mocked HTTP, no payment\n";
 }
