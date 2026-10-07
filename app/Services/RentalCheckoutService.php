@@ -87,7 +87,7 @@ final class RentalCheckoutService
             $station === "" ||
             strlen($station) > 120 ||
             !$batteryId ||
-            RentalPaymentChannel::normalize($channel)===null
+            !RentalPaymentChannel::paymentEnabled($channel)
         ) {
             throw new \InvalidArgumentException(
                 "Informations de location invalides",
