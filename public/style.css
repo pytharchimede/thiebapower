@@ -423,3 +423,113 @@ a { color: inherit; }
 .payment-method img {width:20px;height:20px;border-radius:6px;}
 .payment-method > span {min-height:55px;padding:7px 4px;gap:4px;}
 .kiosk-qr-panel .payment-logos {margin:8px 0;}
+
+
+/* Responsive PaiementPro CI channels */
+.payment-method-options {
+    display:grid;
+    gap:10px;
+    width:100%;
+    align-items:stretch;
+}
+
+/* 1 opérateur : carte unique, large et centrée */
+.payment-method-options--1 {
+    grid-template-columns:minmax(180px,280px);
+    justify-content:center;
+}
+
+.payment-method-options--1 .payment-method > span {
+    min-height:108px;
+    padding:16px 18px;
+}
+
+.payment-method-options--1 .payment-method img {
+    width:52px;
+    height:52px;
+}
+
+/* 2 opérateurs */
+.payment-method-options--2 {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+}
+
+.payment-method-options--2 .payment-method > span {
+    min-height:94px;
+    padding:13px 10px;
+}
+
+.payment-method-options--2 .payment-method img {
+    width:44px;
+    height:44px;
+}
+
+/* 3 opérateurs */
+.payment-method-options--3 {
+    grid-template-columns:repeat(3,minmax(0,1fr));
+}
+
+.payment-method-options--3 .payment-method > span {
+    min-height:86px;
+    padding:11px 8px;
+}
+
+.payment-method-options--3 .payment-method img {
+    width:38px;
+    height:38px;
+}
+
+/* 4 opérateurs */
+.payment-method-options--4 {
+    grid-template-columns:repeat(4,minmax(0,1fr));
+}
+
+.payment-method-options--4 .payment-method > span {
+    min-height:78px;
+    padding:9px 6px;
+}
+
+.payment-method-options--4 .payment-method img {
+    width:32px;
+    height:32px;
+}
+
+.payment-method-options .payment-method small {
+    font-size:11px;
+    line-height:1.2;
+}
+
+@media (max-width:600px) {
+    .payment-method-options--3,
+    .payment-method-options--4 {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+
+    .payment-method-options--1 {
+        grid-template-columns:minmax(0,260px);
+    }
+
+    .payment-method-options--1 .payment-method img {
+        width:48px;
+        height:48px;
+    }
+
+    .payment-method-options--2 .payment-method img {
+        width:40px;
+        height:40px;
+    }
+
+    .payment-method-options--3 .payment-method img,
+    .payment-method-options--4 .payment-method img {
+        width:34px;
+        height:34px;
+    }
+}
+
+@media (max-width:340px) {
+    .payment-method-options--2,
+    .payment-method-options--3,
+    .payment-method-options--4 {
+        grid-template-columns:1fr;
+    }
+}
