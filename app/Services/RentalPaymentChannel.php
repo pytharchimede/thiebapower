@@ -3,6 +3,18 @@ namespace App\Services;
 use App\Core\App;
 final class RentalPaymentChannel
 {
+    public const CHANNELS=['WAVECI'=>'Wave','OMCIV'=>'Orange Money','MOMOCI'=>'MTN MoMo','FLOOZ'=>'Moov Money'];
+    private static function configured(string $column):array
+    {
+        try{$raw=App::db()->query('SELECT '.$column.' FROM deposit_wallet_settings WHERE id=1')->fetchColumn();$items=json_decode((string)$raw,true);}
+        catch(\Throwable $e){return array_keys(self::CHANNELS);}
+        if(!is_array($items))return array_keys(self::CHANNELS);
+        return array_values(array_filter(array_unique(array_map([self::class,'normalize'],$items))));
+    }
+    public static function paymentChannels():array{return self::configured('payment_channels');}
+    public static function payoutChannels():array{return self::configured('payout_channels');}
+    public static function paymentEnabled(mixed $channel):bool{$channel=self::normalize($channel);return $channel!==null&&in_array($channel,self::paymentChannels(),true);}
+    public static function payoutEnabled(mixed $channel):bool{$channel=self::normalize($channel);return $channel!==null&&in_array($channel,self::payoutChannels(),true);}
     public static function normalize(mixed $channel):?string
     {
         if(!is_string($channel))return null;

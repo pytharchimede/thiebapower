@@ -29,11 +29,9 @@ final class PaiementProService {
    'customerFirstName'=>$name[0]??'Client','customerLastname'=>$name[1]??'Client',
    'customerPhoneNumber'=>$r['customer_phone'],'description'=>'Location powerbank '.$r['reference'],
    'notificationURL'=>$base.$notificationPath,'returnURL'=>$base.$returnPath];
-  if((int)($r['deposit']??0)>0){
-   $channel=RentalPaymentChannel::normalize($r['payment_channel']??null);
-   if($channel===null)throw new \LogicException('Choisissez un moyen de paiement compatible avec le remboursement de la caution.');
-   $payload['channel']=$channel;
-  }
+  $channel=RentalPaymentChannel::normalize($r['payment_channel']??null);
+  if($channel===null||!RentalPaymentChannel::paymentEnabled($channel))throw new \LogicException('Choisissez un moyen de paiement Côte d’Ivoire actuellement actif.');
+  $payload['channel']=$channel;
   $endpoint=$mode==='sandbox'?'https://sandbox.paiementpro.net/webservice/onlinepayment/init/curl-init.php':'https://www.paiementpro.net/webservice/onlinepayment/init/curl-init.php';
   $ch=curl_init($endpoint);
   curl_setopt_array($ch,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>json_encode($payload,JSON_THROW_ON_ERROR),CURLOPT_HTTPHEADER=>['Content-Type: application/json; charset=utf-8','Accept: application/json'],CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>5,CURLOPT_TIMEOUT=>20,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_FOLLOWLOCATION=>false]);
