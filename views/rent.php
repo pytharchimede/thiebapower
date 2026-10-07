@@ -75,7 +75,8 @@
                             <input type="hidden" name="previous_token" id="previous-rental-token">
                             <p id="promotion-status" role="status" aria-live="polite">Renseignez un téléphone valide pour activer le champ. La remise porte uniquement sur la caution.</p>
                         </section><script src="/promotions.js?v=20261005-3" defer></script><?php endif; ?>
-                        <?php if ($depositEnabled): $paymentField='payment_channel';$paymentLegend='Moyen de paiement';require __DIR__.'/partials/payment_channels.php'; ?><p class="tb-muted">La caution restante sera remboursée automatiquement par le même moyen de paiement, au numéro renseigné, après le retour confirmé de la batterie.</p><?php endif; ?>
+                        <?php $paymentField='payment_channel';$paymentLegend='Moyen de paiement · Côte d’Ivoire';require __DIR__.'/partials/payment_channels.php'; ?>
+                        <p class="tb-muted"><?= $depositEnabled ? 'La caution restante sera remboursée automatiquement par le même moyen de paiement, au numéro renseigné, après le retour confirmé de la batterie.' : 'Choisissez votre opérateur ivoirien. Seul ce canal sera transmis à PaiementPro pour ce paiement.' ?></p>
                         <?php require __DIR__.'/partials/payment_logos.php'; ?>
                         <button class="touch-button primary">Procéder au paiement <span aria-hidden="true">→</span></button>
                     </form>
