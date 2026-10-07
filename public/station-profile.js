@@ -1,0 +1,19 @@
+/* Search suggestions preview the place; selection/click/drag confirms a saved position. */
+(()=>{'use strict';const form=document.getElementById('station-profile');if(!form)return;
+const status=document.getElementById('place-status'),editable=form.dataset.editable==='1';
+if(!window.L){status.textContent='La carte est indisponible. Les autres informations restent modifiables.';return;}
+const lat=document.getElementById('station-latitude'),lon=document.getElementById('station-longitude'),address=document.getElementById('station-address');
+const map=L.map('station-editor-map').setView([5.35,-4.02],12);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
+const icon=(preview=false)=>L.divIcon({className:'station-pin'+(preview?' station-pin-preview':''),html:'T',iconSize:[36,36],iconAnchor:[18,18]});let marker,preview;
+const removePreview=()=>{if(preview){map.removeLayer(preview);preview=null;}};
+const setPosition=(point)=>{removePreview();lat.value=point.lat.toFixed(7);lon.value=point.lng.toFixed(7);if(marker)marker.setLatLng(point);else{marker=L.marker(point,{icon:icon(),draggable:editable}).addTo(map);marker.on('dragend',()=>{setPosition(marker.getLatLng());});}status.textContent='Emplacement choisi. Vous pouvez déplacer le marqueur puis enregistrer.';};
+if(lat.value!==''&&lon.value!==''){setPosition(L.latLng(Number(lat.value),Number(lon.value)));map.setView(marker.getLatLng(),16);}
+if(!editable)return;map.on('click',e=>setPosition(e.latlng));
+document.getElementById('clear-location').onclick=()=>{if(marker){map.removeLayer(marker);marker=null;}removePreview();lat.value=lon.value='';status.textContent='Position retirée. Enregistrez pour confirmer.';};
+document.getElementById('use-location').onclick=()=>{if(!navigator.geolocation){status.textContent='Position actuelle indisponible.';return;}status.textContent='Recherche de votre position…';navigator.geolocation.getCurrentPosition(p=>{setPosition(L.latLng(p.coords.latitude,p.coords.longitude));map.setView(marker.getLatLng(),17);},()=>{status.textContent='Position non accessible. Recherchez un lieu ou cliquez sur la carte.';},{enableHighAccuracy:true,timeout:10000});};
+const input=document.getElementById('place-query'),results=document.getElementById('place-results');let timer,request,sequence=0;
+input.addEventListener('input',()=>{clearTimeout(timer);if(request)request.abort();const revision=++sequence;results.replaceChildren();removePreview();const query=input.value.trim();if(query.length<3){status.textContent='Tapez au moins trois caractères pour rechercher un lieu.';return;}
+timer=setTimeout(async()=>{request=new AbortController();status.textContent='Recherche de lieux…';try{const response=await fetch('/admin/stations/places?q='+encodeURIComponent(query),{signal:request.signal});const data=await response.json();if(revision!==sequence)return;if(!response.ok)throw new Error(data.error||'Recherche indisponible.');status.textContent=data.results.length?'Choisissez le lieu correspondant. Le marqueur doré est un aperçu.':'Aucun résultat. Essayez le quartier puis ajustez sur la carte.';
+data.results.forEach((item,i)=>{const button=document.createElement('button');button.type='button';button.textContent=item.label;button.onclick=()=>{++sequence;clearTimeout(timer);request.abort();setPosition(L.latLng(item.latitude,item.longitude));map.setView(marker.getLatLng(),17);if(!address.value.trim())address.value=item.label;input.value=item.label;results.replaceChildren();};results.append(button);if(i===0){preview=L.marker([item.latitude,item.longitude],{icon:icon(true),interactive:false}).addTo(map);map.setView(preview.getLatLng(),15);}});
+}catch(e){if(e.name!=='AbortError'&&revision===sequence)status.textContent=e.message+' Vous pouvez cliquer sur la carte.';}},800);});
+})();

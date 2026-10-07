@@ -1,0 +1,1 @@
+ALTER TABLE promotions ADD COLUMN IF NOT EXISTS archived_at DATETIME NULL;

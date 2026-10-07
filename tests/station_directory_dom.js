@@ -1,0 +1,14 @@
+'use strict';
+const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/strict');
+(async()=>{
+ const dom=new JSDOM('<input id="station-filter"><button id="clear-station-filter" hidden></button><button id="refresh-stations"></button><button id="near-me"></button><p id="directory-status"></p><div id="station-directory-map"></div><div id="station-directory-list"></div><span id="station-result-count"></span>',{url:'https://example.test',runScripts:'outside-only'});
+ const w=dom.window,markers=[];let fits=0;
+ const map={setView(){return this},fitBounds(){fits++},removeLayer(){}};
+ w.L={map:()=>map,tileLayer:()=>({addTo(){}}),divIcon:x=>x,featureGroup:()=>({getBounds:()=>({pad(){return this}})}),marker:(point,opts)=>{const m={opts,point,bindPopup(p){this.popup=p;return this},addTo(){markers.push(this);return this},getLatLng(){return point},openPopup(){}};return m;}};
+ const rows=[{imei:'A',label:'Café <script>bad</script>',address:'Koumassi',latitude:5.3,longitude:-4,enabled:true,fresh:true,available:9,manager_name:'Amani <img>',manager_phone:'07 00 00 00 00'},{imei:'B',label:'Suspendue',address:'Bassam',latitude:5.2,longitude:-3.7,enabled:false,fresh:true,available:0},{imei:'C',label:'En attente',address:'Abidjan',latitude:5.4,longitude:-4,enabled:true,fresh:false,available:0}];
+ w.fetch=async()=>({ok:true,json:async()=>({stations:rows})});w.eval(fs.readFileSync('public/station-directory.js','utf8'));await new Promise(setImmediate);
+ assert.equal(markers[0].opts.icon.className,'finder-map-marker is-active');assert.equal(markers[1].opts.icon.className,'finder-map-marker is-inactive');assert.equal(markers[2].opts.icon.className,'finder-map-marker is-uncertain');
+ assert.match(markers[0].popup.textContent,/9batteries disponibles/);assert.match(markers[0].popup.textContent,/Amani/);assert.equal(markers[0].popup.querySelector('a[href^="tel:"]').href,'tel:+2250700000000');assert.equal(markers[0].popup.querySelector('img'),null);assert.equal(markers[0].popup.querySelector('script'),null);assert.equal(markers[1].popup.querySelector('a[href^="/rent?"]'),null);
+ const filter=w.document.getElementById('station-filter');filter.value='cafe';filter.dispatchEvent(new w.Event('input'));assert.equal(w.document.getElementById('station-result-count').textContent,'1');assert.equal(w.document.querySelectorAll('#station-directory-list article').length,1);
+ w.document.getElementById('clear-station-filter').click();assert.equal(filter.value,'');assert.equal(w.document.getElementById('station-result-count').textContent,'3');const before=fits;w.document.getElementById('refresh-stations').click();await new Promise(setImmediate);assert.equal(fits,before,'Refresh preserves camera');dom.window.close();console.log('Station directory: marker states, stock, public contact, tel links, escaping, suspended station actions, accent search and refresh OK');
+})().catch(e=>{console.error(e);process.exit(1)});

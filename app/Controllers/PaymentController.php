@@ -4,13 +4,20 @@ use App\Core\App;use App\Repositories\RentalRepository;use App\Services\PaymentV
 use App\Services\Audit;
 final class PaymentController {
  public function callback():void {
-  $p=$_POST; if(!$p){$p=json_decode(file_get_contents('php://input'),true)?:[];}
+  header('Cache-Control: no-store');
+  $p=$_POST;
+  if(!$p && ($_SERVER['REQUEST_METHOD']??'')==='GET')$p=$_GET;
+  if(!$p){$decoded=json_decode(file_get_contents('php://input'),true);$p=is_array($decoded)?$decoded:[];}
+  unset($p['token']);
   $reference=(string)($p['referenceNumber']??'');$r=(new RentalRepository)->find($reference);
   if(!$r){http_response_code(404);echo 'unknown';return;}
-  $verified=(new PaymentVerification)->verified($p,$r,(string)($_GET['token']??''));
-  if(!$verified){http_response_code(403);echo 'invalid notification';return;}
+  $outcome=(new PaymentVerification)->outcome($p,$r,(string)($_GET['token']??''));
+  if($outcome==='invalid'){http_response_code(403);echo 'invalid notification';return;}
   $db=App::db();$db->prepare('INSERT INTO payment_notifications(rental_id,payload,received_at) VALUES(?,?,UTC_TIMESTAMP())')->execute([$r['id'],json_encode($p)]);
-  Audit::event('payment.notification_verified','rental',$reference,['amount'=>$p['amount']]);
+  Audit::event('payment.notification_verified','rental',$reference,['amount'=>$p['amount'],'outcome'=>$outcome]);
+  if($outcome==='failed'){(new RentalLifecycleService)->failedPayment($reference);echo 'failure recorded';return;}
+  try {\App\Services\RentalPaymentChannel::record((int)$r['id'],$p);} catch(\Throwable $e) {\App\Services\SystemReports::record('payment.refund_channel',$e,['reference'=>$reference]);http_response_code(503);echo 'payment channel reconciliation required';return;}
+  try {\App\Services\DepositWallet::verifiedPayment((int)$r['id']);} catch(\Throwable $e) {\App\Services\SystemReports::record('wallet.queue',$e,['reference'=>$reference]);}
   (new RentalLifecycleService)->confirmedPayment($reference);
   http_response_code(202);echo 'release pending';
  }
@@ -19,6 +26,8 @@ final class PaymentController {
   $candidate=explode('?',(string)($_GET['reference']??''),2)[0];
   $reference=preg_match('/^TBP-[A-F0-9]{16}$/D',$candidate)?$candidate:'';
   header('Content-Type: text/html; charset=utf-8');
-  echo '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Paiement · Thiebapower</title><link rel="stylesheet" href="/style.css"></head><body class="kiosk"><main class="kiosk-shell" style="max-width:700px;margin:8vh auto;padding:32px"><a href="/" class="kiosk-logo">THIEBA<span>POWER</span></a><h1>Paiement en cours de vérification</h1><p>Votre retour sur cette page ne confirme pas encore l’encaissement. Conservez votre référence. La batterie est libérée après confirmation du paiement ; suivez son état ci-dessous.</p><p>Référence : <strong>'.htmlspecialchars($reference!==''?$reference:'indisponible',ENT_QUOTES,'UTF-8').'</strong></p><p id="rental-status" role="status">Vérification en cours…</p><a href="/" class="touch-button outline">Retour au kiosque</a></main><script>const ref='.json_encode($reference).';if(ref){const tick=async()=>{try{const r=await fetch("/rentals/status?reference="+encodeURIComponent(ref));if(r.ok){const d=await r.json();document.getElementById("rental-status").textContent=({pending_payment:"Paiement en cours de vérification",releasing:"Sortie de batterie en cours",release_failed:"Sortie à vérifier auprès du personnel",active:"Batterie disponible : retirez-la de la station",returned:"Batterie rendue"})[d.status]||"Statut : "+d.status;}}catch(e){}};tick();setInterval(tick,5000);}</script></body></html>';
+  echo '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Paiement · Thiebapower</title><link rel="stylesheet" href="/style.css"></head><body class="kiosk"><main class="kiosk-shell" style="max-width:700px;margin:8vh auto;padding:32px"><a href="/" class="kiosk-logo">THIEBA<span>POWER</span></a><h1>Paiement en cours de vérification</h1><p>Votre retour sur cette page ne confirme pas encore l’encaissement. Conservez votre référence. La batterie est libérée après confirmation du paiement ; suivez son état ci-dessous.</p><p>Référence : <strong>'.htmlspecialchars($reference!==''?$reference:'indisponible',ENT_QUOTES,'UTF-8').'</strong></p><p id="rental-status" role="status">Vérification en cours…</p><p id="deposit-status" role="status"></p><a id="rental-receipt" hidden class="touch-button outline">Télécharger mon reçu de retour</a><a href="/my-rentals" class="touch-button outline">Mes locations et assistance</a><a href="/stations/map" class="touch-button outline">Trouver une station de retour</a><a href="/" class="touch-button outline">Retour au kiosque</a></main><script>const ref='.json_encode($reference).';if(ref){const tick=async()=>{try{let token="";try{token=localStorage.getItem("tbp_last_receipt_token")||"";}catch(e){}const r=await fetch("/rentals/status?reference="+encodeURIComponent(ref)+"&token="+encodeURIComponent(token));if(r.ok){const d=await r.json();const c=document.getElementById("deposit-status");if(d.caution&&d.caution.paid){c.textContent="Caution payée : "+d.caution.deposit+" FCFA · Retenue pour dépassement : "+d.caution.deduction+" FCFA · Montant à restituer : "+d.caution.refund+" FCFA. Les frais de remboursement sont pris en charge par Thieba Power.";if(d.settlement)c.textContent+=" "+(d.settlement.status==="refunded"?"Restitution confirmée.":"Restitution en attente de confirmation.");}if(d.status==="returned"){try{const t=localStorage.getItem("tbp_last_receipt_token");if(t){const a=document.getElementById("rental-receipt");a.href="/rentals/receipt?reference="+encodeURIComponent(ref)+"&token="+encodeURIComponent(t);a.hidden=false;}}catch(e){}}document.getElementById("rental-status").textContent=({pending_payment:"Paiement en cours de vérification",payment_failed:"Paiement refusé ; aucune batterie ne sera libérée",payment_timeout:"Délai de paiement dépassé ; batterie remise à disposition",payment_review:"Paiement à rapprocher avec notre équipe",releasing:"Sortie de batterie en cours",release_failed:"Sortie à vérifier auprès du personnel",active:"Batterie disponible : retirez-la de la station",returned:"Batterie rendue"})[d.status]||"Statut : "+d.status;}}catch(e){}};tick();setInterval(tick,5000);}</script>';
+  require dirname(__DIR__,2).'/views/partials/public_support.php';
+  echo '</body></html>';
  }
 }

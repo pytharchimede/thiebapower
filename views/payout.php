@@ -4,19 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Reversements Paiement Pro · Thiebapower</title>
+<link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/payout.css">
+<script src="/payout-report.js" defer></script>
 </head>
-<body>
-<main>
-<header class="top">
-<div>
-<div class="brand">THIEBA<span>POWER</span>
-</div>
-<h1>Reversements Paiement Pro</h1>
-<p>Tester uniquement l’API payout : paramètres envoyés, réponse SOAP et statut sur une seule page.</p>
-</div>
-<a href="/admin">← Tableau de bord</a>
-</header>
+<body class="admin-body payout-page">
+<?php $adminPageTitle='Reversements API'; $adminPageOverline='PAIEMENT PRO'; $adminPageSubtitle='Suivi des appels et réponses du fournisseur'; require __DIR__.'/partials/admin_shell_start.php'; ?>
+<main class="payout-main">
 <div class="grid">
 <section class="card">
 <div class="eyebrow">Connexion active</div>
@@ -72,14 +66,7 @@
 <input type="hidden" name="csrf" value="<?=htmlspecialchars($csrf,ENT_QUOTES,'UTF-8')?>">
 <label>Numéro du bénéficiaire<input name="phone" type="tel" required placeholder="+225...">
 </label>
-<label>Canal<select name="channel" required>
-<option value="">Sélectionner</option>
-<option value="WAVECI">Wave CI</option>
-<option value="MOMOCI">MTN MoMo CI</option>
-<option value="OMCIV">Orange Money CI</option>
-<option value="FLOOZ">Flooz</option>
-</select>
-</label>
+<?php $paymentField='channel';$paymentLegend='Canal';require __DIR__.'/partials/payment_channels.php'; ?>
 <label class="check">
 <input type="checkbox" name="confirm_amount" value="200" required>Je confirme le versement réel de 200 FCFA.</label>
 <button class="button" <?= $enabled && $labOpen === 0 && $canSend ? '' : 'disabled' ?>>Envoyer 200 FCFA à Paiement Pro</button>
@@ -104,6 +91,13 @@ callbackURL: https://thiebapower.com/api/paiementpro/payout-callback</pre>
 <section class="card">
 <div class="eyebrow">Historique des essais</div>
 <h2>Réponses et sessions</h2>
+<?php if($canSend&&$enabled):?>
+<form method="post" action="/admin/payment-lab/clear-payout-history">
+<input type="hidden" name="csrf" value="<?=htmlspecialchars($csrf,ENT_QUOTES,'UTF-8')?>">
+<button class="button">Vider l’historique local des essais</button>
+<p class="small">Clôture les essais locaux et permet un nouvel essai. Les journaux sont conservés. Une transaction déjà initiée peut encore être payée par Paiement Pro ; cette action ne l’annule pas.</p>
+</form>
+<?php endif;?>
 <div class="tablewrap">
 <table>
 <thead>
@@ -136,13 +130,22 @@ callbackURL: https://thiebapower.com/api/paiementpro/payout-callback</pre>
 <?=htmlspecialchars((string)($op['provider_message']??'—'),ENT_QUOTES,'UTF-8')?>
 </td>
 <td>
-<?php if($op['status']==='processing'&&$op['provider_session_id']):?>
+<button type="button" class="button" data-copy-report="payout-report-<?=(int)$op['id']?>">Copier le rapport fournisseur</button>
+<details><summary>Voir le rapport</summary>
+<textarea id="payout-report-<?=(int)$op['id']?>" readonly rows="12" style="width:100%;min-width:280px"><?=htmlspecialchars($reports[$op['id']],ENT_QUOTES,'UTF-8')?></textarea>
+</details>
+<span data-copy-feedback="payout-report-<?=(int)$op['id']?>" role="status" aria-live="polite"></span>
+<?php if($canSend&&in_array($op['status'],['initiated','processing'],true)&&($authorizationUrls[$op['id']]??'')!==''):?>
+<a class="button" href="<?=htmlspecialchars($authorizationUrls[$op['id']],ENT_QUOTES,'UTF-8')?>" target="_blank" rel="noopener noreferrer">Ouvrir l’authentification Paiement Pro</a>
+<?php endif;?>
+<?php if(($op['status']==='processing'&&$op['provider_session_id'])||$op['status']==='initiated'):?>
 <form method="post" action="/admin/payment-lab/reconcile">
 <input type="hidden" name="csrf" value="<?=htmlspecialchars($csrf,ENT_QUOTES,'UTF-8')?>">
 <input type="hidden" name="id" value="<?=(int)$op['id']?>">
-<button class="button" <?= $canSend ? '' : 'disabled' ?>>Vérifier</button>
+<button class="button" <?= $canSend ? '' : 'disabled' ?>><?=$op['status']==='initiated'?'Récupérer la session et vérifier':'Vérifier'?></button>
 </form>
-<?php elseif(in_array($op['status'],['unknown','initiated'],true)):?>
+<?php endif;?>
+<?php if(in_array($op['status'],['unknown','initiated'],true)):?>
 <form method="post" action="/admin/payment-lab/archive">
 <input type="hidden" name="csrf" value="<?=htmlspecialchars($csrf,ENT_QUOTES,'UTF-8')?>">
 <input type="hidden" name="id" value="<?=(int)$op['id']?>">
@@ -227,5 +230,6 @@ callbackURL: https://thiebapower.com/api/paiementpro/payout-callback</pre>
 </div>
 <p class="footer">Le token HMAC et la clé secrète ne sont jamais affichés. Aucun bouton ne réémet une référence inconnue.</p>
 </main>
+<?php require __DIR__.'/partials/admin_shell_end.php'; ?>
 </body>
 </html>

@@ -15,15 +15,13 @@ final class AdminController {
   $modes=IntegrationSettings::all();
   $stats=$db->query("SELECT status,COUNT(*) quantity FROM rentals GROUP BY status")->fetchAll();
   $rentals=$db->query('SELECT r.id,r.reference,r.customer_name,r.customer_phone,r.rental_fee,r.deposit,r.status,r.payment_session_id,r.due_at,r.created_at,s.refund_amount,s.status refund_status,s.provider_session_id refund_session FROM rentals r LEFT JOIN deposit_settlements s ON s.rental_id=r.id ORDER BY r.id DESC LIMIT 10')->fetchAll();
-  $testOperations=$db->query('SELECT * FROM payment_lab_operations ORDER BY id DESC LIMIT 10')->fetchAll();
-  $payinEnabled=App::env('PAYMENT_LAB_PAYIN_ENABLED')==='1';
-  $payoutEnabled=App::env('PAYMENT_LAB_PAYOUT_ENABLED')==='1';
-  $simulationEnabled=App::env('SIMULATED_RENTALS_ENABLED')==='1' && $modes['heycharge']==='simulation';
-  $autoRefundEnabled=App::env('AUTOMATIC_REFUNDS_ENABLED')==='1';
+  $workerLastRun=$db->query("SELECT last_run_at FROM service_heartbeats WHERE name='heycharge'")->fetchColumn()?:null;
+  $workerRecent=$workerLastRun && strtotime($workerLastRun.' UTC')>=time()-240;
   $ready=['paiementpro_sandbox'=>App::env('PAIEMENTPRO_SANDBOX_WSDL')!=='' && App::env('PAIEMENTPRO_SANDBOX_MERCHANT_ID')!=='',
           'paiementpro_production'=>App::env('PAIEMENTPRO_MERCHANT_ID')!=='',
-          'heycharge_normal'=>App::env('HEYCHARGE_API_BASE')!=='' && App::env('HEYCHARGE_API_KEY')!==''];
-  App::view('admin',compact('prices','batteries','modes','stats','rentals','testOperations','csrf','ready','payinEnabled','payoutEnabled','simulationEnabled','autoRefundEnabled','currentUser','stations'));
+          'heycharge_normal'=>App::env('HEYCHARGE_API_BASE')!=='' && App::env('HEYCHARGE_API_KEY')!=='',
+          'payment_callback'=>(new \App\Services\PaymentVerification)->ready()];
+  App::view('admin',compact('prices','batteries','modes','stats','rentals','csrf','ready','currentUser','stations','workerLastRun','workerRecent'));
  }
  public function modes():void {
   Auth::requirePermission('integrations.manage',true);
@@ -38,15 +36,14 @@ final class AdminController {
  }
  public function prices():void {
   Auth::requirePermission('pricing.manage',true);
-  $fee=filter_input(INPUT_POST,'rental_fee',FILTER_VALIDATE_INT);
-  $deposit=filter_input(INPUT_POST,'default_deposit',FILTER_VALIDATE_INT);
-  $minutes=filter_input(INPUT_POST,'duration_minutes',FILTER_VALIDATE_INT);
-  $percent=filter_input(INPUT_POST,'late_percent',FILTER_VALIDATE_INT);
-  $depositEnabled=($_POST['deposit_enabled']??'')==='1'?1:0;
-  if(!is_int($fee)||$fee<1||!is_int($deposit)||$deposit<0||!is_int($minutes)||$minutes<1||!is_int($percent)||$percent<0||$percent>100){http_response_code(422);exit('Tarifs invalides');}
-  App::db()->prepare('UPDATE pricing SET rental_fee=?,default_deposit=?,duration_minutes=?,late_percent=?,deposit_enabled=? WHERE id=1')->execute([$fee,$deposit,$minutes,$percent,$depositEnabled]);
-  Audit::event('pricing.updated','pricing','1',['rental_fee'=>$fee,'default_deposit'=>$deposit,'duration_minutes'=>$minutes,'late_percent'=>$percent,'deposit_enabled'=>$depositEnabled]);
-  App::redirect('/admin');
+  $scope=(string)($_POST['pricing_scope']??'default');$selected=$_POST['stations']??[];
+  try{
+   if(!is_array($selected))throw new \InvalidArgumentException('Sélection de stations invalide.');
+   $price=$scope==='inherit'?[]:\App\Services\StationPricing::validate($_POST);
+   \App\Services\StationPricing::apply($price,$scope,$selected);
+  }catch(\InvalidArgumentException $e){http_response_code(422);echo htmlspecialchars($e->getMessage(),ENT_QUOTES,'UTF-8');return;}
+  Audit::event('pricing.updated','pricing',$scope,['scope'=>$scope,'stations'=>$selected,'price'=>$price]);
+  App::redirect('/admin/pricing?saved=1');
  }
  public function battery():void {
   Auth::requirePermission('fleet.manage',true);
@@ -55,6 +52,6 @@ final class AdminController {
   if($serial===''||strlen($serial)>100||($deposit!==null&&($deposit===false||$deposit<0))){http_response_code(422);exit('Batterie invalide');}
   App::db()->prepare("INSERT INTO batteries(serial,deposit_override,status) VALUES(?,?,'available') ON DUPLICATE KEY UPDATE deposit_override=VALUES(deposit_override)")->execute([$serial,$deposit]);
   Audit::event('battery.saved','battery',$serial,['deposit_override'=>$deposit]);
-  App::redirect('/admin');
+  App::redirect('/admin/batteries?saved=1');
  }
 }

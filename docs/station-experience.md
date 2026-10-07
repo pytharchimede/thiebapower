@@ -1,0 +1,108 @@
+# Stations, clients et pilotage — 4 octobre 2026
+
+## Écrans
+
+- `/admin/stations/profile?imei=...` : nom, type de lieu, adresse, horaires, position sur carte et contacts du gérant.
+- `/stations/map` : stations activées, recherche locale, distance à vol d’oiseau, disponibilité et itinéraire.
+- `/admin/rentals/watch` : sorties incertaines, réservations expirées, dépassements, remboursements en échec et assistance.
+- `/admin/support` : demandes rattachées à une location, clôture et trace de résolution.
+- `/my-rentals` : suivi et reçus des 30 derniers formulaires commencés depuis le même navigateur. Chaque location est autorisée par son jeton secret ; aucun historique n’est exposé à partir d’un simple numéro de téléphone. Effacement proposé sur les appareils partagés. Ce premier espace n’est pas un compte synchronisé entre appareils.
+- `/admin/batteries/detail?id=...` : durée cumulée connue depuis les sorties enregistrées, utilisation en cours incluse.
+- `/admin/stations/profitability` : tarifs des locations démarrées après paiement de production vérifié, retenues clôturées, investissement et coûts saisis. Les notifications répétées ne doublent pas les revenus. Les cautions et paiements sans sortie confirmée ne constituent pas des recettes acquises dans ce tableau.
+- `/admin/promotions` : campagnes et offres pour clients réguliers ; parrainage depuis une location terminée dans Mes locations.
+
+Les liens figurent dans le menu de gestion, les terminaux et le kiosque. Le nom local est conservé lors des synchronisations HeyCharge ; l’IMEI reste la clé technique inchangée.
+
+## Carte
+
+Leaflet 1.9.4 est fourni localement avec sa licence. Les fonds de carte utilisent OpenStreetMap. La recherche utilise Photon, avec préférence Abidjan et filtrage Côte d’Ivoire, temporisation de 800 ms, annulation des requêtes obsolètes et cache privé de 24 heures. Le marqueur doré est un aperçu ; choisir une suggestion, cliquer sur la carte ou déplacer le marqueur confirme la position à enregistrer. Une recherche ne déplace jamais silencieusement une station déjà enregistrée. En cas d’échec du géocodage, le clic sur la carte reste utilisable. Un lieu absent du référentiel peut être placé manuellement sur la carte.
+
+`PHOTON_API_URL` permet de remplacer le serveur public par une instance HTTPS dédiée. Le serveur public ne fournit pas de garantie de disponibilité ; pour une exploitation à volume élevé, configurer un service dédié. L’autocomplétion n’utilise pas le serveur public Nominatim. Références : [Photon](https://github.com/komoot/photon/blob/master/docs/api-v1.md), [usage des tuiles OSM](https://operations.osmfoundation.org/policies/tiles/).
+
+Les noms, adresses, horaires, positions, noms et téléphones des gérants sont publics. Les stations suspendues apparaissent en gris, sans bouton de location. L’email et les notes du gérant, les investissements et coûts restent administratifs. Une lecture de stock datant de plus de dix minutes, ou une station hors ligne, affiche « disponibilité à vérifier ».
+
+## Droits et sécurité
+
+Les permissions existantes sont réutilisées : `stations.view` pour consulter les fiches, `fleet.manage` pour modifier et rechercher un lieu, `rentals.view` pour les situations et l’assistance, `rentals.manage` pour rapprocher ou clôturer, `finance.view` + `stations.view` pour la rentabilité, `finance.manage` pour les coûts, `pricing.manage` pour les offres. Tous les formulaires administratifs exigent le jeton CSRF existant. Un coût possède un jeton unique pour éviter une double insertion lors d’un renvoi du formulaire.
+
+Le support client accepte un POST JSON avec le jeton de la location, une seule demande ouverte par location et un délai après clôture. Les jetons du nouvel espace client sont transmis dans le corps JSON, jamais dans les URLs de ses API. Les liens PDF conservent le mécanisme existant de reçu protégé.
+
+## Offres : activation distincte
+
+Les offres sont désactivées par défaut : `PROMOTIONS_ENABLED=1` active les champs client et le parrainage. Sans ce réglage, le tarif de location existant s’applique et aucun code soumis ne modifie le prix. `REFERRAL_DISCOUNT_XOF=100` définit la remise d’un proche invité ; elle doit rester inférieure au tarif courant. Un code de parrainage dure 30 jours, avec dix utilisations au maximum, une par numéro. Le parrain ne reçoit pas de paiement automatique.
+
+Une remise réduit seulement le tarif initial ; la caution est conservée. Le prorata du dépassement suit le tarif effectivement payé, selon le contrat existant. Les paiements gratuits sont refusés. Les offres sont figées dans la transaction de réservation, avec verrou de la campagne et unicité code/numéro. Une réservation abandonnée consomme aussi son code : elle n’est pas automatiquement recréditée, pour éviter les réutilisations après un paiement tardif. Le contrôle d’unicité repose sur le numéro déclaré ; ce mécanisme ne constitue pas une vérification d’identité par OTP.
+
+Les offres fidélité exigent le jeton d’une précédente location de production terminée et le nombre de locations payées et terminées défini par l’administrateur. Les paiements anciens, sans jeton de formulaire, ne peuvent pas donner accès à l’espace client sur un nouvel appareil.
+
+## Mise en production existante
+
+Appliquer **avant le chargement du nouveau code** `database/migrations/20261004_station_experience.sql`. Elle ajoute cinq tables, sans modifier les statuts, montants ou contrats des locations existantes. Les migrations du 3 octobre doivent déjà être présentes. La migration est réexécutable (`CREATE TABLE IF NOT EXISTS`).
+
+Copier les ressources suivantes vers la racine publique : `app.js`, `station-experience.css`, `station-profile.js`, `station-directory.js`, `my-rentals.js`, `promotions.js`, et le dossier `vendor/leaflet/`. Conserver les ressources existantes.
+
+Après mise à jour : ouvrir les fiches des trois terminaux, leur donner un nom, choisir le lieu, enregistrer les coordonnées du gérant et les horaires. Renseigner investissements et coûts avant d’interpréter la rentabilité. Les coûts d’analyse ne créent pas un décaissement de caisse ; enregistrer séparément le mouvement physique si nécessaire.
+
+La réservation de deux minutes, le rapprochement matériel, le worker et les remboursements restent ceux déjà en service. Aucun remboursement ni aucune commande d’éjection n’est lancé par ces nouveaux écrans en lecture.
+
+## Validation
+
+Contrôle de syntaxe de 124 fichiers PHP ; 19 scripts de tests PHP passés, dont 27 assertions nouvelles ; tests DOM existants de caution et portefeuille, plus recherche, marqueur et espace client. Essais sur MariaDB 10.11 isolée : migrations vierges et répétées, déduplication des recettes, refus de réutilisation du code, notifications sans modification des locations. Essais HTTP isolés : confidentialité publique, autorisation des jetons, assistance, validation de position, CSRF et droits de consultation/modification. Aucun paiement ni aucune commande HeyCharge réelle pendant ces tests.
+
+Les tests DOM n’ont pas été complétés par un rendu Chromium : le téléchargement du navigateur est indisponible dans cet environnement. Vérifier la carte et la mise en page sur le navigateur du serveur après déploiement. Les dépendances externes de carte et de géocodage doivent être accessibles depuis le poste et le serveur de production.
+
+`php tests/station_experience.php` et `node tests/station_experience_dom.js` (avec jsdom) sont autonomes. Pour la base, créer une **base vide** dont le nom commence par `thiebapower_test_`, puis lancer `TEST_EXPERIENCE_DATABASE=1 PROMOTIONS_ENABLED=1 php tests/integration/station_experience_database.php` avec `DB_DSN`, `DB_USER` et `DB_PASSWORD` dirigés vers cette base. Le test refuse une base existante contenant des tables et ne supprime aucune base.
+
+Le test HTTP `python3 tests/integration/station_experience_http.py` vise exclusivement un serveur local (`TEST_BASE_URL`, port 8090 par défaut), préparé avec cette fixture. Il vérifie les comptes de test, les refus d’accès et les nouvelles routes.
+
+## Refonte de la carte publique
+
+Recherche sur toute la largeur, présentation adaptée aux mobiles, fiches détaillées dans la liste et les bulles de carte, liens d’appel au gérant et actualisation manuelle. Marqueur vert : locations activées et lecture récente ; orange : locations activées mais connexion à vérifier ; gris : locations suspendues. Le filtrage ignore la casse et les accents. Cette refonte ne nécessite pas de nouvelle migration. Copier `station-experience.css` et `station-directory.js` dans la racine publique.
+
+## Refonte de Mes locations
+
+Fiches responsive avec statut, tarif, étapes et reçu. Le formulaire d’incident propose quatre catégories, un compteur et un retour après envoi. Les actualisations conservent le brouillon, le focus et le résultat du signalement ; un échec permet de réessayer. Les routes et règles de location restent identiques. Aucune migration supplémentaire. Copier `my-rentals.js` et `my-rentals.css` dans la racine publique après mise à jour du code. Test DOM : `node tests/my_rentals_dom.js` avec jsdom.
+
+## Codes promo publics et partage
+
+Appliquer `database/migrations/20261004_public_promotions.sql` après la migration station experience. Les codes existants restent privés. Depuis `/admin/promotions`, les comptes autorisés à gérer les tarifs peuvent publier les codes de campagne ; fidélité et parrainage restent privés. `/offers` affiche uniquement les campagnes publiques actives, dans leur période, non épuisées et compatibles avec le tarif. `PROMOTIONS_ENABLED=1` reste nécessaire. Le partage ouvre WhatsApp, Telegram, X, Facebook ou le menu natif, et propose une copie de secours. Il ne transmet aucun message automatiquement. Copier `promotion-cards.css` et `promotion-share.js` dans la racine publique.
+
+## Support et visibilité publique
+
+Appliquer `20261004_public_support.sql`. Paramètres dans `/admin/public-settings`, permission `system.manage`. Le support est désactivé par défaut tant que ses coordonnées ne sont pas renseignées. Bouton discret sur accueil, location, carte, Mes locations, offres et retour de paiement. WhatsApp, téléphone, email et lien de chat HTTPS sont activables séparément. Le chat nécessite un service externe déjà disponible ; aucune messagerie interne ni script tiers automatique. Les contacts masqués du gérant sont également retirés du snapshot public. Les autres interrupteurs contrôlent la présentation ; ils ne modifient ni les droits ni les règles de paiement. Les informations indispensables au parcours restent visibles. Copier `public-support.css` dans la racine publique.
+
+## Formation client et propositions d’évolution
+
+Migration `20261004_training_roadmap.sql`. Espace `/admin/training` : guide de 20 modules versionné dans `resources/training/client.php`, exercices et validation finale. Lecture et exports : permission `dashboard.view` ; création et modification des propositions : `system.manage` avec CSRF. Les propositions possèdent titre, besoin, bénéfice, périmètre, priorité, statut, budget et délai indicatifs. Aucun statut ne déclenche de déploiement ou de facturation. Export PDF du guide, du portefeuille (200 dernières propositions) ou d’une fiche. Envoi manuel par fichier joint ; le bouton email prépare un brouillon sans joindre automatiquement le PDF. `output/pdf/` contient un exemplaire du guide et des pistes initiales pour discussion, non enregistrées en base. Copier `client-training.css` dans la racine publique. QR des PDF : APP_URL doit être une URL HTTPS compatible avec le générateur existant. Tests : `php tests/client_training.php` et essais HTTP isolés de création/modification/export.
+
+## Délai de grâce configurable
+
+Migration `20261005_configurable_grace.sql` : valeurs par défaut 5 minutes sur les tarifs et les locations. Réglage dans Tarification (0 à 1440 minutes). Le délai est capturé à la création : les conditions des locations existantes restent inchangées. Calcul PHP, compteurs de caution et reçus utilisent la valeur enregistrée. Copier `rental-deposits.js` vers la racine publique. Un jeton de formulaire déjà utilisé avec des coordonnées ou une batterie différentes déclenche un conflit attendu (409) orientant vers Mes locations ; ce contrôle de cohérence reste actif et ne produit plus un nouvel incident système. Les anciens rapports restent consultables. « Pris en compte » signifie acquittement du rapport, pas résolution automatique de la location.
+
+## Confirmation automatique du crédit XPaye
+
+Le succès synchrone `/wallet/request` (HTTP 201, status success, message exact de rechargement effectué, montant exact, solde numérique) confirme automatiquement le crédit. Le worker reprend aussi les anciens transferts submitted dont le résumé ou le diagnostic privé spécifique au transfert contient cette confirmation. Il ne refait aucune requête de transfert pour cette reprise. Les réponses génériques, contradictoires, incomplètes ou inconnues restent à examiner. Le remboursement exige toujours le retour confirmé, le paiement vérifié, le canal validé et les frais réservés. Le traitement automatique nécessite `AUTOMATIC_REFUNDS_ENABLED=1` et le cron `bin/refund_worker.php`. Aucun changement de schéma ni nouveau transfert déclenché par une consultation.
+
+## Promotions sur la caution uniquement
+
+Migration `20261005_deposit_promotions.sql` préserve la cible des remises historiques (rental_fee) et enregistre deposit pour les nouvelles utilisations. Le code réduit la caution réelle de la batterie choisie ; le tarif de location et le prorata ne changent pas. Remise plafonnée à la caution, jusqu’à zéro. Sans caution active, code indisponible. Prévisualisation fondée sur les données serveur de la batterie, vérification finale sous transaction. La caution réduite est enregistrée sur la location : transfert payout, réserve de frais, retenue et remboursement utilisent ce montant réellement payé. Copier `promotions.js` vers la racine publique.
+
+## Gestion du cycle de vie des codes
+
+Appliquer `20261005_promotion_archive.sql` avant le nouveau code PHP. Activation au paiement et visibilité publique sont indépendantes ; un code public désactivé ne paraît pas sur `/offers`. La suppression est réservée aux codes sans aucune utilisation. Un code utilisé se conserve dans les archives après désactivation ; un code actif ne peut pas être archivé. Les opérations verrouillent le code comme le checkout, préservent les utilisations historiques et refusent la réactivation des archives. L’écran propose une vue dédiée aux archives. Le partage inclut WhatsApp, Telegram, X, Facebook, email, SMS et menu natif, sans envoyer automatiquement de message.
+
+Déployer `promotions.js`, `promotion-cards.css` et `promotion-share.js`. La vérification affiche chargement, erreurs et délai dépassé ; les réponses devenues obsolètes sont ignorées et les anciennes remises annulées si les données changent. Vérifier `PROMOTIONS_ENABLED=1` et une caution active. Tests : `tests/promotions_dom.js` et suites HTTP/base de données station experience.
+
+## Réessai des codes après paiement abandonné
+
+Migration `20261005_promotion_retry_limits.sql` : ajoute une limite par numéro (1 par défaut) et remplace l’unicité promotion/téléphone par un index, sans supprimer les utilisations historiques. Les limites comptent les paiements validés (notification authentifiée responsecode=0) et les réservations en attente dans leur fenêtre de deux minutes. Les tentatives impayées expirées ne consomment plus de place, même avant le prochain cron. La limite est revérifiée sous verrou au checkout. La liste publique emploie le même calcul. Suppression/archivage conservent leur contrôle sur toutes les tentatives historiques. L’admin peut modifier les deux limites ; les messages distinguent limite globale et limite par numéro. Copier `promotion-cards.css` vers la racine publique.
+
+## Messages et formulaire de code promo
+
+Les refus distinguent une limite consommée par des paiements validés et une réservation temporaire : le délai restant est calculé depuis les échéances serveur, en tenant compte du nombre de places à libérer si une limite a été abaissée. Le formulaire présente nom puis téléphone, puis le code facultatif. Le champ et le bouton Appliquer s’activent avec un téléphone valide et une batterie choisie ; la remise est annulée si le téléphone ou la sélection change. Déployer `promotions.js` et `public-entry.css`. Aucune nouvelle migration.
+
+## Tarification par station
+
+Appliquer `20261005_station_pricing.sql` : toutes les stations héritent initialement du tarif général, sans modification des locations existantes. La page `/admin/pricing` propose un tarif général (conserve les personnalisations), toutes les stations (remplace les personnalisations et devient le tarif général), ou une sélection d’une ou plusieurs stations. Chaque personnalisation contient location, durée, caution activée/montant, grâce et ancien taux de dépassement. Le retour au tarif général retire seulement cette personnalisation. Les nouvelles stations héritent du général. La caution propre à la batterie est prioritaire si la caution de la station est activée.
+
+`StationPricing` résout le tarif public, le checkout et la prévisualisation des promotions ; la transaction capture les montants et règles sur la location. Les écritures de tarifs sont atomiques, valident toute la sélection et partagent un verrou avec le checkout pour lire une configuration cohérente. Accès pricing.view, modifications pricing.manage + CSRF, historique d’audit. Déployer `station-pricing.css` et `station-pricing.js`. Les suites HTTP et MariaDB couvrent sélection, héritage, restauration, toutes stations, cautions, promotion et immutabilité des locations.
