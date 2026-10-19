@@ -147,6 +147,32 @@ final class PaiementProPayoutService
             );
         }
     }
+    /** Read-only wallet lookup. Never initiates a transfer. */
+    public function balance(): array
+    {
+        $config=$this->credentials('production');
+        $timestamp=($this->clock)();
+        $timeout=ini_get('default_socket_timeout');
+        ini_set('default_socket_timeout','15');
+        try {
+            $client=($this->soapFactory)($config['wsdl']);
+            $reply=$client->getBalance([
+                'merchantId'=>$config['merchant'],
+                'token'=>$this->token($config,$timestamp),
+                'timestamp'=>$timestamp,
+            ]);
+            $data=is_object($reply)?get_object_vars($reply):$reply;
+            if (!is_array($data) || ($data['status']??'')!=='success' || ($data['currency']??'')!=='XOF') {
+                throw new \RuntimeException('Solde Paiement Pro indisponible');
+            }
+            $balance=filter_var($data['balance']??null,FILTER_VALIDATE_INT);
+            if ($balance===false) throw new \RuntimeException('Solde Paiement Pro invalide');
+            return ['balance'=>$balance,'currency'=>'XOF','checked_at'=>gmdate('Y-m-d H:i:s')];
+        } finally {
+            if ($timeout!==false) ini_set('default_socket_timeout',$timeout);
+        }
+    }
+
     public function status(
         string $sessionId,
         ?string $mode = null,

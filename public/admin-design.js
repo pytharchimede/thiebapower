@@ -71,6 +71,7 @@
     wrap.before(toolbar,meta);wrap.after(empty);
     const filter = ()=>{const query=normalize(input.value.trim());let count=0;rows.forEach((row,i)=>{row.hidden=!(normalize(data[i].join(' ')).includes(query)&&(!select||!select.value||data[i][statusIndex]===select.value));if(!row.hidden)count++;});meta.textContent=count+' résultat'+(count>1?'s':'')+' sur '+rows.length+' chargé'+(rows.length>1?'s':'')+' · Recherche et exports limités aux données de cette page.';empty.hidden=count>0;excelButton.disabled=pdfButton.disabled=count===0;};
     rows.forEach((row,index)=>{
+      if(table.dataset.tbSummary==='true')return;
       const primary=Array.from(row.querySelectorAll('a[href]')).find(a=>/\/detail\?/.test(a.getAttribute('href')));
       const cell=document.createElement('td');cell.className='tb-row-action';cell.setAttribute('role','cell');
       const link=document.createElement('a');link.className='tb-link-button';link.textContent='Voir la fiche →';

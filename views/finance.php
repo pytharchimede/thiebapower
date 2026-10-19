@@ -2,6 +2,7 @@
 <?php $adminPageTitle='Caisse et points financiers';$adminPageOverline='GESTION FINANCIÈRE';$adminPageSubtitle='Encaissements confirmés, cautions et caisse physique';require __DIR__.'/partials/admin_shell_start.php';
 $money=static fn(int $n)=>number_format($n,0,',',' ').' FCFA';$escape=static fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8'); ?>
 <main class="admin-main finance-page">
+<?php require __DIR__.'/partials/finance_balances.php'; ?>
  <section class="admin-card"><div class="admin-section-heading"><div><span class="admin-overline">RETRAIT MOBILE MONEY</span><h2>Retirer via Paiement Pro</h2><p>Le retrait est envoyé au bénéficiaire indiqué. Il ne constitue pas une sortie de caisse physique. Le statut est confirmé auprès de Paiement Pro ; une réponse d’initiation ne prouve pas le versement.</p></div></div>
  <?php if(App\Services\Auth::can('finance.withdraw')): ?>
  <form method="post" action="/admin/finance/withdraw" class="finance-entry" id="withdrawal-form">
