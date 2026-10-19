@@ -19,11 +19,17 @@ final class FinanceController {
   if(!$first||!$last||$first->format('Y-m-d')!==$start||$last->format('Y-m-d')!==$end||$first>$last||$first->diff($last)->days>366){http_response_code(422);echo 'Période invalide (maximum 366 jours)';return;}
   $report=(new FinanceReport)->forPeriod($start,$end);
   $balances=in_array($financeSection,['overview','withdrawals'],true)?(new \App\Services\FinanceBalances())->snapshot():null;
+  $withdrawalQuote=null;
+  if($financeSection==='withdrawals'){
+   try {$rules=\App\Services\WithdrawalQuote::rules();}catch(\Throwable){$rules=[];}
+   $walletBalance=$balances['rows'][3][2]??null;
+   $withdrawalQuote=\App\Services\WithdrawalQuote::preview($walletBalance,$rules);
+  }
   $withdrawals=[];
   if($financeSection==='withdrawals')$withdrawals=App::db()->query('SELECT *, (created_at<=UTC_TIMESTAMP()-INTERVAL 5 MINUTE) AS overdue FROM finance_withdrawals ORDER BY id DESC LIMIT 100')->fetchAll();
   $withdrawalUrls=[];
   foreach($withdrawals as $op){if(in_array($op['status'],['unknown','initiated','processing'],true)){$q=App::db()->prepare('SELECT * FROM payout_api_events WHERE reference=? ORDER BY id');$q->execute([$op['reference']]);$withdrawalUrls[$op['reference']]=\App\Services\PayoutResult::authorizationUrl(\App\Services\PayoutResult::recordedInitiation($op['reference'],$q->fetchAll()));}}
-  App::view('finance',compact('report','start','end','withdrawals','withdrawalUrls','balances','financeSection'));
+  App::view('finance',compact('report','start','end','withdrawals','withdrawalUrls','balances','financeSection','withdrawalQuote'));
  }
  public function addCash():void {
   $user=Auth::requirePermission('finance.manage',true);

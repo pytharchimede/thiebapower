@@ -35,11 +35,20 @@ final class FinanceWithdrawalService
             if ((int)$db->query("SELECT COUNT(*) FROM finance_withdrawals WHERE status IN ('unknown','initiated','processing')")->fetchColumn()>0) {
                 throw new \LogicException('Un retrait attend sa vérification. Ne pas le réémettre.');
             }
+            try {
+                $wallet=$provider->balance(); // Always fresh: never trust browser values or cached balances.
+                $quote=WithdrawalQuote::calculate($wallet['balance'],$channel,WithdrawalQuote::rules(),$amount);
+            } catch (\Throwable $e) {
+                throw new \LogicException('Impossible de vérifier le solde ou les frais. Aucun retrait envoyé. Actualisez la page et vérifiez le barème payout.',0,$e);
+            }
+            if($amount>$quote['maximum']) {
+                throw new \LogicException('Montant trop élevé. Maximum retirable, frais inclus : '.number_format($quote['maximum'],0,',',' ').' FCFA. Aucun retrait envoyé.');
+            }
             $db->prepare('INSERT INTO finance_withdrawals(reference,request_token,amount,recipient_phone,recipient_channel,recipient_name,reason,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,UTC_TIMESTAMP())')->execute([$ref,$token,$amount,$phone,$channel,$name,$reason,$actor]);
         } finally {
             $db->query("SELECT RELEASE_LOCK('tbp_finance_withdrawal')");
         }
-        Audit::event('finance.withdrawal_requested','withdrawal',$ref,['amount'=>$amount,'channel'=>$channel]);
+        Audit::event('finance.withdrawal_requested','withdrawal',$ref,['amount'=>$amount,'channel'=>$channel,'fee_estimate'=>$quote['fee'],'total_estimate'=>$quote['total'],'balance_before'=>$quote['balance']]);
         PayoutApiAudit::request($ref,$request);
         try {
             $reply=$provider->initiate($request);

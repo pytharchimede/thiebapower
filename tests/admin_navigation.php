@@ -40,7 +40,7 @@ namespace {
   check(str_contains($html,'tb-nav-group'),'Grouped navigation missing');
   check(str_contains($html,'action="/admin/finance/withdraw"')===($financeSection==='withdrawals'),'Withdrawal form leaked to another Finance page');
   check(str_contains($html,'action="/admin/finance/cash"')===($financeSection==='cash'),'Cash form leaked to another Finance page');
-  check(str_contains($html,'tb-balance-recap')===in_array($financeSection,['overview','withdrawals'],true),'Balance recap on wrong page');
+  check(str_contains($html,'tb-balance-recap')===($financeSection==='overview'),'Balance recap on wrong page');
   check(str_contains($html,'name="from"')===($financeSection!=='withdrawals'),'Period filter lost');
  }
  Auth::$allowed=['finance.view'];$financeSection='withdrawals';

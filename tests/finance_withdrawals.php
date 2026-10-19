@@ -33,14 +33,18 @@ namespace {
    if(str_contains($this->sql,'request_token='))return ($this->db->ledger['request_token']??'')===($this->params[0]??'')?$this->db->ledger['reference']:false;
    return false;
   }
-  public function fetch():mixed{return $this->db->ledger;}
+  public function fetch():mixed{if(str_contains($this->sql,'deposit_wallet_settings'))return ['fee_rules'=>json_encode(['WAVECI'=>['fixed'=>0,'basis_points'=>200]])];return $this->db->ledger;}
  }
  final class Database {public ?array $ledger=null;public bool $overdue=false;public function prepare(string $s):Statement{return new Statement($this,$s);}public function query(string $s):Statement{return new Statement($this,$s);}}
  \App\Core\App::$database=new Database();$calls=0;
- $soap=new class {public int $calls=0;public function initTransact($p){$this->calls++;throw new \RuntimeException('Timeout after sending');}};
+ $soap=new class {public int $calls=0;public int $balance=1000;public function getBalance($p){return (object)['status'=>'success','balance'=>$this->balance,'currency'=>'XOF'];}public function initTransact($p){$this->calls++;throw new \RuntimeException('Timeout after sending');}};
  $provider=new \App\Services\PaiementProPayoutService(static fn()=>$soap,static fn()=>1791044082,static function(...$args){});
  $service=new \App\Services\FinanceWithdrawalService($provider);
  $input=['amount'=>'200','request_token'=>str_repeat('a',32),'recipient_name'=>'Client','reason'=>'Retrait','phone'=>'0700000000','channel'=>'WAVECI','confirm'=>'1'];
+ $soap->balance=200;$rejected=false;
+ try{$service->send($input,1);}catch(\LogicException){$rejected=true;}
+ if(!$rejected||$soap->calls!==0||\App\Core\App::$database->ledger!==null)throw new \RuntimeException('Fees must prevent an overdraw before recording or sending');
+ $soap->balance=1000;
  $ref=$service->send($input,1);
  if($soap->calls!==1||\App\Core\App::$database->ledger['status']!=='unknown')throw new \RuntimeException('Unknown outcome must remain pending');
  if($service->send($input,1)!==$ref||$soap->calls!==1)throw new \RuntimeException('Duplicate request emitted twice');
