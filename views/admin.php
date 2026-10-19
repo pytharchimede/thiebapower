@@ -4,7 +4,7 @@ $adminPageTitle = "Tableau de bord";
 $adminPageSubtitle = "Votre activité, votre parc et vos actions essentielles.";
 require __DIR__ . "/partials/admin_shell_start.php";
 ?>
-<main class="management-main"><p><a class="tb-link-button" href="/admin/training"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i> Formation client et propositions d’évolution</a></p><p><a class="tb-link-button" href="/admin/statistics"><i class="fa-solid fa-chart-line" aria-hidden="true"></i> Ouvrir le dashboard statistique et activer le temps réel</a></p>
+<main class="management-main">
 <?php
 $esc = static fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, "UTF-8");
 $available = count(
@@ -38,25 +38,10 @@ foreach ($stats as $stat) {
  ] ?> min · Caution <?= (int) $prices["deposit_enabled"] === 1
      ? "active"
      : "désactivée" ?></small></article></section>
-<section><div class="admin-section-heading"><div><span class="tb-eyebrow">À PORTÉE DE MAIN</span><h2>Vos espaces de gestion</h2></div><span class="tb-muted">Choisissez une action pour commencer</span></div><div class="tb-module-grid"><?php foreach (
-    $navItems
-    as [$label, $href, $permission, $name]
-):
-    if (
-        $name === "overview" ||
-        !App\Services\Auth::can($permission, $adminUser)
-    ) {
-        continue;
-    } ?><a class="tb-module-card" href="<?= $esc(
-    $href,
-) ?>"><span class="tb-module-icon"><i class="fa-solid <?= $esc(
-    $navIcons[$name] ?? "fa-layer-group",
-) ?>" aria-hidden="true"></i></span><strong><?= $esc(
-    $label,
-) ?></strong><span class="tb-muted"><?= $esc(
-    $navDescriptions[$name] ?? "Ouvrir cet espace",
-) ?></span><i class="fa-solid fa-arrow-up-right-from-square tb-card-arrow" aria-hidden="true"></i></a><?php
-endforeach; ?></div></section>
+<section aria-label="Actions fréquentes"><h2>De quoi avez-vous besoin ?</h2><div class="tb-home-shortcuts">
+<?php foreach([['Suivre une location','/admin/rentals','rentals.view'],['Retirer de l’argent','/admin/finance/withdrawals','finance.withdraw'],['Voir les soldes','/admin/finance','finance.view'],['Trouver une station','/admin/stations','stations.view'],['Voir les batteries','/admin/batteries','batteries.view'],['Régler les tarifs','/admin/pricing','pricing.view'],['Aider un client','/admin/support','rentals.view']] as [$label,$href,$permission]):if(!App\Services\Auth::can($permission,$adminUser)||($permission==='finance.withdraw'&&!App\Services\Auth::can('finance.view',$adminUser)))continue; ?><a href="<?= $esc($href) ?>"><?= $esc($label) ?></a><?php endforeach; ?>
+</div></section>
+<section><div class="admin-section-heading"><div><span class="tb-eyebrow">VOS MODULES</span><h2>Une entrée pour chaque besoin</h2></div></div><div class="tb-module-grid"><?php foreach($navGroups as $group): ?><a class="tb-module-card" href="<?= $esc($group['href']) ?>"><span class="tb-module-icon"><i class="fa-solid <?= $esc($group['icon']) ?>" aria-hidden="true"></i></span><strong><?= $esc($group['label']) ?></strong><span class="tb-muted"><?= $esc($group['description']) ?></span><span class="tb-module-cta">Ouvrir le module →</span></a><?php endforeach; ?></div></section>
 <?php if (
     App\Services\Auth::can("batteries.view")
 ): ?><section class="admin-card"><div class="admin-section-heading"><div><span class="tb-eyebrow">VOTRE MATÉRIEL</span><h2>Aperçu des batteries</h2><p>Les 6 premières batteries du parc.</p></div><a class="tb-link-button" href="/admin/batteries">Tout le parc <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div><div class="tb-battery-grid"><?php

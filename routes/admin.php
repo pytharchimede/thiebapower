@@ -1,6 +1,19 @@
 <?php
 // Route map loaded by App\Core\App.
 return [
+    "GET /admin/finance/withdrawals" => [\App\Controllers\FinanceController::class,"index"],
+    "GET /admin/finance/summary" => [\App\Controllers\FinanceController::class,"index"],
+    "GET /admin/finance/daily" => [\App\Controllers\FinanceController::class,"index"],
+    "GET /admin/finance/receipts" => [\App\Controllers\FinanceController::class,"index"],
+    "GET /admin/finance/refunds" => [\App\Controllers\FinanceController::class,"index"],
+    "GET /admin/finance/cash" => [\App\Controllers\FinanceController::class,"index"],
+    "GET /admin/modules/locations" => [\App\Controllers\ModuleController::class,"index"],
+    "GET /admin/modules/finances" => [\App\Controllers\ModuleController::class,"index"],
+    "GET /admin/modules/equipements" => [\App\Controllers\ModuleController::class,"index"],
+    "GET /admin/modules/offres" => [\App\Controllers\ModuleController::class,"index"],
+    "GET /admin/modules/communication" => [\App\Controllers\ModuleController::class,"index"],
+    "GET /admin/modules/administration" => [\App\Controllers\ModuleController::class,"index"],
+
  "GET /admin/sms/templates" => [\App\Controllers\SmsTemplatesController::class,"index"],
  "POST /admin/sms/templates" => [\App\Controllers\SmsTemplatesController::class,"save"],
  "GET /admin/sms" => [\App\Controllers\OrangeSmsController::class,"index"],
