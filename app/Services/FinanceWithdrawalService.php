@@ -54,10 +54,26 @@ final class FinanceWithdrawalService
         return $ref;
     }
 
+    /** Release only the local submission lock; this does not cancel the provider transfer. */
+    public function unblock(string $reference, string $reason, bool $confirmed, int $actor): void
+    {
+        $reason=trim($reason);
+        if (!$confirmed || strlen($reason)<5 || strlen($reason)>160) {
+            throw new \InvalidArgumentException('Confirmation et motif de 5 à 160 caractères requis.');
+        }
+        $db=App::db();
+        $q=$db->prepare("UPDATE finance_withdrawals SET status='released_unknown', provider_message=? WHERE reference=? AND status IN ('unknown','initiated','processing') AND created_at<=UTC_TIMESTAMP()-INTERVAL 5 MINUTE");
+        $q->execute(['Débloqué par #'.$actor.' : '.$reason,$reference]);
+        if ($q->rowCount()!==1) {
+            throw new \LogicException('Déblocage impossible : attendre 5 minutes ou actualiser le statut.');
+        }
+        Audit::event('finance.withdrawal_unblocked','withdrawal',$reference,['actor'=>$actor,'reason'=>$reason,'provider_outcome'=>'unknown']);
+    }
+
     public function verify(string $reference): void
     {
         $db=App::db();$q=$db->prepare('SELECT * FROM finance_withdrawals WHERE reference=?');$q->execute([$reference]);$op=$q->fetch();
-        if (!$op || !in_array($op['status'],['unknown','initiated','processing'],true)) throw new \LogicException('Retrait non éligible.');
+        if (!$op || !in_array($op['status'],['unknown','initiated','processing','released_unknown'],true)) throw new \LogicException('Retrait non éligible.');
         $session=$op['provider_session_id'];
         if (!$session) {
             $events=$db->prepare("SELECT * FROM payout_api_events WHERE reference=? AND source='init' ORDER BY id");$events->execute([$reference]);
@@ -70,7 +86,7 @@ final class FinanceWithdrawalService
         $state=PayoutResult::finalStatus($reply,['sessionid'=>$session,'referenceNo'=>$reference,'amount'=>$op['amount'],'currency'=>'XOF','channel'=>$op['recipient_channel'],'payeeNo'=>$op['recipient_phone']]);
         if ($state==='mismatch') throw new \LogicException('Réponse fournisseur incohérente : vérification manuelle requise.');
         if (!in_array($state,['succeeded','failed'],true)) return;
-        $db->prepare("UPDATE finance_withdrawals SET status=?,provider_session_id=?,confirmed_at=UTC_TIMESTAMP() WHERE reference=? AND status IN ('unknown','initiated','processing')")->execute([$state,$session,$reference]);
+        $db->prepare("UPDATE finance_withdrawals SET status=?,provider_session_id=?,confirmed_at=UTC_TIMESTAMP() WHERE reference=? AND status IN ('unknown','initiated','processing','released_unknown')")->execute([$state,$session,$reference]);
         Audit::event('finance.withdrawal_verified','withdrawal',$reference,['status'=>$state]);
     }
 }

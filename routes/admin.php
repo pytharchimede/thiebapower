@@ -36,6 +36,7 @@ return [
     "GET /admin/rentals/receipt" => [\App\Controllers\RentalReceiptController::class, "admin"],
     "POST /admin/reports/pdf" => [\App\Controllers\ReportController::class, "pdf"],
     "POST /admin/finance/withdraw" => [\App\Controllers\FinanceWithdrawalController::class, "send"],
+    "POST /admin/finance/withdraw/unblock" => [\App\Controllers\FinanceWithdrawalController::class, "unblock"],
     "POST /admin/finance/withdraw/verify" => [\App\Controllers\FinanceWithdrawalController::class, "verify"],
     "GET /admin/system" => [\App\Controllers\SystemController::class, "index"],
     "POST /admin/system/settings" => [
